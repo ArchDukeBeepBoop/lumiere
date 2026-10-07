@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The server lives on the home network over plain HTTP, like Jellyfin's
+     default. Cleartext is allowed for that and nothing is fetched elsewhere. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

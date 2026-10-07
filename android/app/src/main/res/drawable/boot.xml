@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launch window: the app's icon on the app's ground, drawn by Android before
+     the first frame, so starting up shows the mark rather than a blank screen. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/canvas" />
+    <item android:width="144dp" android:height="144dp" android:gravity="center">
+        <bitmap android:src="@drawable/boot_icon" android:gravity="fill" />
+    </item>
+</layer-list>

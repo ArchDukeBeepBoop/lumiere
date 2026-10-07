@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="widget_description">What you were watching, one tap from carrying on. Never anything from a private library.</string>
+    <string name="widget_now_playing_description">The song playing, with play, pause and next. Never anything from a private library.</string>
+</resources>

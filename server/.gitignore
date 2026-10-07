@@ -1,0 +1,15 @@
+# Capture logs: private (titles, paths, watch history) and large — 197 MB for
+# one run. The harness that produces them is tracked; their contents never are.
+capture/*.jsonl
+capture/*.log
+
+# Built binaries.
+/lumiered
+/dist/
+
+# Throwaway tools. A probe written to test one thing in one session — a token
+# minter, a sync experiment — is exactly what must never be committed, and one
+# was. New commands are ignored until they are deliberately listed here.
+/cmd/*
+!/cmd/lumiered/
+!/cmd/parity/

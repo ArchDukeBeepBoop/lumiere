@@ -1,0 +1,16 @@
+.DS_Store
+# Build output
+.build/
+build/
+.swiftpm/
+.gradle/
+.kotlin/
+*.apk
+local.properties
+# Never commit a library, a token, or a log
+*.db
+*.db-shm
+*.db-wal
+*.token
+*.log
+.env

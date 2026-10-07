@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Lumiere Control</string>
+	<key>CFBundleDisplayName</key>
+	<string>Lumiere Control</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.lumiere.control</string>
+	<key>CFBundleIconFile</key>
+	<string>LumiereControl</string>
+	<key>CFBundleExecutable</key>
+	<string>LumiereControl</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>15.0</string>
+	<!-- An accessory, not an application: no Dock icon, no menu bar of its own,
+	     no window. A switch that lives in the menu bar. -->
+	<key>LSUIElement</key>
+	<true/>
+	<!-- The server binds 127.0.0.1 and this app talks to it over plain HTTP.
+	     Loopback is exempt from App Transport Security by default, but saying so
+	     explicitly means a future change to the default cannot silently break
+	     the status dot. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>

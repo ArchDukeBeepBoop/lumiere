@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Lumiere" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@drawable/boot</item>
+        <item name="android:statusBarColor">@color/canvas</item>
+        <item name="android:navigationBarColor">@color/canvas</item>
+    </style>
+    <color name="canvas">#0D0F12</color>
+    <color name="accent">#C9A227</color>
+    <style name="WidgetRow">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:paddingTop">8dp</item>
+        <item name="android:textColor">#F2F4F7</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+</resources>
