@@ -1,6 +1,6 @@
 # Lumiere for Meta Quest 3 — Plan
 
-Status: **proposal, no code yet.** Approve or amend the decisions in §2 before Phase 0 starts.
+Status: **approved 2026-10-07, no code yet.** Decisions in §2 and answers in §11 are settled; Phase 0 is next.
 
 ## 1. Goal
 
@@ -13,10 +13,11 @@ first release.
 
 ### Non-goals (v1)
 - Store distribution (sideload / Horizon "App Lab"-style unlisted builds only, same as the Android app today).
-- Social co-watching, hand-tracked keyboards beyond the system one, game-engine content.
+- Social co-watching or multiple users — the app is single-user (decided, not deferred).
+- Hand-tracked keyboards beyond the system one, game-engine content.
 - Any new server feature that the Mac/TV apps can't also use.
 
-## 2. Key decisions (need your sign-off)
+## 2. Key decisions (approved)
 
 | # | Decision | Recommendation | Why |
 |---|---|---|---|
@@ -60,7 +61,7 @@ android/
 
 - **State:** `AppState`, `Room`, change feed, outbox are shared from `:core`, so watched state, favourites and the Private Room behave exactly as on phone/TV.
 - **Discovery/sign-in:** reuse `api/Discovery.kt` and `SignInScreen`/`SetupScreen` as panels. QR sign-in from the Mac app is a later nice-to-have.
-- **Private Room:** Android `USE_BIOMETRIC` isn't available on Quest; use the device PIN via `KeyguardManager` or a Lumiere PIN — decide in Phase 2 (open question Q2).
+- **Private Room:** Android `USE_BIOMETRIC` isn't available on Quest, so it unlocks with a **separate Lumiere PIN** (4–6 digits, entered on a glass keypad panel). The PIN is stored on the headset only as a salted hash (Android Keystore-backed key), never sent to the server; after 5 wrong tries the keypad waits 30 s, doubling each time. Leaving the room or taking the headset off locks it again.
 - **Constraints carried over:** files under 300 lines; check scripts must stay green; `android/` tests run for `:core` unchanged.
 
 ## 5. Experience design (Apple aesthetic, in space)
@@ -139,7 +140,7 @@ android/
 | 1 | 2D panel app on Quest (v0.5) | Watch a film end to end on headset; sync verified |
 | 2 | Spatial shell: glass window, sidebar ornament, hover-lift, settings window, Private Room unlock | Design review vs mocks; a11y pass |
 | 3 | Player: spatial surface, transport ornament, subtitles layer, theatre environments, 24p→72 Hz | Codec matrix passes; 2-h perf run clean |
-| 4 | 3D + 180/360, spatial audio, downloads offline | Sample library of each format plays correctly |
+| 4 | 3D + 180/360 (all in scope), spatial audio, downloads offline | Sample library of each format plays correctly |
 | 5 | Polish: motion tuning, environment art, onboarding tour (`TvTour` analogue), icons/banner | Final critic review; release build |
 
 ## 9. Testing
@@ -155,10 +156,10 @@ android/
 | No passthrough blur on some panel types → glass looks flat | Fallback “frost” = translucency + light edge, exactly as `Frosted.kt` does on Android 11 |
 | HDR/Dolby Vision quality on SDR panel | Tone-map + server transcode fallback; label honestly in info panel |
 | Module split breaks phone/TV | Phase 0 is a pure move behind green tests, merged on its own |
-| Biometric lock unavailable | PIN fallback (Q2) |
+| Biometric lock unavailable | Lumiere PIN (§4) |
 
-## 11. Open questions for you
-1. **Q1 (D1/D3):** Approve Spatial SDK + two-step release (2D panel first)?
-2. **Q2:** Private Room unlock on Quest — device PIN, Lumiere PIN, or no lock?
-3. **Q3:** Do you have 3D / 180 / 360 files? If not, Phase 4 drops to a stretch goal.
-4. **Q4:** Need for a second-user / co-watch mode later, or single-user only?
+## 11. Answers (2026-10-07)
+1. **Engine and release path:** approved. Meta Spatial SDK, with a 2D panel app (v0.5) first.
+2. **Private Room unlock:** a separate Lumiere PIN (see §4).
+3. **3D, 180° and 360° files:** yes, all three. Phase 4 is fully in scope, and test files of each format go into the codec matrix (§9).
+4. **Users:** single-user only. No co-watching or second-user mode is planned.
