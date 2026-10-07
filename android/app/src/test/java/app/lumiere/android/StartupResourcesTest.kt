@@ -13,20 +13,23 @@ import org.junit.Test
  */
 class StartupResourcesTest {
     private val main = File("src/main").takeIf { it.exists() } ?: File("app/src/main")
+    /** The screens and their pictures live in the shared module beside this one. */
+    private val shared = main.resolve("../../../screens/src/main").normalize()
 
     @Test fun launchWindowUsesARealPicture() {
         val boot = File(main, "res/drawable/boot.xml").readText()
         Regex("""android:src="@(\w+)/(\w+)"""").findAll(boot).forEach { m ->
             val (folder, name) = m.destructured
             assertTrue("boot.xml draws @$folder/$name, which must be a picture, not a mipmap", folder == "drawable")
-            val png = main.resolve("res").listFiles().orEmpty().filter { it.name.startsWith("drawable") }
+            val png = listOf(main, shared).flatMap { it.resolve("res").listFiles().orEmpty().toList() }.filter { it.name.startsWith("drawable") }
                 .any { File(it, "$name.png").exists() || File(it, "$name.webp").exists() }
             assertTrue("boot.xml draws @drawable/$name, which has no PNG", png)
         }
     }
 
     @Test fun noScreenPaintsTheLauncherIcon() {
-        main.resolve("java").walkTopDown().filter { it.extension == "kt" }.forEach { f ->
+        assertTrue("the shared screens weren't found at $shared", shared.resolve("java").isDirectory)
+        listOf(main, shared).flatMap { it.resolve("java").walkTopDown().toList() }.filter { it.extension == "kt" }.forEach { f ->
             if (Regex("""painterResource\([^)]*R\.mipmap\.""").containsMatchIn(f.readText()))
                 fail("${f.name} paints a mipmap; the launcher icon is XML on Android 8+ and crashes painterResource")
         }

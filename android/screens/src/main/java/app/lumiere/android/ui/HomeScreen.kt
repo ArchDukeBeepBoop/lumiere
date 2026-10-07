@@ -137,7 +137,7 @@ fun HomeScreen(state: AppState, refreshKey: Int) {
             // On a TV, a quiet name on the dark while the first Home arrives, not grey blocks.
             // The app's icon, where the launch window put it, until Home is ready.
             current == null && error == null && form.isTv -> androidx.compose.foundation.Image(
-                androidx.compose.ui.res.painterResource(app.lumiere.android.R.drawable.boot_icon), "Lumiere",
+                androidx.compose.ui.res.painterResource(app.lumiere.android.screens.R.drawable.boot_icon), "Lumiere",
                 modifier = Modifier.align(Alignment.Center).size(144.dp))
             current == null && error == null -> Column { repeat(3) { SkeletonShelf() } }
             current == null && form.isTv -> app.lumiere.android.tv.OfflineHome(state, error!!) { attempt++ }

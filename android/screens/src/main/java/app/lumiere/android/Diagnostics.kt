@@ -32,7 +32,7 @@ object Diagnostics {
     fun report(): String {
         val head = listOf(
             "device ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
-            "app ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+            "app ${AppBuild.versionName} (${AppBuild.versionCode})",
             "memory ${Runtime.getRuntime().maxMemory() / 1_048_576} MB heap allowed, " +
                 "${(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1_048_576} MB in use, " +
                 "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB native (pictures and video), " +

@@ -21,14 +21,14 @@ object Updater {
     data class Available(val code: Int, val name: String)
 
     /** The Mac publishes the phone's build only; a Quest is updated by sideloading. */
-    suspend fun check(server: Server): Available? = if (BuildConfig.QUEST) null else runCatching {
+    suspend fun check(server: Server): Available? = if (AppBuild.quest) null else runCatching {
         val o = JSONObject(server.get("Lumiere/Android/Latest"))
         val code = o.optInt("VersionCode")
-        if (code > BuildConfig.VERSION_CODE) Available(code, o.optString("VersionName")) else null
+        if (code > AppBuild.versionCode) Available(code, o.optString("VersionName")) else null
     }.getOrNull()
 
     suspend fun install(context: Context, server: Server): String? = withContext(Dispatchers.IO) {
-        if (BuildConfig.QUEST) return@withContext "Updates on a Quest are installed from the Mac with adb."
+        if (AppBuild.quest) return@withContext "Updates on a Quest are installed from the Mac with adb."
         runCatching {
             val installer = context.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)

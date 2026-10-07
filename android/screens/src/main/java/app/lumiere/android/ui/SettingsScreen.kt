@@ -222,7 +222,7 @@ private fun DeviceCare(state: AppState) {
     var note by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     androidx.compose.runtime.LaunchedEffect(Unit) { update = app.lumiere.android.Updater.check(server) }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Note("Lumiere ${app.lumiere.android.BuildConfig.VERSION_NAME}" +
+        Note("Lumiere ${app.lumiere.android.AppBuild.versionName}" +
             (update?.let { " · ${it.name} is ready on the Mac" } ?: " · up to date"))
         // One per line: side by side they squeezed, and a label wrapped onto three lines.
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

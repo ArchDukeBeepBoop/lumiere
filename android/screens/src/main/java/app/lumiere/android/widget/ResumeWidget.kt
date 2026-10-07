@@ -1,5 +1,6 @@
 package app.lumiere.android.widget
 
+import app.lumiere.android.Launch
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -8,8 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
-import app.lumiere.android.MainActivity
-import app.lumiere.android.R
+import app.lumiere.android.screens.R
 import app.lumiere.android.api.Item
 import app.lumiere.android.api.Server
 import app.lumiere.android.api.privateLibraries
@@ -84,7 +84,7 @@ class ResumeWidget : AppWidgetProvider() {
         }
 
         private fun open(context: Context, itemId: String?, slot: Int): PendingIntent {
-            val intent = Intent(context, MainActivity::class.java).apply {
+            val intent = Launch.intent(context).apply {
                 action = OPEN
                 itemId?.let { putExtra("item", it) }
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP

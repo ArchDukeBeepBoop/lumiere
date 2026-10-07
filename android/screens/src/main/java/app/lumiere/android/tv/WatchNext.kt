@@ -1,5 +1,6 @@
 package app.lumiere.android.tv
 
+import app.lumiere.android.Launch
 import android.annotation.SuppressLint
 import android.content.ContentUris
 import android.content.Context
@@ -7,7 +8,6 @@ import android.content.Intent
 import android.net.Uri
 import androidx.tvprovider.media.tv.TvContractCompat
 import androidx.tvprovider.media.tv.WatchNextProgram
-import app.lumiere.android.MainActivity
 import app.lumiere.android.api.Item
 import app.lumiere.android.api.Server
 import app.lumiere.android.api.TICKS_PER_SECOND
@@ -34,7 +34,7 @@ object WatchNext {
                 }
             }
             items.take(10).forEach { item ->
-                val open = Intent(context, MainActivity::class.java).setAction(ResumeWidget.OPEN).putExtra("item", item.id)
+                val open = Launch.intent(context).setAction(ResumeWidget.OPEN).putExtra("item", item.id)
                 val program = WatchNextProgram.Builder()
                     .setType(if (item.isEpisode) TvContractCompat.PreviewPrograms.TYPE_TV_EPISODE else TvContractCompat.PreviewPrograms.TYPE_MOVIE)
                     .setWatchNextType(TvContractCompat.WatchNextPrograms.WATCH_NEXT_TYPE_CONTINUE)

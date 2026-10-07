@@ -1,5 +1,6 @@
 package app.lumiere.android.widget
 
+import app.lumiere.android.Launch
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
@@ -7,8 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
-import app.lumiere.android.MainActivity
-import app.lumiere.android.R
+import app.lumiere.android.screens.R
 import app.lumiere.android.music.Music
 
 /**
@@ -46,7 +46,7 @@ class NowPlayingWidget : AppWidgetProvider() {
             views.setOnClickPendingIntent(R.id.np_toggle, action(context, TOGGLE, 1))
             views.setOnClickPendingIntent(R.id.np_next, action(context, NEXT, 2))
             views.setOnClickPendingIntent(R.id.np_root, PendingIntent.getActivity(context, 3,
-                Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                Launch.intent(context).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
             manager.updateAppWidget(ids, views)
         }

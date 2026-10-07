@@ -161,7 +161,7 @@ fun TvSettingsScreen(state: AppState) {
                 "Guards Settings, and the room on a device with no screen lock.") { settingPin = true },
         )),
         Category("This Device", listOf(
-            Opt.Action(update?.let { "Install update ${it.name}" } ?: "Lumiere ${app.lumiere.android.BuildConfig.VERSION_NAME} — up to date",
+            Opt.Action(update?.let { "Install update ${it.name}" } ?: "Lumiere ${app.lumiere.android.AppBuild.versionName} — up to date",
                 "New versions come from the Mac.") {
                 val s = state.server ?: return@Action
                 if (update != null) scope.launch { note = "Fetching the update…"; note = Updater.install(context, s) ?: "Confirm the install on screen." }
@@ -198,7 +198,7 @@ fun TvSettingsScreen(state: AppState) {
                     "Memory: %.1f GB free of %.1f GB".format(mem.availMem / 1e9, mem.totalMem / 1e9),
                     "Storage: %.1f GB free".format(context.filesDir.usableSpace / 1e9),
                     "This device: ${ip ?: "no network"} · the Mac: ${state.session?.serverUrl ?: "not signed in"}",
-                    "Lumiere ${app.lumiere.android.BuildConfig.VERSION_NAME}",
+                    "Lumiere ${app.lumiere.android.AppBuild.versionName}",
                 ).joinToString("\n"), style = MaterialTheme.typography.bodyMedium)
             },
             Opt.Toggle("Phone as remote", "Phones with Lumiere on this Wi-Fi can pair with a code shown here, then steer this TV.",

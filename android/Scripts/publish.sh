@@ -4,7 +4,7 @@
 # The version number is the build's minute, so each build is newer than the last.
 set -e
 cd "$(dirname "$0")/.."
-./gradlew -q assembleStandardRelease testStandardDebugUnitTest testQuestDebugUnitTest
+./gradlew -q assembleStandardRelease :core:testDebugUnitTest :screens:testDebugUnitTest testStandardDebugUnitTest testQuestDebugUnitTest
 DEST="$HOME/Library/Application Support/LumiereServer/android"
 mkdir -p "$DEST"
 APK=app/build/outputs/apk/standard/release/app-standard-release.apk

@@ -22,7 +22,7 @@ first release.
 | # | Decision | Recommendation | Why |
 |---|---|---|---|
 | D1 | Engine | **Meta Spatial SDK (Kotlin, native Android)** — not Unity/Unreal | Horizon OS *is* Android. The existing app is Kotlin + Compose + Media3; Spatial SDK hosts Compose panels and ExoPlayer surfaces directly, so `api/`, `player/`, `cache/`, `downloads/` and most of `ui/` carry over. Unity would mean rewriting the client in C# and losing parity forever. |
-| D2 | Code layout | Split `android/` into Gradle modules: `:core` (api, models, cache, downloads, prefs, playback logic), `:ui-shared` (Compose design system), `:app` (phone/TV), `:quest` (new) | One client, three shells — the same rule the Mac follows with `LumiereKit` / `LumierePlayer` / `Lumiere`. Phone/TV behaviour must not change; the split is a pure move with green tests. |
+| D2 | Code layout | Split `android/` into Gradle modules: `:core` (api, models, cache, downloads, prefs, playback logic), `:screens` (every screen, player and music), `:app` (phone/TV), `:quest` (new) | One client, three shells — the same rule the Mac follows with `LumiereKit` / `LumierePlayer` / `Lumiere`. Phone/TV behaviour must not change; the split is a pure move with green tests. |
 | D3 | Release path | **Two steps.** v0.5 = the existing TV/phone UI as a 2D Horizon OS panel (`:quest` flavor, ~1 week). v1.0 = full spatial shell. | You get something watchable on the headset almost at once; every later phase is additive. |
 | D4 | Input | Hands first (pinch, poke, hover-lift), controllers fully supported, gaze never required | Mirrors visionOS "look and pinch" with Quest's reliable ray + pinch; tvOS focus engine maps cleanly to ray hover. |
 | D5 | Aesthetic source of truth | The Mac `Design/` folder (`Theme*`, `LiquidGlass`, `TVLift`, `GlassBackground`, `RoomTheme`) and Android `ui/Theme.kt` palette, value for value | No new palette. Spatial-only tokens (depth, glass thickness, ornament offsets) are added alongside, not instead. |
@@ -48,12 +48,12 @@ first release.
 server/ (unchanged, Jellyfin-compatible routes, change feed)
    │  HTTP + change feed, discovery on LAN
 android/
- ├─ :core        api/ cache/ downloads/ Prefs Room AppState Device  (moved, untouched)
- ├─ :ui-shared   Theme Palette Cards Pill Buttons Frosted Featured… (moved; TvLook → Look.mode = Phone|Tv|Spatial)
- ├─ :app         phone + TV shell (as today)
- └─ :quest       Spatial SDK app
+ ├─ :core      api/ cache/ downloads/ Prefs Room Device AppBuild     (no screens)       ✅ done
+ ├─ :screens   ui/ tv/ player/ music/ remote/ widget/ AppState …     (every screen)     ✅ done
+ ├─ :app       MainActivity, manifest, launcher art; flavors standard + quest
+ └─ :quest     Spatial SDK app (Phase 2) — depends on :screens
       ├─ shell/       SpatialActivity, window manager, ornaments, environment switcher
-      ├─ panels/      Compose panels hosting :ui-shared screens
+      ├─ panels/      Compose panels hosting :screens
       ├─ theatre/     environments (glTF), screen entity, dimming, light spill
       ├─ player/      ExoPlayer → Spatial video panel, stereo/projection layouts
       └─ input/       hover-lift, pinch-drag, controller mapping, scrub gestures
@@ -95,8 +95,10 @@ android/
 ## 6. Engineering detail
 
 ### 6.1 Phase 1 — module split (no user-visible change, before the spatial shell)
-- Create `:core` and `:ui-shared`; move files with `git mv`; replace `TvLook.on` checks with `Look.mode`.
-- It isn't a pure move: `downloads/` and `AppState` reach into `ui/`, and `ui/` and `tv/` depend on each other. Those links are untangled first, each in its own commit.
+- Create `:core` and `:screens`; move files with `git mv`. (`TvLook.on` → `Look.mode` moves to Phase 2, where the spatial look needs it.)
+- **Done (2026-10-07).** Rather than untangle `ui/` ↔ `tv/`, the screens moved together into one `:screens` library, which is all a Quest shell needs. The design-system-only split (`:ui-shared`) is dropped as unnecessary.
+- `:app` keeps only `MainActivity`, its manifest and the launcher art. Shared code reads the build through `AppBuild` (set in `onCreate`) and opens the activity through `Launch.intent`.
+- Verified: both flavors build in release, and all 11 tests pass across `:core`, `:screens` and `:app`. The release APKs' manifests, resource tables and file lists are identical to the pre-split build.
 - Needs a real Gradle build: `dl.google.com` must be allowed in the session's network policy so the Android SDK can be installed.
 - Gate: unit tests green for both flavors, phone + TV behaviourally identical, existing tests untouched.
 

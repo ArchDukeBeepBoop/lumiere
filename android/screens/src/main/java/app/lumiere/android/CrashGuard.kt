@@ -30,7 +30,7 @@ object CrashGuard {
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
             runCatching {
-                p.edit().putString("lastCrash", "app ${BuildConfig.VERSION_NAME}: " + error.stackTraceToString().take(6000)).commit()
+                p.edit().putString("lastCrash", "app ${AppBuild.versionName}: " + error.stackTraceToString().take(6000)).commit()
             }
             previous?.uncaughtException(thread, error)
         }

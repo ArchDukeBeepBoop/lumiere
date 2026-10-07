@@ -61,7 +61,7 @@ Each folder has its own check script, and all must be green before a commit:
 (cd server && go vet ./... && go test ./...)
 (cd mac && ./Scripts/check.sh)
 (cd control && ./Scripts/check.sh)
-(cd android && ./gradlew testStandardDebugUnitTest testQuestDebugUnitTest)
+(cd android && ./gradlew :core:testDebugUnitTest :screens:testDebugUnitTest testStandardDebugUnitTest testQuestDebugUnitTest)
 ```
 
 `mac/Scripts/ship-all.sh` runs every check, builds both Mac apps, and installs them. Source files are kept under 300 lines.

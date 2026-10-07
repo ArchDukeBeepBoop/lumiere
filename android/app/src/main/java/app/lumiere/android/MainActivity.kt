@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
     private var longBack = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppBuild.set(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, BuildConfig.QUEST)
         super.onCreate(savedInstanceState)
         CrashGuard.starting(this)
         // Two starts in a row that never drew: the safe screen, from which a fix can still be installed.
