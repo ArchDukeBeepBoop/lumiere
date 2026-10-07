@@ -1,6 +1,6 @@
 # Lumiere for Meta Quest 3 — Plan
 
-Status: **approved 2026-10-07, no code yet.** Decisions in §2 and answers in §11 are settled; Phase 0 is next.
+Status: **approved 2026-10-07, no code yet.** Decisions in §2 and answers in §11 are settled; Order changed (plan A, 2026-10-07): v0.5 ships first as a build variant of the existing app, and the module split moves to just before the spatial shell.
 
 ## 1. Goal
 
@@ -94,12 +94,15 @@ android/
 
 ## 6. Engineering detail
 
-### 6.1 Phase 0 — module split (no user-visible change)
+### 6.1 Phase 1 — module split (no user-visible change, before the spatial shell)
 - Create `:core` and `:ui-shared`; move files with `git mv`; replace `TvLook.on` checks with `Look.mode`.
-- Gate: `./gradlew testDebugUnitTest` green, phone + TV APK diff behaviourally identical, existing tests untouched.
+- It isn't a pure move: `downloads/` and `AppState` reach into `ui/`, and `ui/` and `tv/` depend on each other. Those links are untangled first, each in its own commit.
+- Needs a real Gradle build: `dl.google.com` must be allowed in the session's network policy so the Android SDK can be installed.
+- Gate: unit tests green for both flavors, phone + TV behaviourally identical, existing tests untouched.
 
-### 6.2 Phase 1 — 2D panel app (v0.5)
-- `:quest` module depending on `:app`'s TV shell; manifest: `com.oculus.intent.category.VR` not set (2D), `com.oculus.supportedDevices=quest3|quest3s`, landscape, no leanback.
+### 6.2 Phase 0 — 2D panel app (v0.5) — done as a `quest` flavor
+- A `quest` product flavor of `:app` (id `app.lumiere.android.quest`), which forces the TV layout. Its manifest overlay sets `com.oculus.supportedDevices=quest3|quest3s`, landscape, a 1280×800 dp default window, no VR category (it's a 2D app), and drops the install-packages permission.
+- The in-app updater is off: the Mac publishes the phone build only. The Quest build is installed with `adb install -r`.
 - Controller ray = d-pad focus (TV focus code already handles it); hands work as touch.
 - Gate: browse, play (direct play + transcoding fallback), resume, watched sync, downloads.
 
@@ -136,8 +139,8 @@ android/
 
 | Phase | Scope | Exit gate (Critic signs off) |
 |---|---|---|
-| 0 | Module split | All existing checks green; no behaviour change |
-| 1 | 2D panel app on Quest (v0.5) | Watch a film end to end on headset; sync verified |
+| 0 | 2D panel app on Quest (v0.5), as a build flavor | Watch a film end to end on headset; sync verified |
+| 1 | Module split | All existing checks green; no behaviour change |
 | 2 | Spatial shell: glass window, sidebar ornament, hover-lift, settings window, Private Room unlock | Design review vs mocks; a11y pass |
 | 3 | Player: spatial surface, transport ornament, subtitles layer, theatre environments, 24p→72 Hz | Codec matrix passes; 2-h perf run clean |
 | 4 | 3D + 180/360 (all in scope), spatial audio, downloads offline | Sample library of each format plays correctly |

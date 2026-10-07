@@ -78,7 +78,8 @@ val LocalFormFactor = staticCompositionLocalOf { FormFactor(isTv = false) }
 
 fun detectFormFactor(context: Context): FormFactor {
     val ui = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-    return FormFactor(ui.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION)
+    // A Quest takes the TV layout: big targets, and focus the controller ray can move.
+    return FormFactor(app.lumiere.android.BuildConfig.QUEST || ui.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION)
 }
 
 @Composable
