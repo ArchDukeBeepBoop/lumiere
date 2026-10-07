@@ -259,10 +259,44 @@ class Prefs(context: Context) {
     var dimsAtNight: Boolean get() = _dim.value
         set(v) { _dim.value = v; put("dimsAtNight", v) }
 
-    private val _pin = mutableStateOf(store.getString("devicePin", "") ?: "")
-    /** A PIN for Settings and the private room on a shared device; empty for none. */
-    var devicePin: String get() = _pin.value
-        set(v) { _pin.value = v; store.edit().putString("devicePin", v).apply() }
+    private val _pin = mutableStateOf((store.getString("devicePin", "") ?: "").let { stored ->
+        // An earlier version kept the digits themselves: sealed the first time it's read.
+        if (PinLock.isPlain(stored)) PinLock.seal(stored).also { store.edit().putString("devicePin", it).apply() } else stored
+    })
+    /** A PIN guards Settings and the private room on a shared device or a Quest. */
+    val hasPin: Boolean get() = _pin.value.isNotEmpty()
+
+    fun setPin(pin: String) {
+        _pin.value = PinLock.seal(pin)
+        store.edit().putString("devicePin", _pin.value).putInt("pinFailures", 0).apply()
+    }
+
+    fun clearPin() {
+        _pin.value = ""
+        store.edit().putString("devicePin", "").putInt("pinFailures", 0).apply()
+    }
+
+    sealed interface PinAnswer {
+        data object Right : PinAnswer
+        /** [triesLeft] before the pad makes you wait. */
+        data class Wrong(val triesLeft: Int) : PinAnswer
+        /** Too many wrong in a row: no PIN is tried for [ms]. */
+        data class Wait(val ms: Long) : PinAnswer
+    }
+
+    /** Tries [pin], counting wrong ones in a row, which survive a restart. */
+    fun tryPin(pin: String, now: Long = System.currentTimeMillis()): PinAnswer {
+        val failures = store.getInt("pinFailures", 0)
+        val wait = PinLock.waitMs(failures, store.getLong("pinFailedAt", 0), now)
+        if (wait > 0) return PinAnswer.Wait(wait)
+        if (PinLock.matches(_pin.value, pin)) {
+            store.edit().putInt("pinFailures", 0).apply()
+            return PinAnswer.Right
+        }
+        store.edit().putInt("pinFailures", failures + 1).putLong("pinFailedAt", now).apply()
+        val left = PinLock.FREE_TRIES - (failures + 1)
+        return if (left > 0) PinAnswer.Wrong(left) else PinAnswer.Wait(PinLock.waitMs(failures + 1, now, now))
+    }
 
     private val _rowOrder = mutableStateOf(store.getString("tvRowOrder", null)?.split(',')?.filter { it.isNotBlank() } ?: TV_ROWS)
     /** The TV Home's rows, in order — the Mac's Home Order. */

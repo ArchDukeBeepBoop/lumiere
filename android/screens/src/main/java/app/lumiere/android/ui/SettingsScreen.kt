@@ -260,13 +260,13 @@ private fun DevicePin(state: AppState) {
     val p = state.settings
     var setting by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Column {
-        Note(if (p.devicePin.isEmpty()) "No PIN. On a shared device with no screen lock, a PIN keeps Settings and the private room for you."
+        Note(if (!p.hasPin) "No PIN. On a shared device with no screen lock, a PIN keeps Settings and the private room for you."
             else "A PIN guards Settings and, on a device with no screen lock, the private room.")
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            LButton(primary = false, onClick = { setting = true }) { Text(if (p.devicePin.isEmpty()) "Set a PIN" else "Change PIN") }
-            if (p.devicePin.isNotEmpty()) LButton(primary = false, onClick = { p.devicePin = "" }) { Text("Remove PIN") }
+            LButton(primary = false, onClick = { setting = true }) { Text(if (!p.hasPin) "Set a PIN" else "Change PIN") }
+            if (p.hasPin) LButton(primary = false, onClick = { p.clearPin() }) { Text("Remove PIN") }
         }
     }
-    if (setting) PinPad("Choose a four-digit PIN", onDone = { p.devicePin = it; state.pinOpen = true; setting = false },
+    if (setting) PinPad("Choose a four-digit PIN", onDone = { p.setPin(it); state.pinOpen = true; setting = false },
         onCancel = { setting = false })
 }

@@ -157,7 +157,7 @@ fun TvSettingsScreen(state: AppState) {
             Opt.Toggle("Blur covers in lists", "Off: covers shown clearly. On: blurred in lists, clear on a title's own page.",
                 { p.tvBlursCovers }) { p.tvBlursCovers = it; if (state.roomOpen) app.lumiere.android.ui.RoomTheme.blursCovers = it },
             Opt.Toggle("Block screenshots inside", "No screenshots, recordings or app-switcher preview.", { p.roomBlocksCapture }) { p.roomBlocksCapture = it },
-            Opt.Action(if (p.devicePin.isEmpty()) "Set a device PIN" else "Change the device PIN",
+            Opt.Action(if (!p.hasPin) "Set a device PIN" else "Change the device PIN",
                 "Guards Settings, and the room on a device with no screen lock.") { settingPin = true },
         )),
         Category("This Device", listOf(
@@ -271,7 +271,7 @@ fun TvSettingsScreen(state: AppState) {
                 note?.let { Text(it, color = Palette.accent, modifier = Modifier.padding(top = 8.dp)) }
             }
         }
-        if (settingPin) PinPad("Choose a four-digit PIN", onDone = { p.devicePin = it; state.pinOpen = true; settingPin = false },
+        if (settingPin) PinPad("Choose a four-digit PIN", onDone = { p.setPin(it); state.pinOpen = true; settingPin = false },
             onCancel = { settingPin = false })
     }
 }

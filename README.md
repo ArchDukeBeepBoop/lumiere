@@ -53,6 +53,13 @@ adb install -r app/build/outputs/apk/quest/release/app-quest-release.apk
 ```
 It appears under Unknown Sources in the app library. It doesn't update itself; install a newer build the same way.
 
+**In your room (in development):** `:quest` is the spatial app. It turns on passthrough and places Lumiere's window in front of you, curved and movable: pinch its edge, or grip it with a controller. It installs beside the 2D build as *app.lumiere.android.spatial*:
+```bash
+cd android && ./gradlew :quest:assembleRelease
+adb install -r quest/build/outputs/apk/release/quest-release.apk
+```
+On a Quest the private room asks for Lumiere's own PIN, since the headset has no fingerprint or face to ask for. You choose the PIN the first time you open the room. Five wrong PINs in a row make the pad wait 30 seconds, and the wait doubles each time after that.
+
 ## Development
 
 Each folder has its own check script, and all must be green before a commit:
@@ -61,7 +68,7 @@ Each folder has its own check script, and all must be green before a commit:
 (cd server && go vet ./... && go test ./...)
 (cd mac && ./Scripts/check.sh)
 (cd control && ./Scripts/check.sh)
-(cd android && ./gradlew :core:testDebugUnitTest :screens:testDebugUnitTest testStandardDebugUnitTest testQuestDebugUnitTest)
+(cd android && ./gradlew :core:testDebugUnitTest :screens:testDebugUnitTest testStandardDebugUnitTest testQuestDebugUnitTest :quest:assembleRelease)
 ```
 
 `mac/Scripts/ship-all.sh` runs every check, builds both Mac apps, and installs them. Source files are kept under 300 lines.

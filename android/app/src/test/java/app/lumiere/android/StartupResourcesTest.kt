@@ -17,7 +17,7 @@ class StartupResourcesTest {
     private val shared = main.resolve("../../../screens/src/main").normalize()
 
     @Test fun launchWindowUsesARealPicture() {
-        val boot = File(main, "res/drawable/boot.xml").readText()
+        val boot = File(shared, "res/drawable/boot.xml").readText()
         Regex("""android:src="@(\w+)/(\w+)"""").findAll(boot).forEach { m ->
             val (folder, name) = m.destructured
             assertTrue("boot.xml draws @$folder/$name, which must be a picture, not a mipmap", folder == "drawable")

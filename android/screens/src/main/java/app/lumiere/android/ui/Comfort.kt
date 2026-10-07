@@ -138,7 +138,7 @@ fun NightDim(state: AppState) {
  * number keys or the on-screen pad.
  */
 @Composable
-fun PinPad(title: String, onDone: (String) -> Unit, onCancel: () -> Unit) {
+fun PinPad(title: String, onDone: (String) -> Unit, onCancel: () -> Unit, note: String? = null) {
     var entered by remember { mutableStateOf("") }
     androidx.activity.compose.BackHandler(onBack = onCancel)
     // The remote starts on 5, the middle of the pad, and stays on the pad.
@@ -165,6 +165,8 @@ fun PinPad(title: String, onDone: (String) -> Unit, onCancel: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge)
             Text("●".repeat(entered.length) + "○".repeat(4 - entered.length), style = MaterialTheme.typography.headlineLarge)
+            // A wrong PIN, or the wait after too many.
+            if (note != null) Text(note, color = Palette.textSecondary)
             listOf(listOf("1", "2", "3"), listOf("4", "5", "6"), listOf("7", "8", "9"), listOf("⌫", "0", "✕")).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     row.forEach { key ->

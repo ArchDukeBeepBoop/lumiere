@@ -43,7 +43,6 @@ class MainActivity : ComponentActivity() {
     private var longBack = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        AppBuild.set(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, BuildConfig.QUEST)
         super.onCreate(savedInstanceState)
         CrashGuard.starting(this)
         // Two starts in a row that never drew: the safe screen, from which a fix can still be installed.
@@ -496,12 +495,30 @@ private fun App(state: AppState, onExit: () -> Unit) {
         }
         if (state.confirmExit) app.lumiere.android.ui.ExitDialog(onStay = { state.confirmExit = false; state.tvMenuOpen = false }, onLeave = onExit)
         state.pinFor?.let { action ->
-            app.lumiere.android.ui.PinPad("Enter this device's PIN", onDone = { pin ->
-                if (pin == state.settings.devicePin) { state.pinOpen = true; state.pinFor = null; action() }
+            var note by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
+            app.lumiere.android.ui.PinPad("Enter this device's PIN", note = note, onDone = { pin ->
+                when (val answer = state.settings.tryPin(pin)) {
+                    Prefs.PinAnswer.Right -> { state.pinOpen = true; state.pinFor = null; action() }
+                    is Prefs.PinAnswer.Wrong -> note = "Not that PIN. ${answer.triesLeft} more ${if (answer.triesLeft == 1) "try" else "tries"} before a wait."
+                    is Prefs.PinAnswer.Wait -> note = "Too many wrong PINs. Try again in ${waitText(answer.ms)}."
+                }
             }, onCancel = { state.pinFor = null })
+        }
+        state.pinChooseFor?.let { action ->
+            app.lumiere.android.ui.PinPad("Choose a four-digit PIN for the private room", onDone = { pin ->
+                state.settings.setPin(pin); state.pinOpen = true; state.pinChooseFor = null; action()
+            }, onCancel = { state.pinChooseFor = null },
+                note = "It also guards Settings. Change or remove it there.")
         }
       }
     }
+}
+
+/** "30 seconds", "2 minutes": how long the PIN pad waits, rounded up. */
+internal fun waitText(ms: Long): String {
+    val seconds = (ms + 999) / 1000
+    return if (seconds < 60) "$seconds second${if (seconds == 1L) "" else "s"}"
+    else ((seconds + 59) / 60).let { "$it minute${if (it == 1L) "" else "s"}" }
 }
 
 /** A key from the phone, as if pressed on the TV's own remote. */

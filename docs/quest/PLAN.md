@@ -50,8 +50,8 @@ server/ (unchanged, Jellyfin-compatible routes, change feed)
 android/
  ├─ :core      api/ cache/ downloads/ Prefs Room Device AppBuild     (no screens)       ✅ done
  ├─ :screens   ui/ tv/ player/ music/ remote/ widget/ AppState …     (every screen)     ✅ done
- ├─ :app       MainActivity, manifest, launcher art; flavors standard + quest
- └─ :quest     Spatial SDK app (Phase 2) — depends on :screens
+ ├─ :app       manifest + Application; flavors standard + quest (2D)
+ └─ :quest     Spatial SDK app (Phase 2, started) — LumiereSpace hosts :screens' MainActivity as a curved panel
       ├─ shell/       SpatialActivity, window manager, ornaments, environment switcher
       ├─ panels/      Compose panels hosting :screens
       ├─ theatre/     environments (glTF), screen entity, dimming, light spill
@@ -61,7 +61,14 @@ android/
 
 - **State:** `AppState`, `Room`, change feed, outbox are shared from `:core`, so watched state, favourites and the Private Room behave exactly as on phone/TV.
 - **Discovery/sign-in:** reuse `api/Discovery.kt` and `SignInScreen`/`SetupScreen` as panels. QR sign-in from the Mac app is a later nice-to-have.
-- **Private Room:** Android `USE_BIOMETRIC` isn't available on Quest, so it unlocks with a **separate Lumiere PIN** (4–6 digits, entered on a glass keypad panel). The PIN is stored on the headset only as a salted hash (Android Keystore-backed key), never sent to the server; after 5 wrong tries the keypad waits 30 s, doubling each time. Leaving the room or taking the headset off locks it again.
+- **Private Room:** Android `USE_BIOMETRIC` isn't available on Quest, so it unlocks with **Lumiere's own PIN**. ✅ Done, with these changes from the original sketch:
+  - It's the app's existing device PIN (already used by the projector), not a third secret.
+  - It's four digits, on the existing pad. 4–6 digits can follow if wanted.
+  - It's stored on every device as a salted PBKDF2 hash, not as digits. A PIN saved by an earlier version is sealed the first time it's read. It never leaves the device.
+  - After 5 wrong PINs in a row the pad waits 30 s, doubling each time. The count survives a restart.
+  - On a Quest with no PIN yet, opening the room asks you to choose one.
+  - The room closes on leaving the app, as on other devices, following Settings › Lock after. Whether taking the headset off counts as leaving still has to be checked on the device.
+  - Forgetting the PIN: Settings is behind it too, so for now the way out is clearing the app's data. A recovery path (for example, signing in to the server again) is an open item.
 - **Constraints carried over:** files under 300 lines; check scripts must stay green; `android/` tests run for `:core` unchanged.
 
 ## 5. Experience design (Apple aesthetic, in space)
@@ -143,7 +150,7 @@ android/
 |---|---|---|
 | 0 | 2D panel app on Quest (v0.5), as a build flavor | Watch a film end to end on headset; sync verified |
 | 1 | Module split | All existing checks green; no behaviour change |
-| 2 | Spatial shell: glass window, sidebar ornament, hover-lift, settings window, Private Room unlock | Design review vs mocks; a11y pass |
+| 2 | Spatial shell: glass window, sidebar ornament, hover-lift, settings window, Private Room unlock. **Started:** `:quest` places the curved, movable window in passthrough, and the room PIN is done. Next: glass, sidebar ornament, hover-lift, settings window. | Design review vs mocks; a11y pass |
 | 3 | Player: spatial surface, transport ornament, subtitles layer, theatre environments, 24p→72 Hz | Codec matrix passes; 2-h perf run clean |
 | 4 | 3D + 180/360 (all in scope), spatial audio, downloads offline | Sample library of each format plays correctly |
 | 5 | Polish: motion tuning, environment art, onboarding tour (`TvTour` analogue), icons/banner | Final critic review; release build |

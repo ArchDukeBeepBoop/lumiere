@@ -128,8 +128,11 @@ class AppState(context: Context) {
 
     /** Runs [action] — after the device PIN, when Settings has one. */
     fun guarded(action: () -> Unit) {
-        if (settings.devicePin.isEmpty() || pinOpen) action() else pinFor = action
+        if (!settings.hasPin || pinOpen) action() else pinFor = action
     }
+
+    /** Waiting on a new PIN to be chosen before this runs: the private room on a Quest with none yet. */
+    var pinChooseFor by mutableStateOf<(() -> Unit)?>(null)
 
     /** When the app was left with the room open, for the lock timer. */
     var leftAt: Long? = null
