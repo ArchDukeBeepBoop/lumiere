@@ -43,9 +43,9 @@ import androidx.tv.material3.NavigationDrawerItem
 import app.lumiere.android.ui.LocalFormFactor
 import app.lumiere.android.ui.Palette
 
-private data class Tab(val label: String, val icon: ImageVector, val screen: () -> Screen?, val owns: (Screen) -> Boolean)
+internal data class Tab(val label: String, val icon: ImageVector, val screen: () -> Screen?, val owns: (Screen) -> Boolean)
 
-private fun tabs(state: AppState, tv: Boolean): List<Tab> {
+internal fun tabs(state: AppState, tv: Boolean): List<Tab> {
     val music = state.visibleViews(state.views).firstOrNull { it.collectionType == "music" }
     // The TV's tabs, as the Apple TV app's: Home, Library, Search — with Music
     // and Settings; favourites, collections, playlists and downloads live in Library.

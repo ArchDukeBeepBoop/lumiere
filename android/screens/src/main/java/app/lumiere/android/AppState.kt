@@ -247,6 +247,11 @@ class AppState(context: Context) {
     val lastUser: String? get() = prefs.getString("userName", null)
 }
 
+/** The open window's state, for panels outside it: the Quest's sidebar. */
+object OpenApp {
+    var state by mutableStateOf<AppState?>(null)
+}
+
 /** Opening the room: its palette on, if Settings says so. */
 fun AppState.openRoom() {
     roomOpen = true

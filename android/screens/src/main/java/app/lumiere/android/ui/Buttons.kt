@@ -45,7 +45,7 @@ fun LButton(onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean
         return
     }
     androidx.tv.material3.Button(
-        onClick = onClick, modifier = modifier, enabled = enabled,
+        onClick = onClick, modifier = modifier.hoverFocuses(), enabled = enabled,
         scale = TvButtonDefaults.scale(focusedScale = 1.06f),
         colors = TvButtonDefaults.colors(
             containerColor = if (primary) (tint ?: Palette.accent) else Palette.surfaceRaised.copy(alpha = 0.72f),

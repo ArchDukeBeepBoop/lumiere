@@ -54,6 +54,7 @@ dependencies {
     implementation("com.meta.spatial:meta-spatial-sdk:$spatial")
     implementation("com.meta.spatial:meta-spatial-sdk-toolkit:$spatial")
     implementation("com.meta.spatial:meta-spatial-sdk-vr:$spatial")
+    implementation("com.meta.spatial:meta-spatial-sdk-compose:$spatial")
 
     testImplementation("junit:junit:4.13.2")
 }

@@ -150,7 +150,15 @@ android/
 |---|---|---|
 | 0 | 2D panel app on Quest (v0.5), as a build flavor | Watch a film end to end on headset; sync verified |
 | 1 | Module split | All existing checks green; no behaviour change |
-| 2 | Spatial shell: glass window, sidebar ornament, hover-lift, settings window, Private Room unlock. **Started:** `:quest` places the curved, movable window in passthrough, and the room PIN is done. Next: glass, sidebar ornament, hover-lift, settings window. | Design review vs mocks; a11y pass |
+| 2 | Spatial shell: glass window, sidebar ornament, hover-lift, settings window, Private Room unlock. **Built, awaiting the headset:**
+  - the curved, movable window in passthrough
+  - the glass sidebar ornament (tabs plus the room), carried with the window
+  - pointing focuses cards and buttons, so they get the TV's lift, ring and shine
+  - the room PIN
+
+  Two changes to the original scope:
+  - The main window stays opaque Lumiere ground. Glass is for chrome, as in visionOS's own TV app.
+  - Settings opens in the main window, not a window of its own. A second window would mean a second copy of the app's state. | Design review vs mocks; a11y pass |
 | 3 | Player: spatial surface, transport ornament, subtitles layer, theatre environments, 24p→72 Hz | Codec matrix passes; 2-h perf run clean |
 | 4 | 3D + 180/360 (all in scope), spatial audio, downloads offline | Sample library of each format plays correctly |
 | 5 | Polish: motion tuning, environment art, onboarding tour (`TvTour` analogue), icons/banner | Final critic review; release build |

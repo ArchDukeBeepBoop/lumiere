@@ -110,7 +110,7 @@ fun Modifier.focusCard(onFocused: () -> Unit, onClick: () -> Unit, onMenu: (() -
     var held by remember { mutableStateOf(false) }
     val me = remember { androidx.compose.ui.focus.FocusRequester() }
     val menu = onMenu?.let { m -> { MenuReturn.to = me; m() } }
-    return base.then(androidx.compose.ui.Modifier.focusRequester(me)).then(if (onMenu == null) Modifier.clickable(onClick = onClick) else Modifier
+    return base.then(androidx.compose.ui.Modifier.focusRequester(me)).hoverFocuses(me).then(if (onMenu == null) Modifier.clickable(onClick = onClick) else Modifier
         .onPreviewKeyEvent { e ->
             val k = e.nativeKeyEvent
             val ok = k.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER || k.keyCode == android.view.KeyEvent.KEYCODE_ENTER ||

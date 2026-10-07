@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
         Device.detect(this)
         app.lumiere.android.api.SnapshotCache.dir = cacheDir.resolve("home")
         state = AppState(this)
+        OpenApp.state = state
         state.downloads = app.lumiere.android.downloads.Downloads(this)
         state.cache = app.lumiere.android.cache.LibraryCache(this)
         state.cacheSync = app.lumiere.android.cache.CacheSync(state.cache)
@@ -123,6 +124,11 @@ class MainActivity : ComponentActivity() {
         state.pinOpen = false
         if (!state.roomOpen) return
         if (state.settings.roomLockMinutes == 0) shutRoom() else state.leftAt = System.currentTimeMillis()
+    }
+
+    override fun onDestroy() {
+        if (::state.isInitialized && OpenApp.state === state) OpenApp.state = null
+        super.onDestroy()
     }
 
     override fun onStart() {

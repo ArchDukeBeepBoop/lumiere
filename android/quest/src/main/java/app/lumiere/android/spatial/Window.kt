@@ -18,6 +18,20 @@ object Window {
     /** Height of its middle above the floor: eye level of someone seated, a little under it standing. */
     const val HEIGHT_ABOVE_FLOOR_M = 1.3f
 
+    /**
+     * The sidebar: a narrow column of glass beside the window's left edge,
+     * which on a curve of [DISTANCE_M] sits a little nearer you than its middle.
+     */
+    const val SIDEBAR_WIDTH_DP = 88
+    const val SIDEBAR_HEIGHT_DP = 440
+    const val SIDEBAR_WIDTH_M = 0.11f
+    val SIDEBAR_HEIGHT_M = SIDEBAR_WIDTH_M * SIDEBAR_HEIGHT_DP / SIDEBAR_WIDTH_DP
+    const val SIDEBAR_GAP_M = 0.05f
+    /** You face +Z, so your left is +X (right-handed, Y up). If it shows on the right, flip this sign. */
+    val SIDEBAR_X_M = WIDTH_M / 2 + SIDEBAR_GAP_M + SIDEBAR_WIDTH_M / 2
+    /** How far the window's edge comes toward you: the curve's sagitta at half its width. */
+    val EDGE_NEARER_M = DISTANCE_M * (1 - kotlin.math.cos(WIDTH_M / 2 / DISTANCE_M))
+
     /** How low and high it can be carried. */
     const val MIN_HEIGHT_M = 0.6f
     const val MAX_HEIGHT_M = 2.4f
