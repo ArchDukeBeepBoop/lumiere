@@ -133,7 +133,7 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
         val cur = item ?: return@LaunchedEffect
         if (!prefs.keepNextReady || !cur.isEpisode || cur.seriesId == null || state.roomOpen || cur.libraryId in state.privateLibraries) return@LaunchedEffect
         kotlinx.coroutines.delay(60_000)
-        val eps = runCatching { server.episodes(session.userId, cur.seriesId, null) }.getOrDefault(emptyList())
+        val eps = runCatching { server.episodes(session.userId, cur.seriesId!!, null) }.getOrDefault(emptyList())
         val at = eps.indexOfFirst { it.id == cur.id }
         if (at < 0) return@LaunchedEffect
         for (e in eps.drop(at + 1).take(2)) {

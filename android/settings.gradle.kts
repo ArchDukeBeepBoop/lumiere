@@ -9,4 +9,4 @@ dependencyResolutionManagement {
     repositories { google(); mavenCentral() }
 }
 rootProject.name = "LumiereAndroid"
-include(":app")
+include(":app", ":core")

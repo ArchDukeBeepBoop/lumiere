@@ -125,7 +125,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
     // an episode its show's, on its season.
     val play: (Item) -> Unit = { state.push(Screen.Player(it.id, null)) }
     val open: (Item) -> Unit = { item ->
-        if (item.isEpisode && item.seriesId != null) state.push(Screen.Detail(item.seriesId, item.seasonId))
+        if (item.isEpisode && item.seriesId != null) state.push(Screen.Detail(item.seriesId!!, item.seasonId))
         else state.push(Screen.Detail(item.id))
     }
     val server = state.server ?: return
@@ -370,7 +370,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                             val grouped = items.groupBy { if (it.isEpisode) it.seriesId ?: it.id else it.id }.values.map { it.first() to it.size }
                             TvShelf(title) { items(grouped, key = { it.first.id }) { (it, n) ->
                                 PosterCard(it, state, null, { focused = it }, caption = if (it.isEpisode) (if (n > 1) "$n new episodes" else "New episode") else null) {
-                                    if (it.isEpisode && it.seriesId != null) state.push(Screen.Detail(it.seriesId)) else open(it)
+                                    if (it.isEpisode && it.seriesId != null) state.push(Screen.Detail(it.seriesId!!)) else open(it)
                                 }
                             } }
                         }
@@ -459,7 +459,7 @@ private fun Hero(state: AppState, item: Item?, pages: Int, page: Int, onPage: (I
                         " · ${((item.runtimeTicks ?: 0) - item.positionTicks) / TICKS_PER_SECOND / 60} min left" else "▶  Play")
                 }
                 LButton(primary = false, modifier = Modifier.onFocusChanged { onInfo = it.isFocused; onHold(it.isFocused) }, onClick = {
-                    state.push(if (item.isEpisode && item.seriesId != null) Screen.Detail(item.seriesId, item.seasonId) else Screen.Detail(item.id))
+                    state.push(if (item.isEpisode && item.seriesId != null) Screen.Detail(item.seriesId!!, item.seasonId) else Screen.Detail(item.id))
                 }) { Text("More Info") }
                 Spacer(Modifier.width(18.dp))
                 repeat(pages) { i ->
@@ -510,7 +510,7 @@ private fun WideCard(item: Item, state: AppState, onFocus: () -> Unit, large: Bo
             // The show's logo on its still, low on the left, as the Apple TV app does.
             if (item.isEpisode && item.seriesId != null) {
                 Box(Modifier.matchParentSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
-                AsyncImage(server.imageUrl(item.seriesId, "Logo", null, 300), null, contentScale = ContentScale.Fit,
+                AsyncImage(server.imageUrl(item.seriesId!!, "Logo", null, 300), null, contentScale = ContentScale.Fit,
                     alignment = Alignment.BottomStart,
                     modifier = Modifier.align(Alignment.BottomStart).padding(10.dp).height(34.dp).fillMaxWidth(0.55f))
             }

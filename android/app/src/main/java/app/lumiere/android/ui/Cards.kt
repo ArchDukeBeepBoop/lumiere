@@ -194,7 +194,7 @@ fun ItemCard(item: Item, server: Server, shape: CardShape, onFocus: (Item) -> Un
 /** The picture a card shows: an episode's own still, else its show's art. */
 fun imageFor(item: Item, server: Server, shape: CardShape, width: Int): String? = when {
     shape == CardShape.Poster && item.isEpisode && item.seriesId != null ->
-        server.imageUrl(item.seriesId, "Primary", item.seriesPrimaryTag, width)
+        server.imageUrl(item.seriesId!!, "Primary", item.seriesPrimaryTag, width)
     shape == CardShape.Poster -> item.primaryTag?.let { server.imageUrl(item.id, "Primary", it, width) }
     item.isEpisode || item.type == "Video" -> item.primaryTag?.let { server.imageUrl(item.id, "Primary", it, width) }
         ?: item.parentBackdropId?.let { server.imageUrl(it, "Backdrop", item.parentBackdropTag, width) }
