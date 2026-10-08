@@ -46,7 +46,7 @@ Subtitle search uses [OpenSubtitles](https://www.opensubtitles.com) with your ow
 
 ### Meta Quest 3
 
-The Quest build is the TV layout in a Horizon OS window, while a full spatial app is planned in [docs/quest/PLAN.md](docs/quest/PLAN.md). With the headset in developer mode and plugged in:
+The Quest build is the TV layout in a Horizon OS window, while a full spatial app is planned in [docs/quest/PLAN.md](docs/quest/PLAN.md). With the headset in developer mode and plugged in, one command builds and installs both Quest apps and opens the spatial one: `android/Scripts/install-quest.sh` (pass `2d` or `spatial` for just one). By hand:
 ```bash
 cd android && ./gradlew assembleQuestRelease
 adb install -r app/build/outputs/apk/quest/release/app-quest-release.apk
