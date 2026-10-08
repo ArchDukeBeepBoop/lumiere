@@ -32,11 +32,18 @@ android {
     }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.getByName("home")
         }
     }
-    packaging { resources.excludes.add("META-INF/LICENSE") }
+    packaging {
+        resources.excludes.add("META-INF/LICENSE")
+        // Compressed in the APK, unpacked once at install: a fifth of the download,
+        // small enough to hand over as a file for SideQuest.
+        jniLibs.useLegacyPackaging = true
+        dex.useLegacyPackaging = true
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
