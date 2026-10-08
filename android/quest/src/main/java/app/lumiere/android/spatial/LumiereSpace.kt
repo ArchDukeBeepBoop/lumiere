@@ -3,6 +3,7 @@ package app.lumiere.android.spatial
 import androidx.compose.ui.platform.ComposeView
 import app.lumiere.android.MainActivity
 import app.lumiere.android.ui.SpatialSidebar
+import com.meta.spatial.compose.ComposeFeature
 import com.meta.spatial.compose.ComposeViewPanelRegistration
 import com.meta.spatial.core.Entity
 import com.meta.spatial.core.Pose
@@ -32,7 +33,8 @@ import com.meta.spatial.vr.VRFeature
  */
 class LumiereSpace : AppSystemActivity() {
 
-    override fun registerFeatures(): List<SpatialFeature> = listOf(VRFeature(this))
+    // ComposeFeature hosts the sidebar's Compose panel; without it the panel can't start.
+    override fun registerFeatures(): List<SpatialFeature> = listOf(VRFeature(this), ComposeFeature())
 
     override fun registerPanels(): List<PanelRegistration> = listOf(
         ActivityPanelRegistration(
