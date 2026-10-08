@@ -28,7 +28,12 @@ type Network struct {
 	Identity Identity
 	Log      *slog.Logger
 
+	// addresses is Addresses, or a stand-in in tests.
+	addresses func() []string
+
 	mu        sync.Mutex
+	on        bool
+	listening []string
 	servers   []*http.Server
 	discovery net.PacketConn
 }
@@ -63,10 +68,15 @@ func (n *Network) Apply(on bool) {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 	n.stop()
+	n.on = on
 	if !on {
 		return
 	}
-	for _, ip := range Addresses() {
+	if n.addresses == nil {
+		n.addresses = Addresses
+	}
+	n.listening = n.addresses()
+	for _, ip := range n.listening {
 		addr := net.JoinHostPort(ip, fmt.Sprint(n.Port))
 		listener, err := net.Listen("tcp", addr)
 		if err != nil {
@@ -97,6 +107,7 @@ func (n *Network) stop() {
 		cancel()
 	}
 	n.servers = nil
+	n.listening = nil
 	if n.discovery != nil {
 		n.discovery.Close()
 		n.discovery = nil
