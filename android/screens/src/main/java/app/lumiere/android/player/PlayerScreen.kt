@@ -145,7 +145,7 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     // A 3D film: a short word to switch the projector's 3D mode on.
     var threeD by remember { mutableStateOf(false) }
     LaunchedEffect(item?.id) { val i = item ?: return@LaunchedEffect
-        if (isTv && state.is3D(i)) { threeD = true; delay(6_000); threeD = false } }
+        if (isTv && !app.lumiere.android.AppBuild.quest && state.is3D(i)) { threeD = true; delay(6_000); threeD = false } }
     // A title played from outside a folder's Play All ends that queue.
     LaunchedEffect(item?.id) { val i = item ?: return@LaunchedEffect
         if (Playback.queue.none { it.id == i.id }) Playback.queue = emptyList() }
@@ -396,6 +396,15 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
         if (showInfo) InfoPanel(item, clock, infoTab, onTracks = { showTracks = true }, onMenu = { showPanel = true },
             onEpisodes = if (item?.isEpisode == true) ({ showEpisodes = true }) else null) { showInfo = false }
         if ((item == null || buffering) && error == null) CircularProgressIndicator(Modifier.align(Alignment.Center))
+        // On a Quest the film itself goes 3D; a TV or projector is told to.
+        val stereo = item?.let { app.lumiere.android.api.stereoLayoutOf(it, state.is3D(it)) } ?: app.lumiere.android.api.StereoLayout.MONO
+        val stereoSaid = rememberStereo(view, player, stereo)
+        var stereoShown by remember(stereoSaid) { mutableStateOf(stereoSaid != null) }
+        LaunchedEffect(stereoSaid) { delay(4_000); stereoShown = false }
+        if (stereoShown) Text(if (stereoSaid == "3D") "Playing in 3D" else "This headset can't show 3D here, so it plays flat",
+            color = Color.White,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 28.dp).background(Color.Black.copy(alpha = 0.7f), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                .padding(horizontal = 18.dp, vertical = 8.dp))
         if (threeD) Text("3D film — turn on the projector's 3D mode (side by side)", color = Color.White,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 28.dp).background(Color.Black.copy(alpha = 0.7f), androidx.compose.foundation.shape.RoundedCornerShape(50))
                 .padding(horizontal = 18.dp, vertical = 8.dp))
