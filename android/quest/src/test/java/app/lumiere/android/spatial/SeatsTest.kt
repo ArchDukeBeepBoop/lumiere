@@ -8,7 +8,8 @@ class SeatsTest {
     @Test fun roomSizesRunFromALaptopToABigTv() {
         val widths = Seats.ROOM.map { it * Window.WIDTH_M }
         assertTrue("each step larger", widths.zipWithNext().all { (a, b) -> b > a })
-        assertEquals(1.2f, widths.first(), 0.01f)
+        val smallest = Seats.angleDegrees(widths.first(), Window.DISTANCE_M)
+        assertTrue("smallest is a laptop's $smallest", smallest in 34f..42f)
         assertTrue("largest fills most of the view", Seats.angleDegrees(widths.last(), Window.DISTANCE_M) > 80f)
         assertEquals(Seats.ROOM.last(), Seats.roomScale(99))
         assertEquals(Seats.ROOM.first(), Seats.roomScale(-3))
@@ -33,5 +34,12 @@ class SeatsTest {
         }
         // A screen short enough to sit above the eyes just does.
         assertEquals(1.9f, Seats.screenMiddleY(1.2f, 1f), 1e-4f)
+    }
+
+    @Test fun everyoneStartsAtTheWindowsOwnSizeUnscaled() {
+        // Pointing stayed true only at scale 1 on the headset; the start must be there.
+        assertEquals(1f, Seats.roomScale(app.lumiere.android.Stage.roomSize), 0f)
+        val start = Seats.angleDegrees(Window.WIDTH_M, Window.DISTANCE_M)
+        assertTrue("about 60 degrees, a big TV up close: $start", start in 55f..65f)
     }
 }

@@ -2,4 +2,5 @@
 <resources>
     <item name="lumiere_window" type="id" />
     <item name="lumiere_sidebar" type="id" />
+    <item name="lumiere_ornament" type="id" />
 </resources>

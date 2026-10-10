@@ -46,6 +46,8 @@ class LumiereSpace : AppSystemActivity() {
         super.onCreate(savedInstanceState)
         plain = app.lumiere.android.StartGuard.begin(this)
         if (plain) android.util.Log.w("Lumiere", "the last starts failed; starting plainly")
+        // Up Next, the scrub frames and the song float under the screen, not over it.
+        app.lumiere.android.ui.Floating.enabled = !plain
         app.lumiere.android.Stage.load(this)
         if (!plain) systemManager.registerSystem(Remote())
     }
@@ -68,6 +70,17 @@ class LumiereSpace : AppSystemActivity() {
                 UIPanelSettings(
                     shape = QuadShapeOptions(width = Window.SIDEBAR_WIDTH_M, height = Window.SIDEBAR_HEIGHT_M),
                     display = DpDisplayOptions(width = Window.SIDEBAR_WIDTH_DP.toFloat(), height = Window.SIDEBAR_HEIGHT_DP.toFloat()),
+                    style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
+                )
+            },
+        ),
+        ComposeViewPanelRegistration(
+            R.id.lumiere_ornament,
+            composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.Floating.Ornament() } } },
+            settingsCreator = {
+                UIPanelSettings(
+                    shape = QuadShapeOptions(width = Window.ORNAMENT_WIDTH_M, height = Window.ORNAMENT_HEIGHT_M),
+                    display = DpDisplayOptions(width = Window.ORNAMENT_WIDTH_DP.toFloat(), height = Window.ORNAMENT_HEIGHT_DP.toFloat()),
                     style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
                 )
             },
@@ -118,8 +131,15 @@ class LumiereSpace : AppSystemActivity() {
                 }.onFailure { android.util.Log.w("Lumiere", "gesture", it) }
             }
         }.onFailure { android.util.Log.w("Lumiere", "no hand gestures", it) }
+        // Hidden, and out of the pointer's way, until there's something in it; it can be carried, like the window.
+        val ornament = Entity.createPanelEntity(
+            R.id.lumiere_ornament,
+            Transform(Window.parked()),
+            Grabbable(enabled = true, type = GrabbableType.FACE),
+            com.meta.spatial.toolkit.Visible(false),
+        )
         // The lights go down for a film.
-        runCatching { Cinema(scene, window, sidebar).start(scope) }
+        runCatching { Cinema(scene, window, sidebar, ornament).start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "cinema unavailable", it) }
     }
 

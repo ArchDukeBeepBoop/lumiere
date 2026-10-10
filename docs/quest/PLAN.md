@@ -183,3 +183,11 @@ android/
 2. **Private Room unlock:** a separate Lumiere PIN (see §4).
 3. **3D, 180° and 360° files:** yes, all three. Phase 4 is fully in scope, and test files of each format go into the codec matrix (§9).
 4. **Users:** single-user only. No co-watching or second-user mode is planned.
+
+## 12. Headset lessons (2026-10-10)
+Learnt on the Quest 3S, and kept as tests where a test can hold them:
+- **Built-in meshes need their shape component.** A `mesh://box` without a `Box` makes the SDK's mesh system throw on the next frame, outside any guard, and the app stops. This crashed every start until the cinema's floor and stage got one (`MeshShapesTest`).
+- **Pointing at a scaled panel can drift.** ISDK rebuilds a panel's hit area when its Transform or panel data change, not on `Scale` alone. The window now starts unscaled at 1.4 m (where the lenses focus), and its Transform is written again after every resize (`Cinema.settle`).
+- **A hidden panel is also parked out of reach**, in case it still catches the pointer.
+- **Crashes leave a report** in Downloads › Lumiere on the headset (`CrashLog`), readable from the Files app or SideQuest without a Terminal. After two failed starts in a row, the next one opens with just the window and sidebar (`StartGuard`).
+- **The ornament** is one glass strip under the screen, as on visionOS: Up Next in the credits, the film's frames while scrubbing, the song and its sung line while music plays (`Floating`).

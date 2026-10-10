@@ -5,6 +5,7 @@ import app.lumiere.android.Screen
 import app.lumiere.android.Stage
 import app.lumiere.android.player.PictureInPicture
 import app.lumiere.android.ui.Ambient
+import app.lumiere.android.ui.Floating
 import com.meta.spatial.core.Entity
 import com.meta.spatial.core.Lut
 import com.meta.spatial.core.Pose
@@ -29,7 +30,7 @@ import kotlinx.coroutines.launch
  * eight-metre screen before your chosen row, whose floor catches the film's
  * colour. Four looks a second; light and size change only while they move.
  */
-class Cinema(private val scene: Scene, private val window: Entity, private val sidebar: Entity) {
+class Cinema(private val scene: Scene, private val window: Entity, private val sidebar: Entity, private val ornament: Entity) {
     // Built the first time the cinema opens, not at start: the room never needs it.
     private val theatreMade = lazy { Theatre() }
     private val theatre by theatreMade
@@ -37,12 +38,14 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
     private var shownBrightness = -1f
     private var shownTint: Triple<Float, Float, Float>? = null
     private var size = Seats.roomScale(Stage.roomSize)
+    private var shownSize = 1f
     private var place: Stage.Place? = null
     private var roomPose: Pose? = null
     private var seenAsks = Stage.bringHereAsks
     private var seat = -1
     private var grabbable: Boolean? = null
     private var sidebarShown = true
+    private var ornamentShown = false
     private var tilted = false
     private var displayRate = 0f
     private val usualRate by lazy { runCatching { scene.getConfirmedFrameRate() }.getOrDefault(0f) }
@@ -79,11 +82,23 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
 
             val wanted = if (cinema) Seats.CINEMA_SCALE else Seats.roomScale(Stage.roomSize)
             size = if (reduced) wanted else CinemaLight.ease(size, wanted)
-            window.setComponent(Scale(Vector3(size)))
+            if (size != shownSize) {
+                shownSize = size
+                window.setComponent(Scale(Vector3(size)))
+                if (size == wanted) settle()
+            }
             grab(!cinema && !Stage.locked, if (tilted) GrabbableType.FACE else GrabbableType.PIVOT_Y)
             // Out of the way while a film plays; back the moment it pauses.
             val showSidebar = !(inPlayer && playing)
             if (showSidebar != sidebarShown) { sidebarShown = showSidebar; sidebar.setComponent(Visible(showSidebar)) }
+            // The ornament comes to where you're looking each time it appears, then stays put.
+            val showOrnament = Floating.showing
+            if (showOrnament != ornamentShown) {
+                ornamentShown = showOrnament
+                // Hidden is also put out of reach: a hidden panel may still catch the pointer.
+                if (showOrnament) placeOrnament() else ornament.setComponent(Transform(Window.parked()))
+                ornament.setComponent(Visible(showOrnament))
+            }
             return !(brightness == target && size == wanted)
         }
     }
@@ -121,6 +136,21 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
         window.setComponent(Transform(Pose(Vector3(at.x, head.t.y - 0.1f, at.z), ahead.q)))
     }
 
+    /** Before you and a little below your eyes, facing you; tilted with you when you're lying back. */
+    private fun placeOrnament() {
+        val head = scene.getViewerPose()
+        val look = head.forward().normalize()
+        if (Display.lookingUp(look.y)) {
+            val q = com.meta.spatial.core.Quaternion.fromDirection(look)
+            val down = q * Vector3(0f, -1f, 0f)
+            ornament.setComponent(Transform(Pose(head.t + look * Window.ORNAMENT_DISTANCE_M + down * Window.ORNAMENT_BELOW_EYES_M, q)))
+            return
+        }
+        val ahead = head.removePitchAndRoll()
+        val at = head.t + flat(ahead.forward()) * Window.ORNAMENT_DISTANCE_M
+        ornament.setComponent(Transform(Pose(Vector3(at.x, head.t.y - Window.ORNAMENT_BELOW_EYES_M, at.z), ahead.q)))
+    }
+
     private fun seatAt(row: Int) {
         seat = row
         val head = scene.getViewerPose()
@@ -129,6 +159,16 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
         val screen = Pose(Vector3(at.x, Seats.screenMiddleY(head.t.y, Window.HEIGHT_M * Seats.CINEMA_SCALE), at.z), ahead.q)
         window.setComponent(Transform(screen))
         theatre.place(screen, Window.HEIGHT_M * Seats.CINEMA_SCALE)
+    }
+
+    /**
+     * After a resize: the window's place written again, unchanged. Meta's
+     * pointer (ISDK) rebuilds a panel's hit area when its place or panel
+     * data change, not its scale alone, so without this a pinch could land
+     * where the window was before it grew — a button that seemed dead.
+     */
+    private fun settle() {
+        window.setComponent(Transform(window.getComponent<Transform>().transform))
     }
 
     private fun flat(v: Vector3): Vector3 = Vector3(v.x, 0f, v.z).let { if (it.length() < 1e-3f) Vector3(0f, 0f, 1f) else it.normalize() }

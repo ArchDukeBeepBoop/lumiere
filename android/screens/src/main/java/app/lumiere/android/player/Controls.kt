@@ -48,6 +48,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -221,11 +222,22 @@ fun PlayerOverlay(
                 modifier = Modifier.align(Alignment.Center).padding(top = 200.dp, start = 32.dp, end = 32.dp)
                     .background(Color.Black.copy(alpha = 0.85f), RoundedCornerShape(12.dp)).padding(20.dp))
         }
+        // On a Quest the frames float before you, under the screen, instead of over the film (Floating).
+        val floating = app.lumiere.android.ui.Floating.enabled
+        val scrubAt = held ?: scrubbing
+        if (floating) {
+            LaunchedEffect(scrubAt, trickplay) {
+                val t = trickplay
+                app.lumiere.android.ui.Floating.scrub =
+                    if (scrubAt != null && t != null) app.lumiere.android.ui.Floating.Scrub(server, item?.id ?: "", t, scrubAt) else null
+            }
+            DisposableEffect(Unit) { onDispose { app.lumiere.android.ui.Floating.scrub = null } }
+        }
         if (!visible && held != null) {
             Column(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(24.dp)) {
                 BoxWithConstraints(Modifier.fillMaxWidth().height(160.dp)) {
                     val t = trickplay
-                    if (t != null && duration > 0) ScrubPreview(server, item?.id ?: "", t, held!!, (held!! / duration) * maxWidth.value)
+                    if (t != null && duration > 0) { if (!floating) ScrubPreview(server, item?.id ?: "", t, held!!, (held!! / duration) * maxWidth.value) }
                     else Text(clock(held!!.toDouble()), color = Color.White, modifier = Modifier.align(Alignment.BottomCenter))
                 }
                 androidx.compose.material3.LinearProgressIndicator(progress = { if (duration > 0) held!! / duration else 0f },
@@ -277,7 +289,7 @@ fun PlayerOverlay(
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
                         val shown = scrubbing ?: position
                         val trick = trickplay
-                        if (scrubbing != null && trick != null && duration > 0) {
+                        if (scrubbing != null && trick != null && duration > 0 && !floating) {
                             ScrubPreview(server, item?.id ?: "", trick, shown, (shown / duration) * maxWidth.value)
                         }
                         Column(Modifier.align(Alignment.BottomStart)) {
@@ -346,7 +358,7 @@ private fun ScrubPreview(server: Server, id: String, t: Trickplay, seconds: Floa
 }
 
 @Composable
-private fun Tile(server: Server, id: String, t: Trickplay, index: Int, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp, alpha: Float) {
+internal fun Tile(server: Server, id: String, t: Trickplay, index: Int, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp, alpha: Float) {
     val perSheet = t.tiles * t.tiles
     val sheet = index / perSheet
     val cell = index % perSheet

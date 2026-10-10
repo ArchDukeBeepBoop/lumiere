@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -74,7 +75,16 @@ fun SignInScreen(state: AppState) {
         app.lumiere.android.api.preferredAddress(saved?.let(::normalise), found, answers)?.let { address = it }
     }
 
+    val userField = remember { androidx.compose.ui.focus.FocusRequester() }
+    val passwordField = remember { androidx.compose.ui.focus.FocusRequester() }
+
     fun signIn() {
+        // Never a button that silently does nothing: say what's missing, and go there.
+        signInProblem(user, password, confirm, needsAccount)?.let { (problem, field) ->
+            message = problem
+            runCatching { (if (field == SignInField.User) userField else passwordField).requestFocus() }
+            return
+        }
         scope.launch {
             busy = true
             message = null
@@ -116,13 +126,13 @@ fun SignInScreen(state: AppState) {
             )
             OutlinedTextField(
                 value = user, onValueChange = { user = it }, label = { Text("User name") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(userField),
             )
             OutlinedTextField(
                 value = password, onValueChange = { password = it }, label = { Text("Password") },
                 singleLine = true, visualTransformation = PasswordVisualTransformation(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().focusRequester(passwordField),
             )
             if (needsAccount) {
                 OutlinedTextField(
@@ -139,13 +149,21 @@ fun SignInScreen(state: AppState) {
                     modifier = Modifier.background(Palette.surface, RoundedCornerShape(8.dp)).padding(12.dp))
             }
             Spacer(Modifier.height(4.dp))
-            LButton(onClick = ::signIn,
-                enabled = !busy && user.isNotBlank() && (!needsAccount || (password.length >= 4 && password == confirm)),
-                modifier = Modifier.fillMaxWidth()) {
+            LButton(onClick = ::signIn, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                 Text(if (busy) "Signing in…" else if (needsAccount) "Create Account" else "Sign In")
             }
         }
     }
+}
+
+enum class SignInField { User, Password }
+
+/** What stops signing in yet, and the field to fix; null when it can go ahead. */
+fun signInProblem(user: String, password: String, confirm: String, needsAccount: Boolean): Pair<String, SignInField>? = when {
+    user.isBlank() -> "Enter your user name first." to SignInField.User
+    needsAccount && password.length < 4 -> "Choose a password of at least 4 characters." to SignInField.Password
+    needsAccount && password != confirm -> "The two passwords don't match." to SignInField.Password
+    else -> null
 }
 
 /** "192.168.60.5" → "http://192.168.60.5:8098": the scheme and port people leave off. */

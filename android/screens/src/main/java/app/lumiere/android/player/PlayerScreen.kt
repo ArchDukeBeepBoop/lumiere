@@ -435,11 +435,20 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
         // first megabytes of its file — so it starts the moment it is asked for.
         if (inCredits && next != null) LaunchedEffect(next!!.id) { Playback.warm(server, session.userId, next!!) }
         val offered = inCredits && !upNextDismissed && askStillWatching == null
-        LaunchedEffect(offered) { creditsCorner = offered }
+        // On a Quest, Up Next floats before you under the screen, and the film keeps the whole screen.
+        val floating = app.lumiere.android.ui.Floating.enabled
+        LaunchedEffect(offered) { creditsCorner = offered && !floating }
+        if (floating) {
+            LaunchedEffect(offered) { if (!offered) app.lumiere.android.ui.Floating.upNext = null }
+            DisposableEffect(Unit) { onDispose { app.lumiere.android.ui.Floating.upNext = null } }
+        }
         if (offered) {
-            UpNextCard(next!!, server, counting = prefs.playsNext,
-                onPlay = { val n = next!!; reporter.stopped(player, finished = true); state.pop(); state.push(Screen.Player(n.id, 0.0, auto = true)) },
-                onDismiss = { upNextDismissed = true })
+            val playNext: () -> Unit = { val n = next!!; reporter.stopped(player, finished = true); state.pop(); state.push(Screen.Player(n.id, 0.0, auto = true)) }
+            if (floating) LaunchedEffect(next!!.id) {
+                app.lumiere.android.ui.Floating.upNext = app.lumiere.android.ui.Floating.UpNextOffer(next!!, server, prefs.playsNext,
+                    onPlay = playNext, onDismiss = { upNextDismissed = true })
+            }
+            else UpNextCard(next!!, server, counting = prefs.playsNext, onPlay = playNext, onDismiss = { upNextDismissed = true })
         } else if (skip != null && !(prefs.skipsIntros && skip.type == "Intro")) {
             // On a TV an intro counts down and skips itself, unless Back says no.
             val counting = isTv && prefs.skipCountdown && skip.type == "Intro"

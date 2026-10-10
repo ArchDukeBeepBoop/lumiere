@@ -13,8 +13,12 @@ object Window {
     const val WIDTH_M = 1.6f
     val HEIGHT_M = WIDTH_M * HEIGHT_DP / WIDTH_DP
 
-    /** Its distance, and the radius it curves on — centred on you. */
-    const val DISTANCE_M = 1.8f
+    /**
+     * Its distance, and the radius it curves on — centred on you. 1.4 m is
+     * where the Quest's lenses focus, so text there is sharpest and easiest
+     * on the eyes; at 1.8 m the window read as small and far away.
+     */
+    const val DISTANCE_M = 1.4f
     /** Height of its middle above the floor: eye level of someone seated, a little under it standing. */
     const val HEIGHT_ABOVE_FLOOR_M = 1.3f
 
@@ -35,4 +39,20 @@ object Window {
     /** How low and high it can be carried. */
     const val MIN_HEIGHT_M = 0.6f
     const val MAX_HEIGHT_M = 2.4f
+
+    /**
+     * The ornament: a strip of glass floating before you, under the screen
+     * (Floating: Up Next, the frames as you scrub, the song and its line).
+     * The same 800 dp a metre as the window, carried no further than an arm
+     * and a half away, and a little below the eyes.
+     */
+    const val ORNAMENT_WIDTH_DP = 720
+    const val ORNAMENT_HEIGHT_DP = 240
+    val ORNAMENT_WIDTH_M = WIDTH_M * ORNAMENT_WIDTH_DP / WIDTH_DP
+    val ORNAMENT_HEIGHT_M = WIDTH_M * ORNAMENT_HEIGHT_DP / WIDTH_DP
+    const val ORNAMENT_DISTANCE_M = 1.1f
+    const val ORNAMENT_BELOW_EYES_M = 0.45f
+
+    /** Where a hidden panel waits: far under the floor, where no pointer reaches. */
+    fun parked() = com.meta.spatial.core.Pose(com.meta.spatial.core.Vector3(0f, -50f, 0f))
 }

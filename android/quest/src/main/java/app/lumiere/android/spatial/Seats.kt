@@ -7,8 +7,13 @@ package app.lumiere.android.spatial
  * front, the way Apple TV's Cinema seats you; how wide it looks follows.
  */
 object Seats {
-    /** The window's scale at each room size; 1 is 1.6 m wide. */
-    val ROOM = floatArrayOf(0.75f, 1f, 1.3f, 1.7f, 2.2f)
+    /**
+     * The window's scale at each room size; 1 is 1.6 m wide, about 60 degrees
+     * at the window's distance. The middle size, where everyone starts, is
+     * 1: the window as made, with nothing scaled, so pointing at it can't
+     * drift from what you see (see Cinema.settle).
+     */
+    val ROOM = floatArrayOf(0.6f, 0.8f, 1f, 1.25f, 1.55f)
 
     /** The cinema screen's scale: 1.6 m × 5 = 8 m wide. */
     const val CINEMA_SCALE = 5f
