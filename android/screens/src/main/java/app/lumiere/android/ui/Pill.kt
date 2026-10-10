@@ -32,7 +32,7 @@ fun TvPill(onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean
            tint: Color = Palette.textPrimary, shape: Shape = RoundedCornerShape(50),
            content: @Composable RowScope.() -> Unit) {
     var focused by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    Surface(onClick = onClick, modifier = modifier.pointerTap(onClick = onClick).hoverFocuses().onFocusChanged { focused = it.isFocused },
+    Surface(onClick = onClick, modifier = modifier.questTarget().pointerTap(onClick = onClick).hoverFocuses().onFocusChanged { focused = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
         colors = ClickableSurfaceDefaults.colors(

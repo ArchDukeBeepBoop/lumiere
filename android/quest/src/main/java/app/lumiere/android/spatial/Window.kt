@@ -74,11 +74,14 @@ object Window {
 
     /**
      * The Theater's transport: a bar of glass near your hands, below the
-     * screen's line of sight, tilted to face your eyes. 1100 × 250 dp laid out,
-     * 0.82 m across.
+     * screen's line of sight, tilted to face your eyes; the panel is clear
+     * above the bar, where audio and subtitles open. 1100 × 560 dp laid out,
+     * 0.82 m across; the bar is its lowest 250 dp.
      */
     const val TRANSPORT_WIDTH_DP = 1100
-    const val TRANSPORT_HEIGHT_DP = 250
+    const val TRANSPORT_HEIGHT_DP = 560
+    /** The bar's own height within the panel, to keep it where it was as the panel grew above it. */
+    const val TRANSPORT_BAR_DP = 250
     const val TRANSPORT_WIDTH_M = 0.82f
     val TRANSPORT_HEIGHT_M = TRANSPORT_WIDTH_M * TRANSPORT_HEIGHT_DP / TRANSPORT_WIDTH_DP
     const val TRANSPORT_DISTANCE_M = 0.95f

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.Weekend
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -97,10 +98,12 @@ fun placeIcon(place: Stage.Place): ImageVector = when (place) {
     Stage.Place.ROOM -> Icons.Default.Weekend
     Stage.Place.CINEMA -> Icons.Default.Theaters
     Stage.Place.VOID -> Icons.Default.DarkMode
+    Stage.Place.SPACE -> Icons.Default.AutoAwesome
 }
 
 fun placeCaption(place: Stage.Place): String = when (place) {
     Stage.Place.ROOM -> "Room"
     Stage.Place.CINEMA -> "Cinema"
     Stage.Place.VOID -> "Dark"
+    Stage.Place.SPACE -> "Space"
 }

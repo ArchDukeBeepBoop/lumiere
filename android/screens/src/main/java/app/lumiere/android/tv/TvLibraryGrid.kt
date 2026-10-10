@@ -53,6 +53,8 @@ import app.lumiere.android.ui.ItemCard
 import app.lumiere.android.ui.Palette
 import app.lumiere.android.ui.TvPill
 import app.lumiere.android.ui.frosted
+import app.lumiere.android.ui.keepsTaps
+import app.lumiere.android.ui.tapOutsideCloses
 import app.lumiere.android.ui.imageFor
 import coil.compose.AsyncImage
 
@@ -176,8 +178,8 @@ internal fun PillChooser(title: String, options: List<String>, current: String?,
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { first.requestFocus() } }
     androidx.activity.compose.BackHandler(onBack = onClose)
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)), contentAlignment = Alignment.TopCenter) {
-        Column(Modifier.holdsRemote().padding(top = 70.dp).widthIn(max = 900.dp).frosted().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)).tapOutsideCloses(onClose), contentAlignment = Alignment.TopCenter) {
+        Column(Modifier.holdsRemote().padding(top = 70.dp).widthIn(max = 900.dp).frosted().keepsTaps().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, style = MaterialTheme.typography.titleLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 TvPill({ onPick(null); onClose() }, if (current == null) Modifier.focusRequester(first) else Modifier, selected = current == null) { Text("All") }

@@ -185,6 +185,8 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { app.lumiere.android.ui.Ambient.colour = null } }
     var infoTab by remember { mutableStateOf("Info") }
     var next by remember { mutableStateOf<Item?>(null) }
+    // The Theater's transport offers Next too (on a Quest the window's own controls are out of sight).
+    LaunchedEffect(next) { Theater.next = next?.let { n -> { state.pop(); state.push(Screen.Player(n.id, 0.0)) } } }
     val activity = context as? Activity
 
     ImmersiveLandscape(enabled = !isTv)
@@ -463,13 +465,22 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
                 while (skipLeft > 0) { delay(1000); if (player.isPlaying) skipLeft-- }
                 clock.seek(skip.endSeconds)
             }
-            LButton(
-                onClick = { clock.seek(skip.endSeconds) },
-                // Above the seek bar, never under it.
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 32.dp, bottom = 132.dp).focusRequester(skipFocus),
-            ) { Text((if (skip.type == "Outro") "Skip Credits" else "Skip ${skip.type}") + if (counting) " · $skipLeft" else "") }
-            // On a TV, the offer takes focus so one press of OK skips.
-            if (isTv) LaunchedEffect(skip) { runCatching { skipFocus.requestFocus() } }
+            val skipLabel = (if (skip.type == "Outro") "Skip Credits" else "Skip ${skip.type}") + if (counting) " · $skipLeft" else ""
+            if (app.lumiere.android.ui.Floating.enabled) {
+                // On a Quest, it floats by you, under the screen, as Netflix's does over its picture.
+                androidx.compose.runtime.SideEffect {
+                    app.lumiere.android.ui.Floating.skip = app.lumiere.android.ui.Floating.SkipOffer(skipLabel) { clock.seek(skip.endSeconds) }
+                }
+                DisposableEffect(skip) { onDispose { app.lumiere.android.ui.Floating.skip = null } }
+            } else {
+                LButton(
+                    onClick = { clock.seek(skip.endSeconds) },
+                    // Above the seek bar, never under it.
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(end = 32.dp, bottom = 132.dp).focusRequester(skipFocus),
+                ) { Text(skipLabel) }
+                // On a TV, the offer takes focus so one press of OK skips.
+                if (isTv) LaunchedEffect(skip) { runCatching { skipFocus.requestFocus() } }
+            }
         }
     }
 }

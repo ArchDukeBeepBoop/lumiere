@@ -23,11 +23,15 @@ class TheaterGeometryTest {
         }
     }
 
-    @Test fun theCinemaScreenIsACinemasAndTheRoomsATvs() {
-        val cinema = TheaterGeometry.spec(tv, Stage.Place.CINEMA, 2, false)
-        val room = TheaterGeometry.spec(tv, Stage.Place.ROOM, 2, false)
-        assertTrue("cinema screen over 15 m: ${cinema.widthM}", cinema.widthM > 15f)
-        assertTrue("room screen a big TV: ${room.widthM}", room.widthM in 3f..5f)
+    @Test fun theCinemaIsOneImaxWallAndASizeIsYourSeat() {
+        val seats = (0 until Stage.SCREEN_SIZES).map { TheaterGeometry.spec(tv, Stage.Place.CINEMA, it, false) }
+        seats.forEach { assertEquals("one wall", TheaterGeometry.CINEMA_SCREEN_WIDTH_M, it.widthM, 1e-3f) }
+        assertTrue("larger sits nearer", seats.zipWithNext().all { (a, b) -> b.distanceM < a.distanceM })
+        val start = TheaterGeometry.spec(tv, Stage.Place.CINEMA, TheaterGeometry.DEFAULT_SIZE, false)
+        assertTrue("the start fills your view: ${TheaterGeometry.angleDegrees(start.widthM, start.distanceM)}°",
+            TheaterGeometry.angleDegrees(start.widthM, start.distanceM) >= 80f)
+        val room = TheaterGeometry.spec(tv, Stage.Place.ROOM, 0, false)
+        assertTrue("your room's smallest is still a big TV: ${room.widthM}", room.widthM in 2.5f..4f)
     }
 
     @Test fun theScreenTakesTheFilmsShape() {
@@ -41,7 +45,7 @@ class TheaterGeometryTest {
     @Test fun curvedIsCentredOnYouAndKeepsTheSameAngle() {
         val s = TheaterGeometry.spec(tv, Stage.Place.CINEMA, 3, curved = true)
         assertEquals(s.distanceM, s.radiusM!!, 0f)
-        assertEquals(78f, Math.toDegrees((s.widthM / s.radiusM!!).toDouble()).toFloat(), 0.05f)
+        assertEquals(TheaterGeometry.SIZE_DEGREES[3], Math.toDegrees((s.widthM / s.radiusM!!).toDouble()).toFloat(), 0.05f)
     }
 
     @Test fun spheresAreSpheres() {

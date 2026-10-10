@@ -108,6 +108,7 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
         val found = runCatching { state.itemOrSaved(id) }.getOrElse { missing = true; null } ?: return@LaunchedEffect
         missing = false
         item = found
+        app.lumiere.android.ui.Marquee.show(found)
         if (found.isSeries) {
             // Specials always last, so a show never opens on them; newest first when asked for this show.
             seasons = state.seasonsOrSaved(id).sortedWith(compareBy { (it.indexNumber ?: 0) == 0 || it.name.contains("Special", true) })
@@ -149,6 +150,7 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
         // the episodes no longer nudges the whole page each time.
         val still = remember { object : androidx.compose.foundation.gestures.BringIntoViewSpec {
             override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = when {
+                app.lumiere.android.ui.Pointing.byPointer -> 0f
                 offset >= 0f && offset + size <= containerSize -> 0f
                 offset < 0f -> offset
                 else -> offset + size - containerSize
@@ -263,7 +265,7 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                     LazyRow(Modifier.padding(top = 18.dp).onFocusChanged { if (it.hasFocus) below = tabsAt }.focusRestorer(),
                         contentPadding = PaddingValues(horizontal = 50.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         items(sections.size) { i ->
-                            app.lumiere.android.ui.TvPill({ section = i }, Modifier.onFocusChanged { if (it.isFocused) section = i },
+                            app.lumiere.android.ui.TvPill({ section = i }, Modifier.onFocusChanged { if (it.isFocused && !app.lumiere.android.ui.Pointing.byPointer) section = i },
                                 selected = section == i) { Text(sections[i].first) }
                         }
                     }

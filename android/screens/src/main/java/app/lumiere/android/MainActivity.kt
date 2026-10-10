@@ -183,6 +183,8 @@ class MainActivity : ComponentActivity() {
 
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         if (!::state.isInitialized) return super.dispatchKeyEvent(event)
+        // The keys move the focus now, and choose as they go (Pointing).
+        if (event.action == android.view.KeyEvent.ACTION_DOWN) app.lumiere.android.ui.Pointing.byPointer = false
         // Any key ends the screensaver without also doing what it says.
         val minutes = state.settings.screensaverMinutes
         val saving = minutes > 0 && state.top !is Screen.Player &&
@@ -342,11 +344,13 @@ private fun App(state: AppState, onExit: () -> Unit) {
     // the signed-in client and its header.
     val tv = app.lumiere.android.ui.detectFormFactor(context).isTv
     // On a 2 GB TV: a smaller memory cache, half-size pixels for posters, no
-    // fade per image — the cost that made rows stutter while scrolling.
+    // fade per image — the cost that made rows stutter while scrolling. A
+    // Quest has the memory and the GPU: full colour, and pictures fade in.
+    val lean = tv && !app.lumiere.android.AppBuild.quest
     val images = remember(server) {
         ImageLoader.Builder(context).okHttpClient(server.http)
-            .crossfade(!tv)
-            .allowRgb565(tv)
+            .crossfade(!lean)
+            .allowRgb565(lean)
             // A fixed budget on a low-memory device — about sixty posters — rather
             // than a share of a heap that is small to begin with.
             .memoryCache {

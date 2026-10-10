@@ -19,6 +19,8 @@ class MeshShapesTest {
     private val needs = mapOf(
         "box" to "Box(", "sphere" to "Sphere(", "plane" to "Plane(", "quad" to "Quad(",
         "roundedbox" to "RoundedBox(", "dome" to "Dome(",
+        // The sky reads its picture from a Material (without one, a plain grey ball).
+        "skybox" to "Material(",
     )
 
     @Test fun everyBuiltInMeshCarriesItsShape() {

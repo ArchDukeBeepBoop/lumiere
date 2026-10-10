@@ -64,6 +64,8 @@ import app.lumiere.android.ui.Palette
 import app.lumiere.android.ui.focusCard
 import app.lumiere.android.ui.ignoreHeldOk
 import app.lumiere.android.ui.frosted
+import app.lumiere.android.ui.keepsTaps
+import app.lumiere.android.ui.tapOutsideCloses
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -98,8 +100,9 @@ fun TvActions(state: AppState) {
     }
     androidx.activity.compose.BackHandler { if (page != Page.Menu) page = Page.Menu else close(false) }
 
-    Box(Modifier.fillMaxSize().ignoreHeldOk().background(Color.Black.copy(alpha = 0.7f)), contentAlignment = Alignment.CenterEnd) {
-        Column(Modifier.holdsRemote().fillMaxHeight().width(460.dp).padding(24.dp).frosted().padding(20.dp),
+    Box(Modifier.fillMaxSize().ignoreHeldOk().background(Color.Black.copy(alpha = 0.7f)).tapOutsideCloses { close(false) },
+        contentAlignment = Alignment.CenterEnd) {
+        Column(Modifier.holdsRemote().fillMaxHeight().width(460.dp).padding(24.dp).frosted().keepsTaps().padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             // The title held, larger, with what it is about — before what can be done with it.
             androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {

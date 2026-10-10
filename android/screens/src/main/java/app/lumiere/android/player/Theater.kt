@@ -23,6 +23,7 @@ import app.lumiere.android.api.Trickplay
 import app.lumiere.android.api.projectionIn
 import app.lumiere.android.api.stereoLayoutOf
 import app.lumiere.android.api.surroundEyes
+import app.lumiere.android.api.trickplaySheet
 
 /**
  * The Theater, on a Quest: a film leaves the window and plays on a screen of
@@ -56,6 +57,39 @@ object Theater {
 
     var controls by mutableStateOf<Controls?>(null)
     var cues by mutableStateOf<List<Cue>>(emptyList())
+    /**
+     * The colour of the scene on screen now, every two seconds from the
+     * film's own preview frames (trickplay), for the room and the hall to
+     * take its light — a sunset glows orange, night goes blue. Null without
+     * preview frames; the poster's colour is used then.
+     */
+    var screenColour by mutableStateOf<androidx.compose.ui.graphics.Color?>(null)
+
+    /** Which preview sheet, and which tile on it (column, row), shows the film at [seconds]. */
+    fun tileAt(t: Trickplay, seconds: Double): Triple<Int, Int, Int> {
+        val index = (seconds * 1000 / t.intervalMs).toInt().coerceIn(0, (t.count - 1).coerceAtLeast(0))
+        val perSheet = (t.tiles * t.tiles).coerceAtLeast(1)
+        val cell = index % perSheet
+        return Triple(index / perSheet, cell % t.tiles.coerceAtLeast(1), cell / t.tiles.coerceAtLeast(1))
+    }
+
+    /** The average colour of a [w] × [h] tile at ([x0], [y0]), read through [pixel], every [step] pixels. */
+    fun averageOf(x0: Int, y0: Int, w: Int, h: Int, step: Int = 6, pixel: (Int, Int) -> Int): androidx.compose.ui.graphics.Color? {
+        var r = 0L; var g = 0L; var b = 0L; var n = 0
+        var y = y0
+        while (y < y0 + h) {
+            var x = x0
+            while (x < x0 + w) {
+                val p = pixel(x, y); r += (p shr 16) and 255; g += (p shr 8) and 255; b += p and 255; n++
+                x += step
+            }
+            y += step
+        }
+        return if (n == 0) null else androidx.compose.ui.graphics.Color((r / n).toInt(), (g / n).toInt(), (b / n).toInt())
+    }
+    /** The next episode, when there is one: the transport's Next. */
+    var next by mutableStateOf<(() -> Unit)?>(null)
+
     /** The window's own player screen asked for in front (its tracks, info), over the Theater. */
     var windowAsked by mutableStateOf(false)
 
@@ -116,6 +150,22 @@ fun rememberTheater(
             if (taken) { player.clearVideoSurface(surface); view.player = null; view.player = player }
         }
     }
+    // The scene's light, from the film's own preview frames, every two seconds.
+    @Suppress("DEPRECATION") val images = coil.compose.LocalImageLoader.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(item.id) {
+        while (true) {
+            kotlinx.coroutines.delay(2_000)
+            val t = trickplay() ?: continue
+            val (sheet, col, row) = Theater.tileAt(t, clock.now())
+            val request = coil.request.ImageRequest.Builder(context).data(server.trickplaySheet(item.id, t.width, sheet))
+                .allowHardware(false).build()
+            val bitmap = (images.execute(request).drawable as? android.graphics.drawable.BitmapDrawable)?.bitmap ?: continue
+            val x0 = col * t.width; val y0 = row * t.height
+            if (x0 + t.width > bitmap.width || y0 + t.height > bitmap.height) continue
+            Theater.screenColour = Theater.averageOf(x0, y0, t.width, t.height) { x, y -> bitmap.getPixel(x, y) }
+        }
+    }
     val title = if (item.isEpisode) item.seriesName ?: item.name else item.name
     val detail = item.takeIf { it.isEpisode }?.let { listOfNotNull(it.episodeLabel, it.name).joinToString(" · ") }
     DisposableEffect(player, item.id) {
@@ -126,6 +176,8 @@ fun rememberTheater(
             Theater.request = null
             Theater.cues = emptyList()
             Theater.windowAsked = false
+            Theater.screenColour = null
+            Theater.next = null
         }
     }
     return true

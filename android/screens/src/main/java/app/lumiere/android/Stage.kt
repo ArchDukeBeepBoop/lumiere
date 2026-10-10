@@ -16,13 +16,15 @@ import androidx.compose.runtime.setValue
  */
 object Stage {
     /** Where a film plays: your room, dimmed; a cinema round you; or black, for the deepest contrast. */
-    enum class Place(val label: String) { ROOM("your room"), CINEMA("the cinema"), VOID("the dark") }
+    enum class Place(val label: String) { ROOM("your room"), CINEMA("the cinema"), VOID("the dark"), SPACE("space") }
 
     var place by mutableStateOf(Place.CINEMA)
         private set
     /** 0 smallest … [SCREEN_SIZES] - 1 largest; each a wider share of your view. */
     var screenSize by mutableIntStateOf(2)
         private set
+    /** The size everyone starts at (the middle of five: 85° across, as the headset's module sets out). */
+    private const val DEFAULT_SIZE = 2
     /** The film's screen curved round you, or flat as most cinemas' are. */
     var curved by mutableStateOf(false)
         private set
@@ -62,19 +64,20 @@ object Stage {
     fun load(context: Context) {
         val p = context.getSharedPreferences("stage", Context.MODE_PRIVATE).also { prefs = it }
         place = runCatching { Place.valueOf(p.getString("watchIn", Place.CINEMA.name)!!) }.getOrDefault(Place.CINEMA)
-        screenSize = p.getInt("screenSize", 2).coerceIn(0, SCREEN_SIZES - 1)
+        // Sizes were made larger (to 55°–115°); an older saved choice starts afresh at the default.
+        screenSize = if (p.getInt("sizes", 1) < 2) DEFAULT_SIZE else p.getInt("screenSize", DEFAULT_SIZE).coerceIn(0, SCREEN_SIZES - 1)
         curved = p.getBoolean("screenCurved", false)
     }
 
     private fun save() {
-        prefs?.edit()?.putString("watchIn", place.name)?.putInt("screenSize", screenSize)
+        prefs?.edit()?.putString("watchIn", place.name)?.putInt("screenSize", screenSize)?.putInt("sizes", 2)
             ?.putBoolean("screenCurved", curved)?.apply()
     }
 
     fun larger() { screenSize = (screenSize + 1).coerceAtMost(SCREEN_SIZES - 1); save() }
     fun smaller() { screenSize = (screenSize - 1).coerceAtLeast(0); save() }
     fun toggleCurve() { curved = !curved; save() }
-    /** Room, cinema, the dark, round again. */
+    /** Room, cinema, the dark, space, round again. */
     fun nextPlace() { place = Place.entries[(place.ordinal + 1) % Place.entries.size]; save() }
     fun bringHere() { bringHereAsks++ }
 }

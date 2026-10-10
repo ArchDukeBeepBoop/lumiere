@@ -16,7 +16,7 @@ class AuditoriumTest {
         (0 until Stage.SCREEN_SIZES).map { size ->
             val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), Stage.Place.CINEMA, size, curved = false)
             val middle = eyes + spec.aboveEyesM
-            Triple(spec, middle, Auditorium.build(spec.widthM, spec.heightM, middle, spec.distanceM))
+            Triple(spec, middle, Auditorium.build(spec.widthM, spec.heightM, middle, spec.distanceM, eyes))
         }
     }
 

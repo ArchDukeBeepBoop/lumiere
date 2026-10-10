@@ -31,12 +31,12 @@ class Theatre {
      * [width] × [height] whose middle is [middleY] up and [distance] ahead.
      * Built again only when any of that changes.
      */
-    fun build(seat: Pose, width: Float, height: Float, middleY: Float, distance: Float) {
-        val key = listOf(seat.t.x, seat.t.z, seat.q.w, seat.q.y, width, height, middleY, distance)
+    fun build(seat: Pose, width: Float, height: Float, middleY: Float, distance: Float, eyeY: Float) {
+        val key = listOf(seat.t.x, seat.t.z, seat.q.w, seat.q.y, width, height, middleY, distance, eyeY)
         if (key == builtFor) return
         clear()
         builtFor = key
-        parts = Auditorium.build(width, height, middleY, distance).map { p ->
+        parts = Auditorium.build(width, height, middleY, distance, eyeY).map { p ->
             val at = seat.t + seat.q * Vector3(p.x, p.y, p.z)
             p to Entity.create(listOf(
                 Mesh("mesh://box".toUri(), hittable = MeshCollision.NoCollision),

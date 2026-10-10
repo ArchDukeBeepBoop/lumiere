@@ -55,6 +55,8 @@ class LumiereSpace : AppSystemActivity() {
         app.lumiere.android.player.ScreenAudio.enabled = !plain
         // Films play in the Theater: their own screen, in your room, the cinema or the dark.
         app.lumiere.android.player.Theater.enabled = !plain
+        // Away from your room, the big screen shows the title you're on while you browse.
+        app.lumiere.android.ui.Marquee.enabled = !plain
         app.lumiere.android.Stage.load(this)
         if (!plain) systemManager.registerSystem(Remote())
     }
@@ -125,6 +127,12 @@ class LumiereSpace : AppSystemActivity() {
                     style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
                 )
             },
+        ),
+        // The big screen while you browse away from your room: the title you're on (MarqueeScreen).
+        ComposeViewPanelRegistration(
+            R.id.lumiere_marquee,
+            composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.Marquee.Panel() } } },
+            settingsCreator = { MarqueeScreen.settingsFor(MarqueeScreen.current) },
         ),
         ComposeViewPanelRegistration(
             R.id.lumiere_ornament,

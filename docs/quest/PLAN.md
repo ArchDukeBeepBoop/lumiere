@@ -225,3 +225,33 @@ The headset verdict: sizes, curve and anchor felt stuck; the cinema screen too s
 - **A2 (done):** the Theater: video screen, transport, captions, environments, film light, sizes by angle, curve. Also: every panel faces you wherever you carry it (FACE); the Theater's screen can be carried in your room and the dark; floating panels have near-opaque glass (the screen showed through the tab bar like a reflection); the Private Room explains itself when empty.
 - **Lesson:** `Scale` never rendered on this headset, for panels or meshes. The old cinema's floor stayed a 1 m cube you sat inside, so there was no environment. Every box is now built at its real size (`Box` corners), and every panel is made at its real size.
 - **B (next):** browsing beyond the TV: an ambient backdrop of the focused title behind the window; hand scrubbing (pinch and drag); a wrist menu; an album wall in the music room; environment art from a generated glTF; a first-run tour of the gestures.
+
+## 14. Phase C: Bigscreen-class watching (2026-10-10)
+The headset verdict after A2: it opens now, but the cinema screen is still too small. The bar is Apple TV, Netflix and Bigscreen; NEX Player was named as a reference for environments.
+
+**Why the screen was small.** Sizes ran from 40° to 92° across, the default was 64°, and the cinema's screen stood at a fixed distance. Bigscreen's screens fill 80–110° of your view.
+
+**What changed**
+| Facet | Before | Now |
+|---|---|---|
+| Screen size | 40–92°, default 64° | 55 / 70 / **85** / 100 / 115°; older saved sizes are moved to the new default |
+| Cinema | A screen at a set distance | One IMAX wall, 24 m across; a size is how near you sit (13 m away at 85°, 7.6 m at 115°) |
+| Hall | A fixed rake; the parapet could hide the screen's foot | The rake is chosen from your sightline (0.25–0.6); a seat too close becomes a front balcony; the parapet is kept under the sightline (tested) |
+| Places | Room, Cinema, Void | + **Space**: a starfield all round you (`mesh://skybox`, a 4096×2048 Milky Way from `Scripts/starfield.py`) |
+| Browsing away from your room | The window over a dark screen | The **marquee**: the big screen shows the title you're on (backdrop, logo, facts), crossfading as you move (`ui.Marquee`, `MarqueeScreen`) |
+| Film light | The title's average colour | The picture's colour now, sampled every 2 s from its trickplay tile; the title's colour until the first tile arrives |
+| Transport | Play, ±10 s, scrubber, a few buttons | Title, time and scrubber with frame previews; Next episode; a **Subtitles & Audio** sheet; size, curve, place, window, close; 52–60 dp targets |
+| Skip intro / credits | Hidden in the Theater (it was drawn in the hidden window) | A pill over the transport (Floating) |
+| Pointer | Hovering switched tabs and scrolled the page | Pointing only looks; pressing chooses; the page never scrolls under the ray (`Pointing`, `CalmScroll`) |
+| Targets | 36–40 dp buttons and chips | At least 52 dp on Quest (icons 56 dp), per Horizon OS's 48 dp minimum |
+| Overlays | Closed only with Back | A tap outside closes them (actions, genre/letter chooser, episode strip) |
+| Home banner | Dots for show; turned while you read | Each dot is a target; the banner holds while you point at it |
+| Images | No fade, 16-bit colour (TV memory budget) | Crossfade and full colour on Quest |
+
+**NEX Player, for reference** (store pages and reviews; the app itself wasn't run). Photoreal environments (a cinema hall, a lakeside, a modern cabin, "MAX Cinema", "Voidline"); you browse and switch videos without leaving the environment; controls work at any distance, with shortcuts you can pin to the first layer. Lumiere now matches the browse-in-place part (the marquee) and adds Space. Lakeside and cabin, and pinnable shortcuts, are in Phase D.
+
+**Phase D (next)**
+- Environments: a lakeside at dusk and a modern cabin, as glTF or procedural meshes with baked light, and the film's light on them.
+- Pinnable transport shortcuts (NEX's first layer): choose which 4–6 buttons are always there.
+- Netflix and Apple TV parity: a search field with voice; remove from Up Next; My List; trailers in the banner after a few seconds (no spoiler previews); loading skeletons; profiles.
+- Close (×) buttons on every overlay, alongside tap-outside and Back.

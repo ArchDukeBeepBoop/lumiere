@@ -38,6 +38,8 @@ class Director(
     private val wall: Entity, private val transport: Entity,
 ) {
     private val screen = TheaterScreen()
+    private val marquee = MarqueeScreen()
+    private val sky = Sky()
     private val theatreMade = lazy { Theatre() }
     private val theatre by theatreMade
 
@@ -98,23 +100,28 @@ class Director(
         if (on != theaterOn) { theaterOn = on; if (on) enterTheater() else leaveTheater() }
         val sphere = on && request!!.projection != Projection.FLAT
         // The place you chose is where you are, browsing as well as watching: choose the cinema
-        // and you're in its hall at once, the window before you, the screen dark until a film.
+        // and you're in its hall at once, the window before you, the big screen showing the
+        // title you're on until a film takes it; the dark and space have the big screen too.
         val place = Stage.place
-        if (!on && place == Stage.Place.CINEMA) {
+        val away = place != Stage.Place.ROOM
+        if (!on && away) {
             // Not before the headset knows where your head is (at the very start it may read the floor).
             val s = browseSeat ?: seatHere().takeIf { it.eye.y > MIN_EYE_HEIGHT_M }?.also { browseSeat = it }
-            if (s != null && !s.tilted) {
-                val spec = browseSpec()
-                theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM)
+            if (s != null) {
+                val spec = browseSpec(place)
+                if (place == Stage.Place.CINEMA && !s.tilted)
+                    theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM, s.eye.y)
+                marquee.follow(spec, s)
             }
         }
-        if (place != Stage.Place.CINEMA) browseSeat = null
+        if (on || !away) marquee.clear()
+        if (!away) browseSeat = null
         if (on) {
             val spec = TheaterGeometry.spec(request!!, place, Stage.screenSize, Stage.curved)
             val s = seat ?: seatHere().also { seat = it }
             if (screen.follow(spec, s, movable = place != Stage.Place.CINEMA)) {
                 if (place == Stage.Place.CINEMA && !sphere && !s.tilted)
-                    theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM)
+                    theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM, s.eye.y)
                 shownPlace = null
             }
         }
@@ -126,6 +133,7 @@ class Director(
             shownPlace = place to hall
             scene.enablePassthrough(place == Stage.Place.ROOM && !sphere)
             if (theatreMade.isInitialized() || hall) theatre.show(hall)
+            sky.show(place == Stage.Place.SPACE && !sphere)
             shownBrightness = -1f; shownTint = null
         }
 
@@ -175,7 +183,8 @@ class Director(
         val target = if (watching && sleepLeft < 60_000) CinemaLight.PLAYING * (sleepLeft.coerceAtLeast(0) / 60_000f)
             else CinemaLight.target(watching, playing)
         brightness = if (app.lumiere.android.Motion.reduced) target else CinemaLight.ease(brightness, target)
-        val tint = Ambient.colour?.let { Triple(it.red, it.green, it.blue) }
+        // The colour of the picture now (from its trickplay frames), else the title's own.
+        val tint = (Theater.screenColour ?: Ambient.colour)?.let { Triple(it.red, it.green, it.blue) }
         when {
             hall -> theatre.light(brightness, tint)
             place == Stage.Place.ROOM && !sphere -> lightRoom(brightness, tint)
@@ -198,13 +207,13 @@ class Director(
         shownPlace = null
     }
 
-    /** Where you sit while browsing in the cinema; null elsewhere, so coming back seats you afresh. */
+    /** Where you sit while browsing away from your room; null in it, so going back out seats you afresh. */
     private var browseSeat: TheaterScreen.Seat? = null
 
-    /** The hall's screen while no film plays: the chosen size, a 16:9 picture. */
-    private fun browseSpec() = TheaterGeometry.spec(
+    /** The big screen while no film plays: the chosen size and curve, a 16:9 picture. */
+    private fun browseSpec(place: Stage.Place) = TheaterGeometry.spec(
         Theater.Request(Projection.FLAT, app.lumiere.android.api.StereoLayout.MONO, 1920, 1080),
-        Stage.Place.CINEMA, Stage.screenSize, Stage.curved)
+        place, Stage.screenSize, Stage.curved)
 
     /** Your eyes and the way you face now: level, or tilted with you when you lie back and look up. */
     private fun seatHere(): TheaterScreen.Seat {
@@ -245,13 +254,13 @@ class Director(
             screen.place(s)
             TheaterScreen.current?.let { spec ->
                 if (Stage.place == Stage.Place.CINEMA && spec.projection == Projection.FLAT && !s.tilted)
-                    theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM)
+                    theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM, s.eye.y)
             }
             if (windowMode == WindowMode.ASKED) setWindow(WindowMode.ASKED)
             if (transportShown) placeTransport()
         } else {
-            // In the cinema the hall comes round you where you are now.
-            if (Stage.place == Stage.Place.CINEMA) browseSeat = seatHere()
+            // Away from your room the hall and the big screen come round you where you are now.
+            if (Stage.place != Stage.Place.ROOM) browseSeat = seatHere()
             windowInFront()
             if (windowMode != WindowMode.HOME) windowHome = window.getComponent<Transform>().transform
             else dockSidebar()
@@ -289,7 +298,9 @@ class Director(
 
     /** The transport near your hands, below your line of sight to the screen, turned up to your eyes. */
     private fun placeTransport() {
-        transport.setComponent(Transform(nearYou(Window.TRANSPORT_DISTANCE_M, Window.TRANSPORT_BELOW_EYES_M)))
+        // The panel's middle sits above the bar's by half the clear space over it.
+        val clearAbove = Window.TRANSPORT_WIDTH_M * (Window.TRANSPORT_HEIGHT_DP - Window.TRANSPORT_BAR_DP) / Window.TRANSPORT_WIDTH_DP
+        transport.setComponent(Transform(nearYou(Window.TRANSPORT_DISTANCE_M, Window.TRANSPORT_BELOW_EYES_M - clearAbove / 2)))
     }
 
     /** The ornament before you; over the transport while the Theater is up. */

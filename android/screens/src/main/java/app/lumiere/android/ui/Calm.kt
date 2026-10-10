@@ -10,6 +10,8 @@ import androidx.compose.foundation.gestures.BringIntoViewSpec
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 object CalmScroll : BringIntoViewSpec {
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = when {
+        // Pointed at, it's already in view, or near enough: pointing never pulls the page.
+        Pointing.byPointer -> 0f
         offset >= 0f && offset + size <= containerSize -> 0f
         offset < 0f -> offset
         size > containerSize -> offset

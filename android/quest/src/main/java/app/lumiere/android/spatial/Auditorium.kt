@@ -44,19 +44,28 @@ object Auditorium {
     private const val SEAT_DEPTH = 0.55f
     private const val BEHIND = 2.6f
 
-    /** The hall for a screen [screenWidth] × [screenHeight] whose middle is at height [screenMiddleY], [distance] ahead. */
-    fun build(screenWidth: Float, screenHeight: Float, screenMiddleY: Float, distance: Float): List<Part> {
+    /**
+     * The hall for a screen [screenWidth] × [screenHeight] whose middle is at
+     * height [screenMiddleY], [distance] ahead, seen from eyes at [eyeY].
+     */
+    fun build(screenWidth: Float, screenHeight: Float, screenMiddleY: Float, distance: Float, eyeY: Float = 1.2f): List<Part> {
         val parts = mutableListOf<Part>()
         val hallWidth = max(screenWidth + 6f, 16f)
         val half = hallWidth / 2
         val screenBottom = screenMiddleY - screenHeight / 2
         val screenTop = screenMiddleY + screenHeight / 2
-        // Rows ahead step down until four metres short of the screen, steeper for a taller screen,
-        // so the floor before the stage meets the stage under the screen's foot.
-        val rows = max(0, ((distance - 4f) / ROW_PITCH).toInt())
-        val rake = rakeFor(screenBottom, rows)
+        // Rows ahead step down until four metres short of the screen: each row at least as steep as
+        // your sightline to the screen's foot, so no seat back ever crosses it, and steeper still if the
+        // floor must reach the stage. Where even the steepest rake can't keep under that line (a near
+        // seat before a huge screen), there are no rows ahead: you're at a balcony's front.
+        val sightSlope = (eyeY - screenBottom) / distance
+        val byDistance = max(0, ((distance - 4f) / ROW_PITCH).toInt())
+        val rows = if (sightSlope * ROW_PITCH * 1.1f > MAX_RAKE) 0 else byDistance
+        val rake = max(rakeFor(screenBottom, rows), sightSlope * ROW_PITCH * 1.1f).coerceIn(MIN_RAKE, MAX_RAKE)
         val lastRowFloor = -rows * rake
         val frontFloor = min(lastRowFloor - rake, screenBottom - 0.9f)
+        /** The height of your sightline to the screen's foot, [z] ahead. */
+        fun sight(z: Float) = eyeY - sightSlope * z
         val ceiling = max(screenTop + 2.5f, 4.5f)
         val seatHalf = half - 1.4f          // aisles down both sides
 
@@ -82,7 +91,7 @@ object Auditorium {
         // Where the rows end high above the front floor, a balcony front: a low parapet, so it never hides the screen's foot.
         val balconyZ = rows * ROW_PITCH + ROW_PITCH / 2
         if (lastRowFloor - frontFloor > 1.2f) {
-            val top = lastRowFloor + PARAPET
+            val top = min(lastRowFloor + PARAPET, sight(balconyZ) - 0.15f)
             parts += Part(Kind.BALCONY, 0f, (top + frontFloor) / 2, balconyZ + 0.1f, hallWidth, top - frontFloor, 0.2f)
         }
         // The front floor and the stage under the screen.

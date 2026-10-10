@@ -86,7 +86,7 @@ fun TvLibraryScreen(state: AppState) {
                     LazyRow(Modifier.weight(1f).focusRestorer(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         itemsIndexed(shelves) { i, s ->
                             TvPill({ chosen = i }, (if (i == chosen) Modifier.focusRequester(first) else Modifier)
-                                .onFocusChanged { if (it.isFocused) chosen = i }, selected = i == chosen) {
+                                .onFocusChanged { if (it.isFocused && !app.lumiere.android.ui.Pointing.byPointer) chosen = i }, selected = i == chosen) {
                                 Text(s.name, style = MaterialTheme.typography.titleSmall)
                             }
                         }

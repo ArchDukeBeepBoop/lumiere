@@ -17,14 +17,24 @@ import kotlin.math.tan
  * middle is near your eye line. Pure, so it's tested without a headset.
  */
 object TheaterGeometry {
-    /** How much of your view each size fills, across. */
-    val SIZE_DEGREES = floatArrayOf(40f, 52f, 64f, 78f, 92f)
+    /** How much of your view each size fills, across: from a big screen to an IMAX wall that wraps your view. */
+    val SIZE_DEGREES = floatArrayOf(55f, 70f, 85f, 100f, 115f)
+    /** Where everyone starts: 85°, a screen that fills your view, as Bigscreen's do. */
+    const val DEFAULT_SIZE = 2
 
-    /** How far the screen stands, by place. */
-    fun distance(place: Stage.Place): Float = when (place) {
+    /** The cinema's screen: one IMAX wall, 24 m across; a size is how near you sit to it. */
+    const val CINEMA_SCREEN_WIDTH_M = 24f
+
+    /**
+     * How far the screen stands, by place and size: in the cinema the screen
+     * keeps its size and you take a nearer or further seat; elsewhere it
+     * stands at the place's distance and grows.
+     */
+    fun distance(place: Stage.Place, degrees: Float): Float = when (place) {
         Stage.Place.ROOM -> 3.0f
-        Stage.Place.CINEMA -> 14f
-        Stage.Place.VOID -> 9f
+        Stage.Place.CINEMA -> CINEMA_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
+        Stage.Place.VOID -> 10f
+        Stage.Place.SPACE -> 12f
     }
 
     /** How far above your eyes the screen's middle sits, by place: in your room a touch below, as a TV. */
@@ -32,6 +42,7 @@ object TheaterGeometry {
         Stage.Place.ROOM -> -0.05f
         Stage.Place.CINEMA -> 0.3f
         Stage.Place.VOID -> 0.1f
+        Stage.Place.SPACE -> 0.2f
     }
 
     /**
@@ -50,8 +61,8 @@ object TheaterGeometry {
         val (pw, ph) = pictureSize(request)
         if (request.projection != Projection.FLAT)
             return Spec(request.projection, request.eyes, 0f, 0f, null, SPHERE_RADIUS_M, 0f, pw, ph)
-        val d = distance(place)
         val degrees = SIZE_DEGREES[size.coerceIn(0, SIZE_DEGREES.lastIndex)]
+        val d = distance(place, degrees)
         val radians = Math.toRadians(degrees.toDouble()).toFloat()
         // Curved, the arc spans the angle; flat, the chord does.
         val width = if (curved) d * radians else 2 * d * tan(radians / 2)

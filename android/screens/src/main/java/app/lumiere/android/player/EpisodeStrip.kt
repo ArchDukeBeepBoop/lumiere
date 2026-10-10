@@ -38,6 +38,8 @@ import app.lumiere.android.ui.CardShape
 import app.lumiere.android.ui.Palette
 import app.lumiere.android.ui.focusCard
 import app.lumiere.android.ui.imageFor
+import app.lumiere.android.ui.keepsTaps
+import app.lumiere.android.ui.tapOutsideCloses
 import coil.compose.AsyncImage
 
 /**
@@ -57,9 +59,9 @@ fun EpisodeStrip(server: Server, userId: String, current: Item, onPick: (Item) -
         list.scrollToItem((here - 1).coerceAtLeast(0))
         runCatching { focus.requestFocus() }
     }
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.9f))),
-        contentAlignment = Alignment.BottomStart) {
-        Column(Modifier.padding(bottom = 24.dp)) {
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.9f)))
+        .tapOutsideCloses(onClose), contentAlignment = Alignment.BottomStart) {
+        Column(Modifier.keepsTaps().padding(bottom = 24.dp)) {
             Text(current.seasonName ?: "Episodes", style = MaterialTheme.typography.titleLarge, color = Color.White,
                 modifier = Modifier.padding(start = 48.dp))
             LazyRow(state = list, contentPadding = PaddingValues(horizontal = 48.dp, vertical = 12.dp),

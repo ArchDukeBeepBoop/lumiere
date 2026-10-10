@@ -11,6 +11,8 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.BringIntoViewSpec
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.gestures.LocalBringIntoViewSpec
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -98,7 +100,7 @@ private fun pivot(fraction: Float, still: () -> Boolean = { false }) = object : 
     // Already wholly on screen: nothing moves. Moving along a row used to
     // nudge the whole page each time; only a row off screen is brought up.
     override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = when {
-        still() -> 0f
+        still() || Pointing.byPointer -> 0f
         offset >= 0f && offset + size <= containerSize -> 0f
         else -> offset - containerSize * fraction
     }
@@ -230,6 +232,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
     LaunchedEffect(heroFocused, hero, focused) {
         state.focusedItem = if (heroFocused) hero else focused
         if (!heroFocused) delay(300); shown = if (heroFocused) hero else focused ?: hero
+        Marquee.show(shown)
     }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { state.focusedItem = null } }
 
@@ -423,7 +426,11 @@ private fun Hero(state: AppState, item: Item?, pages: Int, page: Int, onPage: (I
         if (!state.settings.tvTourShown || state.homeScroll.first > 0) return@LaunchedEffect
         delay(200); runCatching { play.requestFocus() }
     }
-    Box(modifier.fillMaxWidth()) {
+    // The banner holds its page while it's read: the remote resting on More Info, or a ray on the banner.
+    val pointer = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pointedAt by pointer.collectIsHoveredAsState()
+    LaunchedEffect(pointedAt, onInfo) { onHold(pointedAt || onInfo) }
+    Box(modifier.fillMaxWidth().then(if (app.lumiere.android.AppBuild.quest) Modifier.hoverable(pointer) else Modifier)) {
         if (item == null) return@Box
         // In the private room the banner says so, in the room's own colour, so the two never feel alike.
         if (state.roomOpen) Text("Private Room", style = MaterialTheme.typography.labelLarge, color = Palette.onAccent,
@@ -460,13 +467,16 @@ private fun Hero(state: AppState, item: Item?, pages: Int, page: Int, onPage: (I
                     Text(if (item.positionTicks > 0) "▶  Resume" + (item.episodeLabel?.let { " $it" } ?: "") +
                         " · ${((item.runtimeTicks ?: 0) - item.positionTicks) / TICKS_PER_SECOND / 60} min left" else "▶  Play")
                 }
-                LButton(primary = false, modifier = Modifier.onFocusChanged { onInfo = it.isFocused; onHold(it.isFocused) }, onClick = {
+                LButton(primary = false, modifier = Modifier.onFocusChanged { onInfo = it.isFocused }, onClick = {
                     state.push(if (item.isEpisode && item.seriesId != null) Screen.Detail(item.seriesId!!, item.seasonId) else Screen.Detail(item.id))
                 }) { Text("More Info") }
                 Spacer(Modifier.width(18.dp))
+                // On a Quest each dot is a target of its own: point and pinch to go to that page.
                 repeat(pages) { i ->
-                    Box(Modifier.padding(horizontal = 3.dp).size(if (i == page) 8.dp else 6.dp).clip(CircleShape)
-                        .background(if (i == page) Color.White else Color.White.copy(alpha = 0.35f)))
+                    Box(Modifier.questTarget(32.dp).pointerTap { onPage(i - page) }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.padding(horizontal = 3.dp).size(if (i == page) 8.dp else 6.dp).clip(CircleShape)
+                            .background(if (i == page) Color.White else Color.White.copy(alpha = 0.35f)))
+                    }
                 }
             }
         }

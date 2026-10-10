@@ -53,11 +53,14 @@ object Floating {
 
     var upNext by mutableStateOf<UpNextOffer?>(null)
     var scrub by mutableStateOf<Scrub?>(null)
+    /** "Skip Intro", "Skip Recap", "Skip Credits": floating by you while the segment plays, as Netflix offers it. */
+    class SkipOffer(val label: String, val skip: () -> Unit)
+    var skip by mutableStateOf<SkipOffer?>(null)
 
     /** A song playing while you do something else: not over a film, nor beside Now Playing itself. */
     private val listening: Boolean get() = Music.current != null && Music.isPlaying &&
         OpenApp.state?.top.let { it !is Screen.Player && it != Screen.NowPlaying }
-    val showing: Boolean get() = enabled && (upNext != null || scrub != null || listening)
+    val showing: Boolean get() = enabled && (upNext != null || scrub != null || skip != null || listening)
 
     @Composable
     fun Ornament() = WithAppImages {
@@ -65,9 +68,11 @@ object Floating {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val offer = upNext
                 val s = scrub
+                val sk = skip
                 when {
                     s != null -> FilmStrip(s)
                     offer != null -> UpNextOrb(offer)
+                    sk != null -> SkipPill(sk)
                     listening -> NowSinging()
                 }
             }
@@ -135,5 +140,13 @@ private fun NowSinging() {
             Text(track.artists.joinToString(", ").ifEmpty { track.albumArtist ?: "" }, color = Palette.textSecondary, maxLines = 1)
             if (sung != null) Text(sung, style = MaterialTheme.typography.headlineSmall, color = Palette.accent, maxLines = 2)
         }
+    }
+}
+
+/** The skip offer: one large pill, a pinch or trigger away. */
+@Composable
+private fun SkipPill(o: Floating.SkipOffer) {
+    LButton(onClick = { app.lumiere.android.player.Theater.poke(); o.skip() }) {
+        Text(o.label, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp))
     }
 }
