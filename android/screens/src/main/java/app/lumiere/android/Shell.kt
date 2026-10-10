@@ -42,6 +42,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.tv.material3.NavigationDrawerItem
 import app.lumiere.android.ui.LocalFormFactor
 import app.lumiere.android.ui.Palette
+import app.lumiere.android.ui.pointerTap
 
 internal data class Tab(val label: String, val icon: ImageVector, val screen: () -> Screen?, val owns: (Screen) -> Boolean)
 
@@ -162,9 +163,11 @@ private fun TvMenu(items: List<Tab>, top: Screen, state: AppState) {
             Column(Modifier.fillMaxHeight().background(Palette.chrome).padding(12.dp),
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp, androidx.compose.ui.Alignment.CenterVertically)) {
                 items.forEachIndexed { i, t ->
+                    val pick = { state.tvMenuOpen = false; t.screen()?.let(state::tab); Unit }
                     NavigationDrawerItem(
-                        modifier = if (t.owns(top) || (i == 0 && items.none { it.owns(top) })) Modifier.focusRequester(first) else Modifier,
-                        selected = t.owns(top), onClick = { state.tvMenuOpen = false; t.screen()?.let(state::tab) },
+                        modifier = (if (t.owns(top) || (i == 0 && items.none { it.owns(top) })) Modifier.focusRequester(first) else Modifier)
+                            .pointerTap(onClick = pick),
+                        selected = t.owns(top), onClick = pick,
                         leadingContent = { androidx.tv.material3.Icon(t.icon, null) },
                         colors = androidx.tv.material3.NavigationDrawerItemDefaults.colors(
                             contentColor = Palette.textSecondary, selectedContentColor = Palette.accent,

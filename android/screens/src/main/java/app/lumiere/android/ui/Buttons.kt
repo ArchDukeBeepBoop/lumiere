@@ -45,7 +45,7 @@ fun LButton(onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean
         return
     }
     androidx.tv.material3.Button(
-        onClick = onClick, modifier = modifier.hoverFocuses(), enabled = enabled,
+        onClick = onClick, modifier = modifier.pointerTap(enabled, onClick).hoverFocuses(), enabled = enabled,
         scale = TvButtonDefaults.scale(focusedScale = 1.06f),
         colors = TvButtonDefaults.colors(
             containerColor = if (primary) (tint ?: Palette.accent) else Palette.surfaceRaised.copy(alpha = 0.72f),
@@ -72,7 +72,7 @@ fun LChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit,
         return
     }
     androidx.tv.material3.FilterChip(
-        selected = selected, onClick = onClick, modifier = modifier,
+        selected = selected, onClick = onClick, modifier = modifier.pointerTap(onClick = onClick).hoverFocuses(),
         scale = TvChipDefaults.scale(focusedScale = 1.1f),
         colors = TvChipDefaults.colors(
             containerColor = Color.Transparent, contentColor = Palette.textSecondary,
@@ -92,7 +92,7 @@ fun LIconButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boo
     }
     var focused by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     androidx.tv.material3.IconButton(
-        onClick = onClick, modifier = modifier.onFocusChanged { focused = it.isFocused }, enabled = enabled,
+        onClick = onClick, modifier = modifier.pointerTap(enabled, onClick).hoverFocuses().onFocusChanged { focused = it.isFocused }, enabled = enabled,
         scale = TvIconDefaults.scale(focusedScale = 1.15f),
         // White behind a focused icon, as the bar's pills; its content colour turns dark with it.
         colors = TvIconDefaults.colors(containerColor = Color.Transparent, contentColor = Palette.textPrimary,

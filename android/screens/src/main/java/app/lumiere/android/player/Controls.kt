@@ -213,7 +213,8 @@ fun PlayerOverlay(
                     else -> false
                 }
             }
-            .then(if (isTv) Modifier else Modifier.gestures(context, onTap = { visible = !visible }, onSeek = ::seekBy, lift, onLift)),
+            // A Quest has the TV's layout and a pointer: tapping the picture shows the controls there too.
+            .then(if (isTv && !app.lumiere.android.AppBuild.quest) Modifier else Modifier.gestures(context, onTap = { visible = !visible }, onSeek = ::seekBy, lift, onLift)),
     ) {
         error?.let {
             Text(it, color = Color.White, style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
