@@ -11,18 +11,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.CenterFocusStrong
+import androidx.compose.material.icons.filled.Crop169
+import androidx.compose.material.icons.filled.Panorama
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.Weekend
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material.icons.filled.ZoomOut
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,7 +44,7 @@ import app.lumiere.android.tabs
  * visionOS's tab bar, for the Quest: a column of glass beside Lumiere's
  * window, carried with it. Home, Library, Search, Music and Settings, and
  * the private room; then the screen itself: larger, smaller, the room or
- * the cinema, bring it here, pin it in place. It works on the window's own
+ * the cinema, bring it here, curved or flat, anchored in place. It works on the window's own
  * state, so a tab here is the same as one from the TV's menu.
  */
 @Composable
@@ -58,8 +60,10 @@ fun SpatialSidebar(activity: android.app.Activity) {
 @Composable
 private fun Rail(state: AppState, activity: android.app.Activity) {
     val top = state.top
-    Column(Modifier.frosted(40).padding(vertical = 14.dp, horizontal = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Fourteen buttons in the rail's 800 dp; it scrolls rather than clips if more ever come.
+    Column(Modifier.frosted(40).verticalScroll(androidx.compose.foundation.rememberScrollState())
+        .padding(vertical = 12.dp, horizontal = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         tabs(state, tv = true).forEach { tab ->
             RailButton(tab.icon, tab.label, chosen = tab.owns(top)) { tab.screen()?.let(state::tab) }
         }
@@ -75,11 +79,13 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
         RailButton(if (cinema) Icons.Default.Weekend else Icons.Default.Theaters,
             if (cinema) "Back to your room" else "Cinema", chosen = cinema) { Stage.toggleCinema() }
         RailButton(Icons.Default.CenterFocusStrong, "Bring the screen here", chosen = false) { Stage.bringHere() }
+        RailButton(if (Stage.curved) Icons.Default.Crop169 else Icons.Default.Panorama,
+            if (Stage.curved) "Make the screen flat" else "Curve the screen round you", chosen = false) { Stage.toggleCurve() }
         // The sleep timer: each press the next step, its minutes shown under the moon.
         RailButton(Icons.Default.Bedtime, if (Stage.sleepMinutes == 0) "Sleep timer" else "Sleep in ${Stage.sleepMinutes} minutes",
             chosen = Stage.sleepMinutes > 0, caption = Stage.sleepMinutes.takeIf { it > 0 }?.toString()) { Stage.cycleSleep() }
-        if (!cinema) RailButton(if (Stage.locked) Icons.Default.PushPin else Icons.Outlined.PushPin,
-            if (Stage.locked) "Unpin the screen" else "Pin the screen in place", chosen = Stage.locked) { Stage.toggleLock() }
+        if (!cinema) RailButton(Icons.Default.Anchor,
+            if (Stage.locked) "Release the screen" else "Anchor the screen here", chosen = Stage.locked) { Stage.toggleLock() }
     }
 }
 
@@ -94,7 +100,7 @@ private fun RailButton(icon: ImageVector, label: String, chosen: Boolean, captio
         else -> Color.Transparent
     }
     val ink = if (chosen) Palette.canvas else Palette.textPrimary
-    Box(Modifier.size(52.dp).background(ground, CircleShape).hoverable(source)
+    Box(Modifier.size(48.dp).background(ground, CircleShape).hoverable(source)
         .clickable(interactionSource = source, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center) {
         Icon(icon, label, tint = ink, modifier = Modifier.size(24.dp).then(if (caption != null) Modifier.padding(bottom = 10.dp) else Modifier))

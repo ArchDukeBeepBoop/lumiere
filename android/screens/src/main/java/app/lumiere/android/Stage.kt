@@ -9,9 +9,11 @@ import androidx.compose.runtime.setValue
 /**
  * Where Lumiere's screen is, on a Quest, as the sidebar sets it: in your
  * room at one of five sizes, or in the cinema from one of three rows, as
- * Apple TV's Cinema on Vision Pro offers front, middle and back. Locked, it
- * can't be carried off by a stray grab; "bring here" puts it before you.
- * Remembered between visits. The headset's own module does the placing.
+ * Apple TV's Cinema on Vision Pro offers front, middle and back; curved
+ * round you or flat. Anchored, it stays where it is — a stray grab can't
+ * carry it off, and it is back in the same spot next time; "bring here"
+ * puts it before you. Remembered between visits. The headset's own module
+ * does the placing.
  */
 object Stage {
     enum class Place { ROOM, CINEMA }
@@ -24,7 +26,17 @@ object Stage {
     /** 0 back row, 1 middle, 2 front. */
     var seat by mutableIntStateOf(1)
         private set
+    /** Anchored: held in place, and put back there at the next start. */
     var locked by mutableStateOf(false)
+        private set
+    /** Curved round you, as the Quest's own windows are; or flat, like a TV. */
+    var curved by mutableStateOf(true)
+        private set
+    /**
+     * Where the anchored screen stands, in the headset's room space:
+     * x, y, z then the turn as w, x, y, z. Null when it isn't anchored.
+     */
+    var anchor: FloatArray? = null
         private set
     /** When the sleep timer ends, in milliseconds since 1970; 0 when it's off. */
     var sleepAt by mutableStateOf(0L)
@@ -59,12 +71,22 @@ object Stage {
         roomSize = p.getInt("roomSize", 2).coerceIn(0, ROOM_SIZES - 1)
         seat = p.getInt("seat", 1).coerceIn(0, SEATS - 1)
         locked = p.getBoolean("locked", false)
+        curved = p.getBoolean("curved", true)
+        anchor = anchorFrom(p.getString("anchor", null)).takeIf { locked }
     }
 
     private fun save() {
         prefs?.edit()?.putString("place", place.name)?.putInt("roomSize", roomSize)
-            ?.putInt("seat", seat)?.putBoolean("locked", locked)?.apply()
+            ?.putInt("seat", seat)?.putBoolean("locked", locked)?.putBoolean("curved", curved)
+            ?.putString("anchor", anchor?.joinToString(","))?.apply()
     }
+
+    /** The anchored spot, as the headset module reads it off the screen. */
+    fun rememberAnchor(pose: FloatArray) { if (pose.size == 7) { anchor = pose.copyOf(); save() } }
+
+    /** A saved spot back from its text; null if there's none or it's damaged. */
+    fun anchorFrom(text: String?): FloatArray? = text?.split(',')?.mapNotNull { it.toFloatOrNull() }
+        ?.takeIf { it.size == 7 && it.all { v -> v.isFinite() } }?.toFloatArray()
 
     /** Bigger: a size up in the room, a row nearer in the cinema. */
     fun larger() {
@@ -78,6 +100,7 @@ object Stage {
     }
 
     fun toggleCinema() { place = if (place == Place.ROOM) Place.CINEMA else Place.ROOM; save() }
-    fun toggleLock() { locked = !locked; save() }
+    fun toggleLock() { locked = !locked; if (!locked) anchor = null; save() }
+    fun toggleCurve() { curved = !curved; save() }
     fun bringHere() { bringHereAsks++ }
 }

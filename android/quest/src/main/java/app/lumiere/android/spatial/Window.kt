@@ -31,10 +31,12 @@ object Window {
     const val SIDEBAR_WIDTH_M = 0.11f
     val SIDEBAR_HEIGHT_M = SIDEBAR_WIDTH_M * SIDEBAR_HEIGHT_DP / SIDEBAR_WIDTH_DP
     const val SIDEBAR_GAP_M = 0.05f
-    /** You face +Z, so your left is +X (right-handed, Y up). If it shows on the right, flip this sign. */
-    val SIDEBAR_X_M = WIDTH_M / 2 + SIDEBAR_GAP_M + SIDEBAR_WIDTH_M / 2
-    /** How far the window's edge comes toward you: the curve's sagitta at half its width. */
-    val EDGE_NEARER_M = DISTANCE_M * (1 - kotlin.math.cos(WIDTH_M / 2 / DISTANCE_M))
+    // You face +Z, so your left is +X (right-handed, Y up); Seats.sidebarBeside places it.
+
+    /** In the cinema the sidebar comes to you: this far away, this far round to your left, a little low. */
+    const val NEAR_SIDEBAR_DISTANCE_M = 1.3f
+    const val NEAR_SIDEBAR_ANGLE_DEG = 35f
+    const val NEAR_SIDEBAR_BELOW_EYES_M = 0.2f
 
     /** How low and high it can be carried. */
     const val MIN_HEIGHT_M = 0.6f

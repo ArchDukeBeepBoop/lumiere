@@ -97,15 +97,20 @@ class LumiereSpace : AppSystemActivity() {
             sunColor = Vector3(0f),
             sunDirection = -Vector3(1f, 3f, 2f),
         )
+        // Where it was anchored, if it was; otherwise before you.
+        val anchored = app.lumiere.android.Stage.anchor?.let { a ->
+            Pose(Vector3(a[0], a[1], a[2]), com.meta.spatial.core.Quaternion(a[3], a[4], a[5], a[6]))
+        }
         val window = Entity.createPanelEntity(
             R.id.lumiere_window,
-            Transform(Pose(Vector3(0f, Window.HEIGHT_ABOVE_FLOOR_M, Window.DISTANCE_M))),
+            Transform(anchored ?: Pose(Vector3(0f, Window.HEIGHT_ABOVE_FLOOR_M, Window.DISTANCE_M))),
             Grabbable(enabled = true, type = GrabbableType.PIVOT_Y, minHeight = Window.MIN_HEIGHT_M, maxHeight = Window.MAX_HEIGHT_M),
         )
-        // Beside the window's left edge, which the curve brings nearer you, and carried with it.
+        // Beside the window's left edge, along its curve, and carried with it (Cinema keeps it so).
+        val beside = Seats.sidebarBeside(Seats.room(Seats.ROOM.size / 2, curved = true))
         val sidebar = Entity.createPanelEntity(
             R.id.lumiere_sidebar,
-            Transform(Pose(Vector3(Window.SIDEBAR_X_M, 0f, -Window.EDGE_NEARER_M))),
+            Transform(Pose(Vector3(beside[0], 0f, beside[1]), com.meta.spatial.core.Quaternion.fromDirection(Vector3(beside[2], 0f, beside[3])))),
             TransformParent(window),
         )
         // Running long enough to count as a good start; the next one tries everything again.
@@ -139,7 +144,9 @@ class LumiereSpace : AppSystemActivity() {
             com.meta.spatial.toolkit.Visible(false),
         )
         // The lights go down for a film.
-        runCatching { Cinema(scene, window, sidebar, ornament).start(scope) }
+        val objects = systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>()
+        val panelOf = { e: Entity -> objects.getSceneObject(e)?.getNow(null) as? com.meta.spatial.runtime.PanelSceneObject }
+        runCatching { Cinema(scene, window, sidebar, ornament, panelOf).start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "cinema unavailable", it) }
     }
 

@@ -42,11 +42,11 @@ class Theatre {
         listOf(sky, floor, stage).forEach { it.setComponent(Visible(on)) }
     }
 
-    /** The stage, under a screen whose middle is at [screen], facing the same way. */
-    fun place(screen: Pose, screenHeightM: Float) {
+    /** The stage, under a screen [screenWidthM] wide whose middle is at [screen], facing the same way. */
+    fun place(screen: Pose, screenWidthM: Float) {
         val under = screen.t - screen.forward() * 0.6f
         stage.setComponent(Transform(Pose(Vector3(under.x, Seats.STAGE_M / 2, under.z), screen.q)))
-        stage.setComponent(Scale(Vector3(screenHeightM * 1.9f, Seats.STAGE_M, 1.2f)))
+        stage.setComponent(Scale(Vector3(screenWidthM * 1.15f, Seats.STAGE_M, 1.2f)))
     }
 
     /**
