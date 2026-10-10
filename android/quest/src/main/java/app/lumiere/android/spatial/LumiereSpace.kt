@@ -53,8 +53,8 @@ class LumiereSpace : AppSystemActivity() {
         app.lumiere.android.ui.PosterWall.enabled = !plain
         // A film's sound comes from the screen (ScreenSound tells the player where it is).
         app.lumiere.android.player.ScreenAudio.enabled = !plain
-        // 180° and 360° films wrap round you.
-        app.lumiere.android.player.Surround.enabled = !plain
+        // Films play in the Theater: their own screen, in your room, the cinema or the dark.
+        app.lumiere.android.player.Theater.enabled = !plain
         app.lumiere.android.Stage.load(this)
         if (!plain) systemManager.registerSystem(Remote())
     }
@@ -83,26 +83,29 @@ class LumiereSpace : AppSystemActivity() {
                 )
             },
         ),
-        // 180° and 360° films: a half or whole sphere round you, made only while one plays (SurroundSphere).
+        // The Theater's screen: a video panel at its real size and shape — a quad, a curve, or a
+        // half or whole sphere — made for each film and size (TheaterScreen).
         com.meta.spatial.toolkit.VideoSurfacePanelRegistration(
-            R.id.lumiere_surround,
+            R.id.lumiere_screen,
             surfaceConsumer = { _, surface ->
-                android.os.Handler(mainLooper).post { app.lumiere.android.player.Surround.surface = surface }
+                android.os.Handler(mainLooper).post { app.lumiere.android.player.Theater.surface = surface }
             },
-            settingsCreator = { _ -> SurroundSphere.settingsFor(app.lumiere.android.player.Surround.request) },
+            settingsCreator = { _ -> TheaterScreen.settingsFor(TheaterScreen.current) },
         ),
-        // The poster wall: your library curved round you (PosterWall).
+        // Its captions, over the screen's foot at the screen's scale.
         ComposeViewPanelRegistration(
-            R.id.lumiere_wall,
-            composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.PosterWall.Panel() } } },
+            R.id.lumiere_captions,
+            composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.TheaterCaptions() } } },
+            settingsCreator = { TheaterScreen.captionSettings(TheaterScreen.current) },
+        ),
+        // Its transport, near your hands.
+        ComposeViewPanelRegistration(
+            R.id.lumiere_transport,
+            composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.TheaterBar() } } },
             settingsCreator = {
                 UIPanelSettings(
-                    shape = CylinderShapeOptions(
-                        radius = Window.WALL_RADIUS_M,
-                        width = Window.WALL_WIDTH_DP / Window.WALL_DP_PER_M,
-                        height = Window.WALL_HEIGHT_DP / Window.WALL_DP_PER_M,
-                    ),
-                    display = DpDisplayOptions(width = Window.WALL_WIDTH_DP.toFloat(), height = Window.WALL_HEIGHT_DP.toFloat(), dpi = Window.WALL_DPI),
+                    shape = QuadShapeOptions(width = Window.TRANSPORT_WIDTH_M, height = Window.TRANSPORT_HEIGHT_M),
+                    display = DpDisplayOptions(width = Window.TRANSPORT_WIDTH_DP.toFloat(), height = Window.TRANSPORT_HEIGHT_DP.toFloat()),
                     style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
                 )
             },
@@ -130,13 +133,13 @@ class LumiereSpace : AppSystemActivity() {
             sunColor = Vector3(0f),
             sunDirection = -Vector3(1f, 3f, 2f),
         )
-        // Before you, like any Quest window: a grab bar beneath it to carry it, which turns it
-        // to face you as it goes, and corners that resize it (both ISDK's own).
+        // Before you, like any Quest window: a grab bar beneath it to carry it anywhere — it keeps
+        // facing you wherever you put it, overhead too — and corners that resize it (ISDK's own).
         val start = Pose(Vector3(0f, Window.HEIGHT_ABOVE_FLOOR_M, Window.DISTANCE_M))
         val window = Entity.createPanelEntity(
             R.id.lumiere_window,
             Transform(start),
-            Grabbable(enabled = true, type = GrabbableType.PIVOT_Y, minHeight = Window.MIN_HEIGHT_M, maxHeight = Window.MAX_HEIGHT_M),
+            Grabbable(enabled = true, type = GrabbableType.FACE),
             IsdkPanelResize(
                 true, ResizeMode.Relayout,
                 Vector2(Window.MIN_WIDTH_M, Window.MIN_WIDTH_M * Window.HEIGHT_M / Window.WIDTH_M),
@@ -148,7 +151,7 @@ class LumiereSpace : AppSystemActivity() {
         val sidebar = Entity.createPanelEntity(
             R.id.lumiere_sidebar,
             Transform(Docking.beside(start, Window.WIDTH_M)),
-            Grabbable(enabled = true, type = GrabbableType.PIVOT_Y),
+            Grabbable(enabled = true, type = GrabbableType.FACE),
         )
         // Running long enough to count as a good start; the next one tries everything again.
         scope.launch {
@@ -182,17 +185,19 @@ class LumiereSpace : AppSystemActivity() {
         )
         // The poster wall waits out of sight, and out of the pointer's way, until it's asked for.
         val wall = Entity.createPanelEntity(R.id.lumiere_wall, Transform(Window.parked()), com.meta.spatial.toolkit.Visible(false))
+        // The Theater's transport waits out of sight until a film plays; it can be carried too.
+        val transport = Entity.createPanelEntity(
+            R.id.lumiere_transport, Transform(Window.parked()),
+            Grabbable(enabled = true, type = GrabbableType.FACE), com.meta.spatial.toolkit.Visible(false),
+        )
+        runCatching { Director(scene, window, sidebar, ornament, wall, transport).also { director = it }.start(scope) }
+            .onFailure { android.util.Log.e("Lumiere", "director unavailable", it) }
         // The film's sound from where its picture is, every frame.
-        runCatching { systemManager.registerSystem(ScreenSound(scene, window)) }
+        runCatching { systemManager.registerSystem(ScreenSound(scene) { director?.soundSource() }) }
             .onFailure { android.util.Log.w("Lumiere", "screen sound unavailable", it) }
-        // The lights go down for a film.
-        val objects = systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>()
-        val panelOf = { e: Entity -> objects.getSceneObject(e)?.getNow(null) as? com.meta.spatial.runtime.PanelSceneObject }
-        runCatching { Cinema(scene, window, sidebar, ornament, wall, panelOf).also { cinema = it }.start(scope) }
-            .onFailure { android.util.Log.e("Lumiere", "cinema unavailable", it) }
     }
 
-    private var cinema: Cinema? = null
+    private var director: Director? = null
 
     /**
      * Holding the Meta button: the headset recentres its room space on you,
@@ -203,7 +208,7 @@ class LumiereSpace : AppSystemActivity() {
         super.onRecenter(isUserInitiated)
         scope.launch {
             kotlinx.coroutines.delay(250)
-            runCatching { cinema?.recenter() }.onFailure { android.util.Log.w("Lumiere", "recenter", it) }
+            runCatching { director?.recenter() }.onFailure { android.util.Log.w("Lumiere", "recenter", it) }
         }
     }
 

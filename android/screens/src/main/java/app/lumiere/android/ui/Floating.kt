@@ -80,7 +80,7 @@ private fun FilmStrip(s: Floating.Scrub) {
     val index = ((s.seconds * 1000) / s.t.intervalMs).toInt().coerceIn(0, (s.t.count - 1).coerceAtLeast(0))
     val w = 150.dp
     val h = w * (s.t.height.toFloat() / s.t.width)
-    Column(Modifier.frosted(24).padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.spatialGlass(24).padding(14.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for (offset in -2..2) {
                 val i = index + offset
@@ -102,7 +102,7 @@ private fun UpNextOrb(o: Floating.UpNextOffer) {
         while (left > 0) { delay(1000); left-- }
         o.onPlay()
     }
-    Row(Modifier.frosted(28).padding(14.dp), verticalAlignment = Alignment.CenterVertically,
+    Row(Modifier.spatialGlass(28).padding(14.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         AsyncImage(imageFor(o.next, o.server, CardShape.Wide, 480), null, contentScale = ContentScale.Crop,
             modifier = Modifier.size(240.dp, 135.dp).clip(RoundedCornerShape(12.dp)))
@@ -126,7 +126,7 @@ private fun NowSinging() {
     LaunchedEffect(track.id) { lines = runCatching { server.lyrics(track.id) }.getOrNull() }
     LaunchedEffect(track.id) { while (true) { at = (Music.player?.currentPosition ?: 0L) / 1000.0; delay(250) } }
     val sung = lines?.let { l -> currentLyric(l, at)?.let { l.getOrNull(it)?.text } }
-    Row(Modifier.frosted(28).padding(16.dp), verticalAlignment = Alignment.CenterVertically,
+    Row(Modifier.spatialGlass(28).padding(16.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         AsyncImage(imageFor(track, server, CardShape.Poster, 300), null, contentScale = ContentScale.Crop,
             modifier = Modifier.size(150.dp).clip(RoundedCornerShape(10.dp)))

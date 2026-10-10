@@ -221,6 +221,7 @@ The headset verdict: sizes, curve and anchor felt stuck; the cinema screen too s
 | Sound | Steered toward the window | Steered toward the Theater screen |
 
 **Phases**
-- **A1 (now):** recentre; flat window with grab bar and corner resize; free tab bar; anchor and size buttons removed; poster wall images and height.
-- **A2 (now):** the Theater: video screen, transport, captions, environments, film light, sizes by angle, curve.
+- **A1 (done, 542c8bf):** recentre; flat window with grab bar and corner resize; free tab bar; anchor and size buttons removed; poster wall images and height.
+- **A2 (done):** the Theater: video screen, transport, captions, environments, film light, sizes by angle, curve. Also: every panel faces you wherever you carry it (FACE); the Theater's screen can be carried in your room and the dark; floating panels have near-opaque glass (the screen showed through the tab bar like a reflection); the Private Room explains itself when empty.
+- **Lesson:** `Scale` never rendered on this headset, for panels or meshes. The old cinema's floor stayed a 1 m cube you sat inside, so there was no environment. Every box is now built at its real size (`Box` corners), and every panel is made at its real size.
 - **B (next):** browsing beyond the TV: an ambient backdrop of the focused title behind the window; hand scrubbing (pinch and drag); a wrist menu; an album wall in the music room; environment art from a generated glTF; a first-run tour of the gestures.

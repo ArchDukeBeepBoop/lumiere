@@ -246,6 +246,8 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
     // which a tall page has scrolled out of the list's reach.
     var row by remember { mutableIntStateOf(-1) }
     LaunchedEffect(heroFocused) { if (heroFocused) { delay(50); list.animateScrollToItem(0) } }
+    // The room with nothing in it says why, rather than showing a blank page.
+    if (state.roomOpen && rows.libraries.isEmpty()) { EmptyRoom(state); return }
     BoxWithConstraints(Modifier.fillMaxSize().background(Palette.canvas)) {
         val screenH = maxHeight
         // Only the banner has a picture, as on Apple TV; below it the ground is plain grey,
@@ -593,6 +595,32 @@ private fun NowPlayingBanner(state: AppState, track: Item) {
             Text("Now Playing", style = MaterialTheme.typography.labelMedium, color = Palette.accent)
             Text(track.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
             Text(track.artists.joinToString(", ").ifEmpty { track.albumArtist ?: "" }, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        }
+    }
+}
+
+
+/**
+ * The private room with nothing to show: no library is marked private yet
+ * (on the Mac, or here in Settings › Libraries), or the Mac hasn't said
+ * which are. Says so, with the way out.
+ */
+@Composable
+private fun EmptyRoom(state: AppState) {
+    Box(Modifier.fillMaxSize().background(Palette.canvas), contentAlignment = Alignment.Center) {
+        Column(Modifier.width(560.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("The Private Room is empty", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                if (!state.privacyKnown) "Lumiere is still asking the Mac which libraries are private. Give it a moment, or check the Mac is on."
+                else "No library is marked private yet. On the Mac, choose them in Lumiere's Settings › Privacy; " +
+                    "or here in Settings › Libraries. Their titles then appear only in this room.",
+                style = MaterialTheme.typography.bodyLarge, color = Palette.textSecondary,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                LButton(onClick = { state.push(Screen.Settings) }) { Text("Settings") }
+                LButton(primary = false, onClick = { state.closeRoom() }) { Text("Leave the Room") }
+            }
         }
     }
 }

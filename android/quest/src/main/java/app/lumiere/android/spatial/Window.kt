@@ -33,10 +33,6 @@ object Window {
     const val SIDEBAR_GAP_M = 0.05f
     // You face +Z, so your left is +X (right-handed, Y up); Seats.sidebarBeside places it.
 
-    /** In the cinema the sidebar comes to you: this far away, this far round to your left, a little low. */
-    const val NEAR_SIDEBAR_DISTANCE_M = 1.3f
-    const val NEAR_SIDEBAR_ANGLE_DEG = 35f
-    const val NEAR_SIDEBAR_BELOW_EYES_M = 0.2f
 
     /** How narrow and wide its corners can make it (its shape kept). */
     const val MIN_WIDTH_M = 0.9f
@@ -75,4 +71,20 @@ object Window {
     const val WALL_DPI = 240
     /** Raised so the middle row is a touch above your eyes and the lowest isn't at your knees. */
     const val WALL_ABOVE_EYES_M = 0.25f
+
+    /**
+     * The Theater's transport: a bar of glass near your hands, below the
+     * screen's line of sight, tilted to face your eyes. 1100 × 250 dp laid out,
+     * 0.82 m across.
+     */
+    const val TRANSPORT_WIDTH_DP = 1100
+    const val TRANSPORT_HEIGHT_DP = 250
+    const val TRANSPORT_WIDTH_M = 0.82f
+    val TRANSPORT_HEIGHT_M = TRANSPORT_WIDTH_M * TRANSPORT_HEIGHT_DP / TRANSPORT_WIDTH_DP
+    const val TRANSPORT_DISTANCE_M = 0.95f
+    const val TRANSPORT_BELOW_EYES_M = 0.42f
+    /** Over the transport, while the Theater is up, the ornament (Up Next, the scrub frames). */
+    const val ORNAMENT_OVER_TRANSPORT_BELOW_EYES_M = 0.12f
+    /** "More": the window comes this far before you, over the Theater, for its tracks and info. */
+    const val ASKED_WINDOW_DISTANCE_M = 1.25f
 }

@@ -34,6 +34,8 @@ class Remote : SystemBase() {
         }
         val now = System.currentTimeMillis()
         val inPlayer = OpenApp.state?.top is Screen.Player
+        // A trigger or grip counts as a touch too: the transport shows.
+        if (down != held && down != 0) app.lumiere.android.player.Theater.poke()
         val fresh = down and held.inv()
         keysFor(fresh, inPlayer).forEach(::deliver)
         if (fresh != 0) { heldSince = now; lastRepeat = now }
@@ -55,6 +57,13 @@ class Remote : SystemBase() {
          * TV remote's.
          */
         fun deliver(key: Int) {
+            // Anything pressed shows the Theater's transport for a few seconds.
+            app.lumiere.android.player.Theater.poke()
+            // With the window brought over the Theater ("More"), B puts it away again.
+            if (app.lumiere.android.player.Theater.windowAsked && key == KeyEvent.KEYCODE_BACK) {
+                app.lumiere.android.player.Theater.windowAsked = false
+                return
+            }
             val wall = app.lumiere.android.ui.PosterWall
             if (wall.open) {
                 when (key) {

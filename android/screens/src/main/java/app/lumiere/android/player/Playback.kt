@@ -58,9 +58,15 @@ object Playback {
                 else setBufferDurationsMs(15_000, 50_000, 1_000, 2_000)
             }
             .build()
-        return ExoPlayer.Builder(context).setLoadControl(load).buildWithAssSupport(
+        // In a Quest's Theater the captions are drawn beside the screen from the player's cues, so
+        // subtitles stay with Media3's own parsers (SSA too, plainer); libass draws into the window.
+        val built = if (Theater.enabled) ExoPlayer.Builder(context, renderers).setLoadControl(load)
+            .setMediaSourceFactory(androidx.media3.exoplayer.source.DefaultMediaSourceFactory(data, androidx.media3.extractor.DefaultExtractorsFactory()))
+            .build()
+        else ExoPlayer.Builder(context).setLoadControl(load).buildWithAssSupport(
             context, type, subtitles, data, androidx.media3.extractor.DefaultExtractorsFactory(), renderers,
-        ).apply {
+        )
+        return built.apply {
             // Subtitles in the system's language when there is a choice; the
             // controller's subtitle button changes it.
             trackSelectionParameters = trackSelectionParameters.buildUpon()

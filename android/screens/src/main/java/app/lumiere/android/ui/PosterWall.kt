@@ -122,7 +122,7 @@ private fun Wall(state: AppState) {
         grid.animateScrollToItem(to)
     }
 
-    Column(Modifier.fillMaxSize().frosted(36).padding(horizontal = 28.dp, vertical = 18.dp),
+    Column(Modifier.fillMaxSize().spatialGlass(36).padding(horizontal = 28.dp, vertical = 18.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             Text("Poster Wall", style = MaterialTheme.typography.headlineSmall)

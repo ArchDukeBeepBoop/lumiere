@@ -21,8 +21,7 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.Weekend
-import androidx.compose.material.icons.filled.ZoomIn
-import androidx.compose.material.icons.filled.ZoomOut
+import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,7 +59,7 @@ fun SpatialSidebar(activity: android.app.Activity) {
 private fun Rail(state: AppState, activity: android.app.Activity) {
     val top = state.top
     // Fourteen buttons in the rail's 800 dp; it scrolls rather than clips if more ever come.
-    Column(Modifier.frosted(40).verticalScroll(androidx.compose.foundation.rememberScrollState())
+    Column(Modifier.spatialGlass(40).verticalScroll(androidx.compose.foundation.rememberScrollState())
         .padding(vertical = 12.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         tabs(state, tv = true).forEach { tab ->
@@ -72,12 +71,10 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
             toggleRoom(state, activity)
         }
         Box(Modifier.size(28.dp, 1.dp).background(Color.White.copy(alpha = 0.12f)))
-        val cinema = Stage.place == Stage.Place.CINEMA
-        // The window resizes from its corners and moves by its bar, as Quest windows do; rows are the cinema's.
-        if (cinema) RailButton(Icons.Default.ZoomIn, "A row nearer", chosen = false) { Stage.larger() }
-        if (cinema) RailButton(Icons.Default.ZoomOut, "A row back", chosen = false) { Stage.smaller() }
-        RailButton(if (cinema) Icons.Default.Weekend else Icons.Default.Theaters,
-            if (cinema) "Back to your room" else "Cinema", chosen = cinema) { Stage.toggleCinema() }
+        // Where films play: your room, the cinema, the dark. The window itself resizes from its
+        // corners and moves by its bar, as Quest windows do; the film's screen has its own controls.
+        RailButton(placeIcon(Stage.place), "Films play in ${Stage.place.label}", chosen = false,
+            caption = placeCaption(Stage.place)) { Stage.nextPlace() }
         if (PosterWall.enabled) RailButton(Icons.Default.ViewModule, "Poster wall", chosen = PosterWall.open) { PosterWall.open = !PosterWall.open }
         RailButton(Icons.Default.CenterFocusStrong, "Bring everything here", chosen = false) { Stage.bringHere() }
         // The sleep timer: each press the next step, its minutes shown under the moon.
@@ -87,22 +84,20 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
     }
 }
 
-/** A round glass button; brighter where you point, filled when its screen is open. */
+/** The tab bar's buttons: the Quest panels' glass button. */
 @Composable
-private fun RailButton(icon: ImageVector, label: String, chosen: Boolean, caption: String? = null, onClick: () -> Unit) {
-    val source = remember { MutableInteractionSource() }
-    val hovered by source.collectIsHoveredAsState()
-    val ground = when {
-        chosen -> Palette.textPrimary
-        hovered -> Color.White.copy(alpha = 0.22f)
-        else -> Color.Transparent
-    }
-    val ink = if (chosen) Palette.canvas else Palette.textPrimary
-    Box(Modifier.size(48.dp).background(ground, CircleShape).hoverable(source)
-        .clickable(interactionSource = source, indication = null, onClick = onClick),
-        contentAlignment = Alignment.Center) {
-        Icon(icon, label, tint = ink, modifier = Modifier.size(24.dp).then(if (caption != null) Modifier.padding(bottom = 10.dp) else Modifier))
-        if (caption != null) androidx.compose.material3.Text(caption, color = ink,
-            style = androidx.compose.ui.text.TextStyle(fontSize = 11.sp), modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp))
-    }
+private fun RailButton(icon: ImageVector, label: String, chosen: Boolean, caption: String? = null, onClick: () -> Unit) =
+    GlassButton(icon, label, chosen, caption, onClick = onClick)
+
+/** Each place's icon: a sofa for your room, a film strip for the cinema, a moon for the dark. */
+fun placeIcon(place: Stage.Place): ImageVector = when (place) {
+    Stage.Place.ROOM -> Icons.Default.Weekend
+    Stage.Place.CINEMA -> Icons.Default.Theaters
+    Stage.Place.VOID -> Icons.Default.DarkMode
+}
+
+fun placeCaption(place: Stage.Place): String = when (place) {
+    Stage.Place.ROOM -> "Room"
+    Stage.Place.CINEMA -> "Cinema"
+    Stage.Place.VOID -> "Dark"
 }
