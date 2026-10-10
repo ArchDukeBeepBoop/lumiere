@@ -70,10 +70,13 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
             if (state.roomOpen) "Leave the private room" else "Private room", chosen = state.roomOpen) {
             toggleRoom(state, activity)
         }
+        // The spatial buttons, only while the headset's director runs; a plain start (after
+        // starts that failed) has none, and they would do nothing there.
+        if (!Stage.directed) return@Column
         Box(Modifier.size(28.dp, 1.dp).background(Color.White.copy(alpha = 0.12f)))
-        // Where films play: your room, the cinema, the dark. The window itself resizes from its
-        // corners and moves by its bar, as Quest windows do; the film's screen has its own controls.
-        RailButton(placeIcon(Stage.place), "Films play in ${Stage.place.label}", chosen = false,
+        // Where you are: your room, the cinema (you're in its hall at once), the dark. The window
+        // itself resizes from its corners and moves by its bar, as Quest windows do.
+        RailButton(placeIcon(Stage.place), "You're in ${Stage.place.label}: change", chosen = false,
             caption = placeCaption(Stage.place)) { Stage.nextPlace() }
         if (PosterWall.enabled) RailButton(Icons.Default.ViewModule, "Poster wall", chosen = PosterWall.open) { PosterWall.open = !PosterWall.open }
         RailButton(Icons.Default.CenterFocusStrong, "Bring everything here", chosen = false) { Stage.bringHere() }

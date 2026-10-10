@@ -7,8 +7,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * How films are watched on a Quest, as the tab bar and the Theater's
- * transport set it: where (your room, a cinema, or a black void), how big
+ * Where you are on a Quest, and how films are watched, as the tab bar and
+ * the Theater's transport set it: where (your room, a cinema, or a black
+ * void — browsing as well as watching), how big
  * the screen is (five sizes by how much of your view it fills), and whether
  * it curves round you. Remembered between visits. The headset's own module
  * builds it.
@@ -42,6 +43,13 @@ object Stage {
 
     /** The timer has run its course. */
     fun sleepDone() { sleepMinutes = 0; sleepAt = 0L }
+
+    /**
+     * The headset's director is running, so the place, recentring and the
+     * sleep timer act. A plain start (after starts that failed) has none,
+     * and the tab bar then hides the buttons that would do nothing.
+     */
+    var directed by mutableStateOf(false)
 
     /** Counts up each time everything is asked to come back in front of you. */
     var bringHereAsks by mutableIntStateOf(0)

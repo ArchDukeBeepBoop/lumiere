@@ -110,6 +110,22 @@ class LumiereSpace : AppSystemActivity() {
                 )
             },
         ),
+        // The poster wall: your library curved round you (PosterWall).
+        ComposeViewPanelRegistration(
+            R.id.lumiere_wall,
+            composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.PosterWall.Panel() } } },
+            settingsCreator = {
+                UIPanelSettings(
+                    shape = CylinderShapeOptions(
+                        radius = Window.WALL_RADIUS_M,
+                        width = Window.WALL_WIDTH_DP / Window.WALL_DP_PER_M,
+                        height = Window.WALL_HEIGHT_DP / Window.WALL_DP_PER_M,
+                    ),
+                    display = DpDisplayOptions(width = Window.WALL_WIDTH_DP.toFloat(), height = Window.WALL_HEIGHT_DP.toFloat(), dpi = Window.WALL_DPI),
+                    style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
+                )
+            },
+        ),
         ComposeViewPanelRegistration(
             R.id.lumiere_ornament,
             composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.Floating.Ornament() } } },

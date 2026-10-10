@@ -63,6 +63,11 @@ class Director(
 
     private enum class WindowMode { HOME, ASKED, HIDDEN }
 
+    private companion object {
+        /** Below this, the head isn't tracked yet (or you're lying on the floor): no hall is built round it. */
+        const val MIN_EYE_HEIGHT_M = 0.3f
+    }
+
     /** The film's sound comes from here: the Theater's flat screen, the window, or (in a sphere) all round. */
     fun soundSource(): Entity? = when {
         !theaterOn -> window
@@ -71,6 +76,8 @@ class Director(
     }
 
     fun start(scope: CoroutineScope): Job = scope.launch {
+        // The tab bar's spatial buttons work from now on (a plain start never gets here).
+        Stage.directed = true
         while (isActive) {
             // A failure here costs a quarter-second, never the app.
             val moving = runCatching { tick() }.onFailure { android.util.Log.w("Lumiere", "director", it) }.getOrDefault(false)
@@ -90,7 +97,18 @@ class Director(
         val on = request != null
         if (on != theaterOn) { theaterOn = on; if (on) enterTheater() else leaveTheater() }
         val sphere = on && request!!.projection != Projection.FLAT
-        val place = if (on) Stage.place else Stage.Place.ROOM
+        // The place you chose is where you are, browsing as well as watching: choose the cinema
+        // and you're in its hall at once, the window before you, the screen dark until a film.
+        val place = Stage.place
+        if (!on && place == Stage.Place.CINEMA) {
+            // Not before the headset knows where your head is (at the very start it may read the floor).
+            val s = browseSeat ?: seatHere().takeIf { it.eye.y > MIN_EYE_HEIGHT_M }?.also { browseSeat = it }
+            if (s != null && !s.tilted) {
+                val spec = browseSpec()
+                theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM)
+            }
+        }
+        if (place != Stage.Place.CINEMA) browseSeat = null
         if (on) {
             val spec = TheaterGeometry.spec(request!!, place, Stage.screenSize, Stage.curved)
             val s = seat ?: seatHere().also { seat = it }
@@ -102,10 +120,11 @@ class Director(
         }
 
         // Where you are: passthrough, the cinema's hall, or the dark.
-        val hall = on && place == Stage.Place.CINEMA && !sphere && seat?.tilted != true
+        val tiltedSeat = (if (on) seat else browseSeat)?.tilted == true
+        val hall = place == Stage.Place.CINEMA && !sphere && !tiltedSeat
         if (shownPlace != place to hall) {
             shownPlace = place to hall
-            scene.enablePassthrough(!on || (place == Stage.Place.ROOM && !sphere))
+            scene.enablePassthrough(place == Stage.Place.ROOM && !sphere)
             if (theatreMade.isInitialized() || hall) theatre.show(hall)
             shownBrightness = -1f; shownTint = null
         }
@@ -159,7 +178,7 @@ class Director(
         val tint = Ambient.colour?.let { Triple(it.red, it.green, it.blue) }
         when {
             hall -> theatre.light(brightness, tint)
-            !on || (place == Stage.Place.ROOM && !sphere) -> lightRoom(brightness, tint)
+            place == Stage.Place.ROOM && !sphere -> lightRoom(brightness, tint)
         }
         return brightness != target
     }
@@ -173,10 +192,19 @@ class Director(
     /** The film ends: the screen goes, the window comes back where it was. */
     private fun leaveTheater() {
         screen.clear()
-        if (theatreMade.isInitialized()) theatre.show(false)
+        // Browsing goes on from the same seat: in the cinema, its hall stays round you.
+        browseSeat = seat
         seat = null
         shownPlace = null
     }
+
+    /** Where you sit while browsing in the cinema; null elsewhere, so coming back seats you afresh. */
+    private var browseSeat: TheaterScreen.Seat? = null
+
+    /** The hall's screen while no film plays: the chosen size, a 16:9 picture. */
+    private fun browseSpec() = TheaterGeometry.spec(
+        Theater.Request(Projection.FLAT, app.lumiere.android.api.StereoLayout.MONO, 1920, 1080),
+        Stage.Place.CINEMA, Stage.screenSize, Stage.curved)
 
     /** Your eyes and the way you face now: level, or tilted with you when you lie back and look up. */
     private fun seatHere(): TheaterScreen.Seat {
@@ -222,6 +250,8 @@ class Director(
             if (windowMode == WindowMode.ASKED) setWindow(WindowMode.ASKED)
             if (transportShown) placeTransport()
         } else {
+            // In the cinema the hall comes round you where you are now.
+            if (Stage.place == Stage.Place.CINEMA) browseSeat = seatHere()
             windowInFront()
             if (windowMode != WindowMode.HOME) windowHome = window.getComponent<Transform>().transform
             else dockSidebar()
