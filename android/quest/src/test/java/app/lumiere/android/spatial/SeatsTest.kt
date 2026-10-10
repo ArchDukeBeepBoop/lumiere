@@ -23,4 +23,15 @@ class SeatsTest {
         assertTrue("middle $middle", middle in 48f..56f)
         assertTrue("front $front", front in 62f..72f)
     }
+
+    @Test fun theCinemaScreenStandsOnTheStageNotInTheFloor() {
+        val height = Window.HEIGHT_M * Seats.CINEMA_SCALE
+        listOf(0.4f, 1.2f, 1.7f).forEach { eyes ->
+            val middle = Seats.screenMiddleY(eyes, height)
+            assertTrue("foot ${middle - height / 2} at eyes $eyes", middle - height / 2 >= Seats.STAGE_M - 1e-4f)
+            assertTrue("middle above the eyes", middle >= eyes + Seats.ABOVE_EYES - 1e-4f)
+        }
+        // A screen short enough to sit above the eyes just does.
+        assertEquals(1.9f, Seats.screenMiddleY(1.2f, 1f), 1e-4f)
+    }
 }

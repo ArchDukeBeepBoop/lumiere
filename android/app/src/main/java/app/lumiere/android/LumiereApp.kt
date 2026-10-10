@@ -7,5 +7,6 @@ class LumiereApp : Application() {
     override fun onCreate() {
         AppBuild.set(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, BuildConfig.QUEST)
         super.onCreate()
+        CrashLog.install(this)
     }
 }

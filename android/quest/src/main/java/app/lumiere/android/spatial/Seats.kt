@@ -16,9 +16,18 @@ object Seats {
     val ROW_DISTANCE = floatArrayOf(11.5f, 8.5f, 6f)
     /** How far above your eyes the screen's middle sits, as in a theatre. */
     const val ABOVE_EYES = 0.7f
+    /** The stage under the screen, whose top the screen's foot never goes below. */
+    const val STAGE_M = 0.6f
 
     fun roomScale(size: Int) = ROOM[size.coerceIn(0, ROOM.lastIndex)]
     fun rowDistance(seat: Int) = ROW_DISTANCE[seat.coerceIn(0, ROW_DISTANCE.lastIndex)]
+
+    /**
+     * Height of the screen's middle for eyes at [eyeY] (from the floor): a
+     * little above them, but never so low that a screen [heightM] tall sinks
+     * into the stage or floor — a five-metre screen stands on the stage.
+     */
+    fun screenMiddleY(eyeY: Float, heightM: Float): Float = maxOf(eyeY + ABOVE_EYES, STAGE_M + heightM / 2)
 
     /** How wide [widthM] at [distanceM] looks, in degrees. */
     fun angleDegrees(widthM: Float, distanceM: Float): Float =

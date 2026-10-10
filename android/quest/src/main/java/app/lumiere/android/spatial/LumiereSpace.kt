@@ -25,6 +25,7 @@ import com.meta.spatial.toolkit.UIPanelSettings
 import com.meta.spatial.toolkit.createPanelEntity
 import com.meta.spatial.vr.LocomotionSystem
 import com.meta.spatial.vr.VRFeature
+import kotlinx.coroutines.launch
 
 /**
  * The room: passthrough, and Lumiere's own activity — the same screens as
@@ -35,14 +36,18 @@ import com.meta.spatial.vr.VRFeature
  */
 class LumiereSpace : AppSystemActivity() {
     private val scope = kotlinx.coroutines.MainScope()
+    /** A start after two that failed: just the window and its sidebar (StartGuard). */
+    private var plain = false
 
     // ComposeFeature hosts the sidebar's Compose panel; without it the panel can't start.
     override fun registerFeatures(): List<SpatialFeature> = listOf(VRFeature(this), ComposeFeature())
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
+        plain = app.lumiere.android.StartGuard.begin(this)
+        if (plain) android.util.Log.w("Lumiere", "the last starts failed; starting plainly")
         app.lumiere.android.Stage.load(this)
-        systemManager.registerSystem(Remote())
+        if (!plain) systemManager.registerSystem(Remote())
     }
 
     override fun registerPanels(): List<PanelRegistration> = listOf(
@@ -90,18 +95,27 @@ class LumiereSpace : AppSystemActivity() {
             Transform(Pose(Vector3(Window.SIDEBAR_X_M, 0f, -Window.EDGE_NEARER_M))),
             TransformParent(window),
         )
+        // Running long enough to count as a good start; the next one tries everything again.
+        scope.launch {
+            kotlinx.coroutines.delay(app.lumiere.android.StartGuard.SETTLE_MS)
+            app.lumiere.android.StartGuard.settled(this@LumiereSpace)
+        }
         // The thumbsticks are the remote's arrows here, not a way to walk about the room. The
         // system stays (input reads it every frame; removing it stopped the app at launch), turned off.
         runCatching { systemManager.findSystem<LocomotionSystem>().enableLocomotion(false) }
             .onFailure { android.util.Log.w("Lumiere", "locomotion left on", it) }
+        if (plain) return
         // Thumb taps and swipes are the remote too; the hands' own turning is off for them.
         runCatching { systemManager.findSystem<com.meta.spatial.vr.HandMicrogestureLocomotionSystem>().enableHandLocomotion(false) }
         runCatching {
             val gestures = systemManager.tryFindSystem<com.meta.spatial.toolkit.MicrogesturesSystem>()
                 ?: com.meta.spatial.toolkit.MicrogesturesSystem().also { systemManager.registerSystem(it) }
+            // Called from the SDK's own frame loop, where a failure would stop the app: guarded.
             gestures.addListener { gesture, _ ->
-                val inPlayer = app.lumiere.android.OpenApp.state?.top is app.lumiere.android.Screen.Player
-                Gestures.keysFor(gesture, inPlayer).forEach { key -> app.lumiere.android.OpenApp.press?.invoke(key) }
+                runCatching {
+                    val inPlayer = app.lumiere.android.OpenApp.state?.top is app.lumiere.android.Screen.Player
+                    Gestures.keysFor(gesture, inPlayer).forEach { key -> app.lumiere.android.OpenApp.press?.invoke(key) }
+                }.onFailure { android.util.Log.w("Lumiere", "gesture", it) }
             }
         }.onFailure { android.util.Log.w("Lumiere", "no hand gestures", it) }
         // The lights go down for a film.
@@ -110,6 +124,8 @@ class LumiereSpace : AppSystemActivity() {
     }
 
     override fun onDestroy() {
+        // Closed, not crashed: not a failed start.
+        if (isFinishing) app.lumiere.android.StartGuard.settled(this)
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         super.onDestroy()
     }

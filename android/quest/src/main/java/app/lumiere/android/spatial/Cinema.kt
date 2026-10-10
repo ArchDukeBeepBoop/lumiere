@@ -30,7 +30,9 @@ import kotlinx.coroutines.launch
  * colour. Four looks a second; light and size change only while they move.
  */
 class Cinema(private val scene: Scene, private val window: Entity, private val sidebar: Entity) {
-    private val theatre by lazy { Theatre() }
+    // Built the first time the cinema opens, not at start: the room never needs it.
+    private val theatreMade = lazy { Theatre() }
+    private val theatre by theatreMade
     private var brightness = CinemaLight.LIT
     private var shownBrightness = -1f
     private var shownTint: Triple<Float, Float, Float>? = null
@@ -95,7 +97,7 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
             theatre.show(true)
             seat = -1
         } else {
-            theatre.show(false)
+            if (theatreMade.isInitialized()) theatre.show(false)
             scene.enablePassthrough(true)
             shownBrightness = -1f
             roomPose?.let { window.setComponent(Transform(it)) }
@@ -124,7 +126,7 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
         val head = scene.getViewerPose()
         val ahead = head.removePitchAndRoll()
         val at = head.t + flat(ahead.forward()) * Seats.rowDistance(row)
-        val screen = Pose(Vector3(at.x, head.t.y + Seats.ABOVE_EYES, at.z), ahead.q)
+        val screen = Pose(Vector3(at.x, Seats.screenMiddleY(head.t.y, Window.HEIGHT_M * Seats.CINEMA_SCALE), at.z), ahead.q)
         window.setComponent(Transform(screen))
         theatre.place(screen, Window.HEIGHT_M * Seats.CINEMA_SCALE)
     }
