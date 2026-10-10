@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Crop169
 import androidx.compose.material.icons.filled.Panorama
+import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.Theaters
@@ -78,6 +79,7 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
         RailButton(Icons.Default.ZoomOut, if (cinema) "A row back" else "Smaller", chosen = false) { Stage.smaller() }
         RailButton(if (cinema) Icons.Default.Weekend else Icons.Default.Theaters,
             if (cinema) "Back to your room" else "Cinema", chosen = cinema) { Stage.toggleCinema() }
+        if (PosterWall.enabled) RailButton(Icons.Default.ViewModule, "Poster wall", chosen = PosterWall.open) { PosterWall.open = !PosterWall.open }
         RailButton(Icons.Default.CenterFocusStrong, "Bring the screen here", chosen = false) { Stage.bringHere() }
         RailButton(if (Stage.curved) Icons.Default.Crop169 else Icons.Default.Panorama,
             if (Stage.curved) "Make the screen flat" else "Curve the screen round you", chosen = false) { Stage.toggleCurve() }

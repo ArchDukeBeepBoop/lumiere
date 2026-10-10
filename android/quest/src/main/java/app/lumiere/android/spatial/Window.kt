@@ -57,4 +57,17 @@ object Window {
 
     /** Where a hidden panel waits: far under the floor, where no pointer reaches. */
     fun parked() = com.meta.spatial.core.Pose(com.meta.spatial.core.Vector3(0f, -50f, 0f))
+
+    /**
+     * The poster wall: a band of glass curved round you, 2.2 m away and
+     * about 155 degrees wide, its middle a little above your eyes. Laid out
+     * at 400 dp a metre (twice the window's size per dp) so a poster is
+     * about a third of a metre wide, and drawn at 240 dpi.
+     */
+    const val WALL_WIDTH_DP = 2400
+    const val WALL_HEIGHT_DP = 720
+    const val WALL_DP_PER_M = 400f
+    const val WALL_RADIUS_M = 2.2f
+    const val WALL_DPI = 240
+    const val WALL_ABOVE_EYES_M = 0.05f
 }

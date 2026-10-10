@@ -3,4 +3,6 @@
     <item name="lumiere_window" type="id" />
     <item name="lumiere_sidebar" type="id" />
     <item name="lumiere_ornament" type="id" />
+    <item name="lumiere_surround" type="id" />
+    <item name="lumiere_wall" type="id" />
 </resources>

@@ -48,6 +48,11 @@ class LumiereSpace : AppSystemActivity() {
         if (plain) android.util.Log.w("Lumiere", "the last starts failed; starting plainly")
         // Up Next, the scrub frames and the song float under the screen, not over it.
         app.lumiere.android.ui.Floating.enabled = !plain
+        app.lumiere.android.ui.PosterWall.enabled = !plain
+        // A film's sound comes from the screen (ScreenSound tells the player where it is).
+        app.lumiere.android.player.ScreenAudio.enabled = !plain
+        // 180° and 360° films wrap round you.
+        app.lumiere.android.player.Surround.enabled = !plain
         app.lumiere.android.Stage.load(this)
         if (!plain) systemManager.registerSystem(Remote())
     }
@@ -70,6 +75,30 @@ class LumiereSpace : AppSystemActivity() {
                 UIPanelSettings(
                     shape = QuadShapeOptions(width = Window.SIDEBAR_WIDTH_M, height = Window.SIDEBAR_HEIGHT_M),
                     display = DpDisplayOptions(width = Window.SIDEBAR_WIDTH_DP.toFloat(), height = Window.SIDEBAR_HEIGHT_DP.toFloat()),
+                    style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
+                )
+            },
+        ),
+        // 180° and 360° films: a half or whole sphere round you, made only while one plays (SurroundSphere).
+        com.meta.spatial.toolkit.VideoSurfacePanelRegistration(
+            R.id.lumiere_surround,
+            surfaceConsumer = { _, surface ->
+                android.os.Handler(mainLooper).post { app.lumiere.android.player.Surround.surface = surface }
+            },
+            settingsCreator = { _ -> SurroundSphere.settingsFor(app.lumiere.android.player.Surround.request) },
+        ),
+        // The poster wall: your library curved round you (PosterWall).
+        ComposeViewPanelRegistration(
+            R.id.lumiere_wall,
+            composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.PosterWall.Panel() } } },
+            settingsCreator = {
+                UIPanelSettings(
+                    shape = CylinderShapeOptions(
+                        radius = Window.WALL_RADIUS_M,
+                        width = Window.WALL_WIDTH_DP / Window.WALL_DP_PER_M,
+                        height = Window.WALL_HEIGHT_DP / Window.WALL_DP_PER_M,
+                    ),
+                    display = DpDisplayOptions(width = Window.WALL_WIDTH_DP.toFloat(), height = Window.WALL_HEIGHT_DP.toFloat(), dpi = Window.WALL_DPI),
                     style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
                 )
             },
@@ -132,7 +161,7 @@ class LumiereSpace : AppSystemActivity() {
             gestures.addListener { gesture, _ ->
                 runCatching {
                     val inPlayer = app.lumiere.android.OpenApp.state?.top is app.lumiere.android.Screen.Player
-                    Gestures.keysFor(gesture, inPlayer).forEach { key -> app.lumiere.android.OpenApp.press?.invoke(key) }
+                    Gestures.keysFor(gesture, inPlayer).forEach(Remote::deliver)
                 }.onFailure { android.util.Log.w("Lumiere", "gesture", it) }
             }
         }.onFailure { android.util.Log.w("Lumiere", "no hand gestures", it) }
@@ -143,10 +172,15 @@ class LumiereSpace : AppSystemActivity() {
             Grabbable(enabled = true, type = GrabbableType.FACE),
             com.meta.spatial.toolkit.Visible(false),
         )
+        // The poster wall waits out of sight, and out of the pointer's way, until it's asked for.
+        val wall = Entity.createPanelEntity(R.id.lumiere_wall, Transform(Window.parked()), com.meta.spatial.toolkit.Visible(false))
+        // The film's sound from where its picture is, every frame.
+        runCatching { systemManager.registerSystem(ScreenSound(scene, window)) }
+            .onFailure { android.util.Log.w("Lumiere", "screen sound unavailable", it) }
         // The lights go down for a film.
         val objects = systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>()
         val panelOf = { e: Entity -> objects.getSceneObject(e)?.getNow(null) as? com.meta.spatial.runtime.PanelSceneObject }
-        runCatching { Cinema(scene, window, sidebar, ornament, panelOf).start(scope) }
+        runCatching { Cinema(scene, window, sidebar, ornament, wall, panelOf).start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "cinema unavailable", it) }
     }
 

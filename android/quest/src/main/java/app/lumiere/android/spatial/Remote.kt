@@ -26,7 +26,7 @@ class Remote : SystemBase() {
     }
 
     private fun read() {
-        val press = OpenApp.press ?: return
+        if (OpenApp.press == null) return
         var down = 0
         for (e in Query.where { has(Controller.id) }.eval()) {
             val c = e.getComponent<Controller>()
@@ -35,18 +35,38 @@ class Remote : SystemBase() {
         val now = System.currentTimeMillis()
         val inPlayer = OpenApp.state?.top is Screen.Player
         val fresh = down and held.inv()
-        keysFor(fresh, inPlayer).forEach(press)
+        keysFor(fresh, inPlayer).forEach(::deliver)
         if (fresh != 0) { heldSince = now; lastRepeat = now }
         // A direction held: again after 0.45 s, then every 0.14 s.
         val dirs = down and DIRECTIONS
         if (dirs != 0 && fresh and DIRECTIONS == 0 && now - heldSince > 450 && now - lastRepeat > 140) {
             lastRepeat = now
-            keysFor(dirs, inPlayer).forEach(press)
+            keysFor(dirs, inPlayer).forEach(::deliver)
         }
         held = down
     }
 
     companion object {
+        /**
+         * A key from the controllers or the hands. While the poster wall is
+         * up it is the wall's — left and right scroll it, B puts it away —
+         * and nothing reaches the window hidden behind it, where an OK could
+         * start whatever it had in focus. Otherwise the window has it, as a
+         * TV remote's.
+         */
+        fun deliver(key: Int) {
+            val wall = app.lumiere.android.ui.PosterWall
+            if (wall.open) {
+                when (key) {
+                    KeyEvent.KEYCODE_DPAD_LEFT -> wall.nudge(-1)
+                    KeyEvent.KEYCODE_DPAD_RIGHT -> wall.nudge(1)
+                    KeyEvent.KEYCODE_BACK -> wall.open = false
+                }
+                return
+            }
+            OpenApp.press?.invoke(key)
+        }
+
         private val UP = ButtonBits.ButtonThumbLU or ButtonBits.ButtonThumbRU
         private val DOWN = ButtonBits.ButtonThumbLD or ButtonBits.ButtonThumbRD
         private val LEFT = ButtonBits.ButtonThumbLL or ButtonBits.ButtonThumbRL

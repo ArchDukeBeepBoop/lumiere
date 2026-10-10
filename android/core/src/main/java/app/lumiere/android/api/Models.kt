@@ -52,6 +52,8 @@ data class Item(
     val childCount: Int? = null,
     /** When it was added to the library, as the server's ISO date — sorts as text. */
     val dateCreated: String? = null,
+    /** The file's path on the server, where it says (a VR film's tags are often only in its file name). */
+    val path: String? = null,
 ) {
     val isAudio get() = type == "Audio"
     val isAlbum get() = type == "MusicAlbum"
@@ -151,6 +153,7 @@ fun parseItem(o: JSONObject): Item {
         collectionType = o.str("CollectionType"),
         isFolder = o.optBoolean("IsFolder"),
         mediaSourceId = source?.str("Id"),
+        path = source?.str("Path") ?: o.str("Path"),
         streams = streams.map {
             MediaStream(
                 index = it.optInt("Index"),

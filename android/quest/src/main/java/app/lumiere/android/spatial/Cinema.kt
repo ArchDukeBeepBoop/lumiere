@@ -6,6 +6,7 @@ import app.lumiere.android.Stage
 import app.lumiere.android.player.PictureInPicture
 import app.lumiere.android.ui.Ambient
 import app.lumiere.android.ui.Floating
+import app.lumiere.android.ui.PosterWall
 import com.meta.spatial.core.Entity
 import com.meta.spatial.core.Lut
 import com.meta.spatial.core.Pose
@@ -34,9 +35,17 @@ import kotlinx.coroutines.launch
  */
 class Cinema(
     private val scene: Scene, private val window: Entity, private val sidebar: Entity, private val ornament: Entity,
+    private val wall: Entity,
     /** The panel behind an entity, once the SDK has made it; null until then. */
     private val panelOf: (Entity) -> PanelSceneObject?,
 ) {
+    private val sphere = SurroundSphere(scene)
+    private var surroundShown = false
+    private var wallShown = false
+    /** Where the window was when the wall came up, to put it back. */
+    private var beforeWall: Pose? = null
+    private var windowShown = true
+
     // Built the first time the cinema opens, not at start: the room never needs it.
     private val theatreMade = lazy { Theatre() }
     private val theatre by theatreMade
@@ -76,6 +85,32 @@ class Cinema(
             if (Stage.bringHereAsks != seenAsks) { seenAsks = Stage.bringHereAsks; bringHere() }
             val cinema = place == Stage.Place.CINEMA
             if (cinema && Stage.seat != seat) seatAt(Stage.seat)
+            // A 180° or 360° film: the sphere round you instead of the room or the theatre.
+            val surround = sphere.follow()
+            if (surround != surroundShown) {
+                surroundShown = surround
+                scene.enablePassthrough(!surround && !cinema)
+                if (cinema) theatre.show(!surround)
+                shownBrightness = -1f
+            }
+            // The poster wall comes up round you; the window steps aside until it goes.
+            val showWall = PosterWall.open && !surround
+            if (showWall != wallShown) {
+                wallShown = showWall
+                if (showWall) {
+                    beforeWall = window.getComponent<Transform>().transform
+                    placeWall()
+                    window.setComponent(Transform(Window.parked()))
+                } else {
+                    wall.setComponent(Transform(Window.parked()))
+                    beforeWall?.let { window.setComponent(Transform(it)) }
+                    beforeWall = null
+                }
+                wall.setComponent(Visible(showWall))
+            }
+            // In the sphere, the window steps away while the film plays and is back the moment it pauses.
+            val showWindow = !(surround && playing) && !showWall
+            if (showWindow != windowShown) { windowShown = showWindow; window.setComponent(Visible(showWindow)) }
 
             matchDisplay(if (inPlayer) Display.rateFor(PictureInPicture.frameRate) else 0f)
             // The sleep timer: the room fades over its last minute, then the film stops.
@@ -149,6 +184,14 @@ class Cinema(
         val at = head.t + flat(ahead.forward()) * Window.DISTANCE_M
         window.setComponent(Transform(Pose(Vector3(at.x, head.t.y - 0.1f, at.z), ahead.q)))
         if (Stage.locked) rememberAnchor()
+    }
+
+    /** The wall's middle before you, its curve centred on you, a little above your eyes. */
+    private fun placeWall() {
+        val head = scene.getViewerPose()
+        val ahead = head.removePitchAndRoll()
+        val at = head.t + flat(ahead.forward()) * Window.WALL_RADIUS_M
+        wall.setComponent(Transform(Pose(Vector3(at.x, head.t.y + Window.WALL_ABOVE_EYES_M, at.z), ahead.q)))
     }
 
     /** Before you and a little below your eyes, facing you; tilted with you when you're lying back. */

@@ -30,7 +30,16 @@ object Playback {
         val data = androidx.media3.datasource.DefaultDataSource.Factory(context, OkHttpDataSource.Factory(server.http))
         // Extension renderers preferred where present, for audio codecs the
         // platform decoders lack on some TVs (DTS, TrueHD fall back to them).
-        val renderers = DefaultRenderersFactory(context)
+        val renderers = object : DefaultRenderersFactory(context) {
+            // On a Quest, the sound leans towards the screen as you turn (ScreenAudio); elsewhere, as it was.
+            override fun buildAudioSink(context: Context, enableFloatOutput: Boolean, enableAudioTrackPlaybackParams: Boolean) =
+                if (!ScreenAudio.enabled) super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams)
+                else androidx.media3.exoplayer.audio.DefaultAudioSink.Builder(context)
+                    .setEnableFloatOutput(enableFloatOutput)
+                    .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
+                    .setAudioProcessors(arrayOf(ScreenAudio.Processor()))
+                    .build()
+        }
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
             .setEnableDecoderFallback(true)
         // OVERLAY is libass's own view laid over the picture; CANVAS draws into

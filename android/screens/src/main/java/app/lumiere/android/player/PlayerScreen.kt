@@ -397,7 +397,10 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
             onEpisodes = if (item?.isEpisode == true) ({ showEpisodes = true }) else null) { showInfo = false }
         if ((item == null || buffering) && error == null) CircularProgressIndicator(Modifier.align(Alignment.Center))
         // On a Quest the film itself goes 3D; a TV or projector is told to.
-        val stereo = item?.let { app.lumiere.android.api.stereoLayoutOf(it, state.is3D(it)) } ?: app.lumiere.android.api.StereoLayout.MONO
+        // 180° and 360° films wrap round you on a Quest; the screen's 3D handling stands aside for them.
+        val surround = rememberSurround(view, player, item)
+        val stereo = item?.takeIf { surround == app.lumiere.android.api.Projection.FLAT }
+            ?.let { app.lumiere.android.api.stereoLayoutOf(it, state.is3D(it)) } ?: app.lumiere.android.api.StereoLayout.MONO
         val stereoSaid = rememberStereo(view, player, stereo)
         var stereoShown by remember(stereoSaid) { mutableStateOf(stereoSaid != null) }
         LaunchedEffect(stereoSaid) { delay(4_000); stereoShown = false }
