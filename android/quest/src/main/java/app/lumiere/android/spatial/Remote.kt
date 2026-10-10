@@ -22,6 +22,10 @@ class Remote : SystemBase() {
     private var lastRepeat = 0L
 
     override fun execute() {
+        runCatching { read() }.onFailure { android.util.Log.w("Lumiere", "remote", it) }
+    }
+
+    private fun read() {
         val press = OpenApp.press ?: return
         var down = 0
         for (e in Query.where { has(Controller.id) }.eval()) {

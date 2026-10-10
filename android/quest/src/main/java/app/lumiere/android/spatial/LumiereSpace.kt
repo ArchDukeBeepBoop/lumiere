@@ -42,8 +42,6 @@ class LumiereSpace : AppSystemActivity() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         app.lumiere.android.Stage.load(this)
-        // The thumbsticks are the remote's arrows here, not a way to walk about the room.
-        systemManager.unregisterSystem<LocomotionSystem>()
         systemManager.registerSystem(Remote())
     }
 
@@ -92,8 +90,13 @@ class LumiereSpace : AppSystemActivity() {
             Transform(Pose(Vector3(Window.SIDEBAR_X_M, 0f, -Window.EDGE_NEARER_M))),
             TransformParent(window),
         )
+        // The thumbsticks are the remote's arrows here, not a way to walk about the room. The
+        // system stays (input reads it every frame; removing it stopped the app at launch), turned off.
+        runCatching { systemManager.findSystem<LocomotionSystem>().enableLocomotion(false) }
+            .onFailure { android.util.Log.w("Lumiere", "locomotion left on", it) }
         // The lights go down for a film.
-        Cinema(scene, window, sidebar).start(scope)
+        runCatching { Cinema(scene, window, sidebar).start(scope) }
+            .onFailure { android.util.Log.e("Lumiere", "cinema unavailable", it) }
     }
 
     override fun onDestroy() {

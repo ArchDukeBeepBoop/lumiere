@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
  * colour. Four looks a second; light and size change only while they move.
  */
 class Cinema(private val scene: Scene, private val window: Entity, private val sidebar: Entity) {
-    private val theatre = Theatre()
+    private val theatre by lazy { Theatre() }
     private var brightness = CinemaLight.LIT
     private var shownBrightness = -1f
     private var shownTint: Triple<Float, Float, Float>? = null
@@ -44,6 +44,15 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
 
     fun start(scope: CoroutineScope): Job = scope.launch {
         while (isActive) {
+            // A failure here costs the cinema a quarter-second, never the app.
+            val moving = runCatching { tick() }.onFailure { android.util.Log.w("Lumiere", "cinema tick", it) }.getOrDefault(false)
+            delay(if (moving) 40 else 250)
+        }
+    }
+
+    /** One look at the state; true while something is still moving. */
+    private fun tick(): Boolean {
+        run {
             val inPlayer = OpenApp.state?.top is Screen.Player
             val playing = PictureInPicture.playing
             val reduced = app.lumiere.android.Motion.reduced
@@ -64,7 +73,7 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
             // Out of the way while a film plays; back the moment it pauses.
             val showSidebar = !(inPlayer && playing)
             if (showSidebar != sidebarShown) { sidebarShown = showSidebar; sidebar.setComponent(Visible(showSidebar)) }
-            delay(if (brightness == target && size == wanted) 250 else 40)
+            return !(brightness == target && size == wanted)
         }
     }
 
