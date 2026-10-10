@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Merged over the main manifest for the Quest build: a 2D Horizon OS window. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Updated by sideloading, never from inside the app. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" tools:node="remove" />
+
+    <application>
+        <meta-data android:name="com.oculus.supportedDevices" android:value="quest3|quest3s" />
+        <activity android:name=".MainActivity" android:screenOrientation="landscape">
+            <!-- The window Horizon OS opens: a 16:10 panel, the size of a TV seen from a sofa. -->
+            <layout android:defaultWidth="1280dp" android:defaultHeight="800dp" />
+        </activity>
+    </application>
+</manifest>

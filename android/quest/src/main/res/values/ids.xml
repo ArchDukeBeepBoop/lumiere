@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="lumiere_window" type="id" />
+    <item name="lumiere_sidebar" type="id" />
+    <item name="lumiere_ornament" type="id" />
+    <item name="lumiere_screen" type="id" />
+    <item name="lumiere_captions" type="id" />
+    <item name="lumiere_transport" type="id" />
+    <item name="lumiere_wall" type="id" />
+    <item name="lumiere_marquee" type="id" />
+</resources>

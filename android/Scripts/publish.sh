@@ -4,10 +4,10 @@
 # The version number is the build's minute, so each build is newer than the last.
 set -e
 cd "$(dirname "$0")/.."
-./gradlew -q assembleRelease testDebugUnitTest
+./gradlew -q assembleStandardRelease :core:testDebugUnitTest :screens:testDebugUnitTest testStandardDebugUnitTest testQuestDebugUnitTest
 DEST="$HOME/Library/Application Support/LumiereServer/android"
 mkdir -p "$DEST"
-APK=app/build/outputs/apk/release/app-release.apk
+APK=app/build/outputs/apk/standard/release/app-standard-release.apk
 AAPT=$(ls -d "$HOME/Library/Android/sdk/build-tools/"*/aapt | tail -1)
 CODE=$("$AAPT" dump badging "$APK" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
 NAME=$("$AAPT" dump badging "$APK" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
