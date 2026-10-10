@@ -15,6 +15,18 @@ import java.net.SocketTimeoutException
 data class FoundServer(val name: String, val address: String, val id: String)
 
 /**
+ * The address the sign-in screen should hold once discovery has run: the one
+ * already saved while it still answers or is among those found, else the one
+ * server found. A saved address goes stale when the Mac's address changes or
+ * a wrong one was typed, and was kept even with the right server listed.
+ */
+fun preferredAddress(saved: String?, found: List<FoundServer>, savedAnswers: Boolean): String? {
+    val same = { a: String, b: String -> a.trim().trimEnd('/').equals(b.trim().trimEnd('/'), ignoreCase = true) }
+    if (saved != null && (savedAnswers || found.any { same(it.address, saved) })) return saved
+    return found.singleOrNull()?.address ?: saved
+}
+
+/**
  * Jellyfin's discovery: "who is JellyfinServer?" broadcast on UDP 7359, and
  * every server on the network answers with its address. The Lumiere server
  * answers once "Share on my home network" is on in the Mac app's Settings.

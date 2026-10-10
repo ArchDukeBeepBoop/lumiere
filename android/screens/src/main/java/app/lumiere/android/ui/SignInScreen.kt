@@ -65,7 +65,13 @@ fun SignInScreen(state: AppState) {
     LaunchedEffect(Unit) {
         found = Discovery.find(context)
         searching = false
-        if (found.size == 1 && state.lastServer == null) address = found.first().address
+        // The saved address, unless it no longer answers and the server was found elsewhere.
+        val saved = state.lastServer
+        val answers = saved != null && found.none { it.address.equals(normalise(saved), ignoreCase = true) } &&
+            kotlinx.coroutines.withTimeoutOrNull(2_500) {
+                runCatching { Server(normalise(saved), state.deviceId).publicInfo() }.isSuccess
+            } == true
+        app.lumiere.android.api.preferredAddress(saved?.let(::normalise), found, answers)?.let { address = it }
     }
 
     fun signIn() {
