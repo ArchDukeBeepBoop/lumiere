@@ -250,6 +250,8 @@ class AppState(context: Context) {
 /** The open window's state, for panels outside it: the Quest's sidebar. */
 object OpenApp {
     var state by mutableStateOf<AppState?>(null)
+    /** Presses a remote key in the open window, as a TV remote would: the Quest's controllers use it. */
+    var press: ((Int) -> Unit)? = null
 }
 
 /** Opening the room: its palette on, if Settings says so. */

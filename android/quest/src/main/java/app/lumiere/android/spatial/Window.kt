@@ -23,7 +23,7 @@ object Window {
      * which on a curve of [DISTANCE_M] sits a little nearer you than its middle.
      */
     const val SIDEBAR_WIDTH_DP = 88
-    const val SIDEBAR_HEIGHT_DP = 440
+    const val SIDEBAR_HEIGHT_DP = 800
     const val SIDEBAR_WIDTH_M = 0.11f
     val SIDEBAR_HEIGHT_M = SIDEBAR_WIDTH_M * SIDEBAR_HEIGHT_DP / SIDEBAR_WIDTH_DP
     const val SIDEBAR_GAP_M = 0.05f

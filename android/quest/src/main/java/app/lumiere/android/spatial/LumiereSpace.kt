@@ -23,6 +23,7 @@ import com.meta.spatial.toolkit.Transform
 import com.meta.spatial.toolkit.TransformParent
 import com.meta.spatial.toolkit.UIPanelSettings
 import com.meta.spatial.toolkit.createPanelEntity
+import com.meta.spatial.vr.LocomotionSystem
 import com.meta.spatial.vr.VRFeature
 
 /**
@@ -37,6 +38,14 @@ class LumiereSpace : AppSystemActivity() {
 
     // ComposeFeature hosts the sidebar's Compose panel; without it the panel can't start.
     override fun registerFeatures(): List<SpatialFeature> = listOf(VRFeature(this), ComposeFeature())
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        app.lumiere.android.Stage.load(this)
+        // The thumbsticks are the remote's arrows here, not a way to walk about the room.
+        systemManager.unregisterSystem<LocomotionSystem>()
+        systemManager.registerSystem(Remote())
+    }
 
     override fun registerPanels(): List<PanelRegistration> = listOf(
         ActivityPanelRegistration(

@@ -51,6 +51,13 @@ class MainActivity : ComponentActivity() {
         app.lumiere.android.api.SnapshotCache.dir = cacheDir.resolve("home")
         state = AppState(this)
         OpenApp.state = state
+        OpenApp.press = { code ->
+            runOnUiThread {
+                val now = android.os.SystemClock.uptimeMillis()
+                dispatchKeyEvent(android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_DOWN, code, 0))
+                dispatchKeyEvent(android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, code, 0))
+            }
+        }
         state.downloads = app.lumiere.android.downloads.Downloads(this)
         state.cache = app.lumiere.android.cache.LibraryCache(this)
         state.cacheSync = app.lumiere.android.cache.CacheSync(state.cache)
@@ -127,7 +134,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        if (::state.isInitialized && OpenApp.state === state) OpenApp.state = null
+        if (::state.isInitialized && OpenApp.state === state) { OpenApp.state = null; OpenApp.press = null }
         super.onDestroy()
     }
 
