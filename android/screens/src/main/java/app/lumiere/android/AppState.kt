@@ -112,6 +112,8 @@ class AppState(context: Context) {
     var justWatched by mutableStateOf<Set<String>>(emptySet())
     /** "Leave Lumiere?" is showing. */
     var confirmExit by mutableStateOf(false)
+    /** What stopped the app last time, shown once at the next start (CrashLog.unseen). */
+    var crashReport by mutableStateOf<String?>(null)
 
     /** A card whose actions are open on the TV; see TvActions. */
     var actionsFor by mutableStateOf<Item?>(null)

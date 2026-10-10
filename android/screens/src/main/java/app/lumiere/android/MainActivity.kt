@@ -51,6 +51,7 @@ class MainActivity : ComponentActivity() {
         app.lumiere.android.api.SnapshotCache.dir = cacheDir.resolve("home")
         state = AppState(this)
         OpenApp.state = state
+        state.crashReport = CrashLog.unseen(this)
         OpenApp.press = { code ->
             runOnUiThread {
                 val now = android.os.SystemClock.uptimeMillis()
@@ -506,6 +507,9 @@ private fun App(state: AppState, onExit: () -> Unit) {
                     androidx.compose.material3.Text("Menu to undo", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f))
                 }
             }
+        }
+        state.crashReport?.let { report ->
+            app.lumiere.android.ui.CrashReportDialog(report) { CrashLog.markSeen(context, report); state.crashReport = null }
         }
         if (state.confirmExit) app.lumiere.android.ui.ExitDialog(onStay = { state.confirmExit = false; state.tvMenuOpen = false }, onLeave = onExit)
         state.pinFor?.let { action ->

@@ -33,6 +33,35 @@ object CrashLog {
     /** The newest report, if the app has stopped since it was installed. */
     fun last(context: Context): String? = File(context.filesDir, FILE).takeIf { it.exists() }?.readText()
 
+    /**
+     * The newest report if it hasn't been shown yet, for the app to show at
+     * its next start — so a crash on a headset can be read (or photographed)
+     * there, without a computer.
+     */
+    fun unseen(context: Context): String? {
+        val text = last(context) ?: return null
+        val seen = context.getSharedPreferences("start", Context.MODE_PRIVATE).getInt("crashSeen", 0)
+        return text.takeIf { it.hashCode() != seen }
+    }
+
+    fun markSeen(context: Context, text: String) {
+        context.getSharedPreferences("start", Context.MODE_PRIVATE).edit().putInt("crashSeen", text.hashCode()).apply()
+    }
+
+    /**
+     * The part of [report] worth reading on a headset: the header, the error,
+     * and the lines of the trace in Lumiere's own code or the Meta SDK's,
+     * each cause's first line kept.
+     */
+    fun essentials(report: String, maxLines: Int = 28): String {
+        val lines = report.lines()
+        val kept = lines.filterIndexed { i, l ->
+            val t = l.trim()
+            i < 6 || !t.startsWith("at ") || "app.lumiere" in t || "com.meta.spatial" in t
+        }.filter { it.isNotBlank() }
+        return kept.take(maxLines).joinToString("\n")
+    }
+
     /** The report's text: when, which build and device, and the whole chain of causes. */
     fun report(thread: String, error: Throwable, at: Date): String = buildString {
         appendLine("Lumiere stopped at ${stamp(at, "yyyy-MM-dd HH:mm:ss")}")
