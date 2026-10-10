@@ -159,7 +159,7 @@ android/
   Two changes to the original scope:
   - The main window stays opaque Lumiere ground. Glass is for chrome, as in visionOS's own TV app.
   - Settings opens in the main window, not a window of its own. A second window would mean a second copy of the app's state. | Design review vs mocks; a11y pass |
-| 3 | Player: spatial surface, transport ornament, subtitles layer, theatre environments, 24p→72 Hz | Codec matrix passes; 2-h perf run clean |
+| 3 | Player: spatial surface, transport ornament, subtitles layer, theatre environments, 24p→72 Hz | Codec matrix passes; 2-h perf run clean | **Cinema mode started:** passthrough dims to 12% while playing (45% paused) with a faint spill of the film's colour, and the window grows 1.35× with the sidebar hidden (`quest/spatial/Cinema.kt`).
 | 4 | 3D + 180/360 (all in scope), spatial audio, downloads offline. **3D SBS/OU started early:** the existing player asks Horizon OS to split its surface per eye (`metavr.view.SurfaceViewExt`, learnt from DeadEasy Player, MIT), with layout from title tags and the picture framed at one eye's shape. | Sample library of each format plays correctly |
 | 5 | Polish: motion tuning, environment art, onboarding tour (`TvTour` analogue), icons/banner | Final critic review; release build |
 

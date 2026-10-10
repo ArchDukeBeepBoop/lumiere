@@ -16,6 +16,8 @@ import androidx.media3.exoplayer.ExoPlayer
  */
 object PictureInPicture {
     var player: ExoPlayer? = null
+    /** A film is playing, not paused: for the Quest's room, which dims for it. */
+    val playing: Boolean get() = player?.isPlaying == true
     var inPip by mutableStateOf(false)
 
     fun enter(activity: Activity) {

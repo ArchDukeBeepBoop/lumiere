@@ -29,9 +29,11 @@ import com.meta.spatial.vr.VRFeature
  * The room: passthrough, and Lumiere's own activity — the same screens as
  * the phone and TV — drawn in one window placed in it. Pinch the window's
  * edge, or grip it with a controller, to carry it somewhere else; it turns
- * to face you as it goes. The sidebar of tabs rides beside its left edge.
+ * to face you as it goes. The sidebar of tabs rides beside its left edge,
+ * and for a film the room goes dark around a bigger screen (Cinema).
  */
 class LumiereSpace : AppSystemActivity() {
+    private val scope = kotlinx.coroutines.MainScope()
 
     // ComposeFeature hosts the sidebar's Compose panel; without it the panel can't start.
     override fun registerFeatures(): List<SpatialFeature> = listOf(VRFeature(this), ComposeFeature())
@@ -76,10 +78,17 @@ class LumiereSpace : AppSystemActivity() {
             Grabbable(enabled = true, type = GrabbableType.PIVOT_Y, minHeight = Window.MIN_HEIGHT_M, maxHeight = Window.MAX_HEIGHT_M),
         )
         // Beside the window's left edge, which the curve brings nearer you, and carried with it.
-        Entity.createPanelEntity(
+        val sidebar = Entity.createPanelEntity(
             R.id.lumiere_sidebar,
             Transform(Pose(Vector3(Window.SIDEBAR_X_M, 0f, -Window.EDGE_NEARER_M))),
             TransformParent(window),
         )
+        // The lights go down for a film.
+        Cinema(scene, window, sidebar).start(scope)
+    }
+
+    override fun onDestroy() {
+        scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
+        super.onDestroy()
     }
 }
