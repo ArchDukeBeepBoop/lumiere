@@ -252,6 +252,12 @@ object OpenApp {
     var state by mutableStateOf<AppState?>(null)
     /** Presses a remote key in the open window, as a TV remote would: the Quest's controllers use it. */
     var press: ((Int) -> Unit)? = null
+    /**
+     * The window's signed-in image loader, for panels outside it (the Quest's
+     * poster wall, ornament and transport): posters are behind sign-in, and a
+     * panel with the default loader drew them blank.
+     */
+    var images by mutableStateOf<coil.ImageLoader?>(null)
 }
 
 /** Opening the room: its palette on, if Settings says so. */

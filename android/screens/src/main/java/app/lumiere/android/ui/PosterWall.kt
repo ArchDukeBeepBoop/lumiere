@@ -75,7 +75,7 @@ object PosterWall {
         state.visibleViews(state.views).filter { it.collectionType in setOf("movies", "tvshows", "homevideos", "mixed", null) }
 
     @Composable
-    fun Panel() {
+    fun Panel() = WithAppImages {
         LumiereTheme {
             val state = OpenApp.state
             if (!open || state?.server == null || state.session == null) return@LumiereTheme

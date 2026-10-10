@@ -8,7 +8,10 @@ import com.meta.spatial.compose.ComposeViewPanelRegistration
 import com.meta.spatial.core.Entity
 import com.meta.spatial.core.Pose
 import com.meta.spatial.core.SpatialFeature
+import com.meta.spatial.core.Vector2
 import com.meta.spatial.core.Vector3
+import com.meta.spatial.isdk.IsdkPanelResize
+import com.meta.spatial.isdk.ResizeMode
 import com.meta.spatial.runtime.ReferenceSpace
 import com.meta.spatial.toolkit.ActivityPanelRegistration
 import com.meta.spatial.toolkit.AppSystemActivity
@@ -20,7 +23,6 @@ import com.meta.spatial.toolkit.PanelRegistration
 import com.meta.spatial.toolkit.PanelStyleOptions
 import com.meta.spatial.toolkit.QuadShapeOptions
 import com.meta.spatial.toolkit.Transform
-import com.meta.spatial.toolkit.TransformParent
 import com.meta.spatial.toolkit.UIPanelSettings
 import com.meta.spatial.toolkit.createPanelEntity
 import com.meta.spatial.vr.LocomotionSystem
@@ -62,8 +64,10 @@ class LumiereSpace : AppSystemActivity() {
             R.id.lumiere_window,
             classIdCreator = { MainActivity::class.java },
             settingsCreator = {
+                // A flat window, as Horizon OS's own are: its corners resize it and the content
+                // reflows, at the same text size (IsdkPanelResize, Relayout, set on the entity).
                 UIPanelSettings(
-                    shape = CylinderShapeOptions(radius = Window.DISTANCE_M, width = Window.WIDTH_M, height = Window.HEIGHT_M),
+                    shape = QuadShapeOptions(width = Window.WIDTH_M, height = Window.HEIGHT_M),
                     display = DpDisplayOptions(width = Window.WIDTH_DP.toFloat(), height = Window.HEIGHT_DP.toFloat()),
                 )
             },
@@ -126,21 +130,25 @@ class LumiereSpace : AppSystemActivity() {
             sunColor = Vector3(0f),
             sunDirection = -Vector3(1f, 3f, 2f),
         )
-        // Where it was anchored, if it was; otherwise before you.
-        val anchored = app.lumiere.android.Stage.anchor?.let { a ->
-            Pose(Vector3(a[0], a[1], a[2]), com.meta.spatial.core.Quaternion(a[3], a[4], a[5], a[6]))
-        }
+        // Before you, like any Quest window: a grab bar beneath it to carry it, which turns it
+        // to face you as it goes, and corners that resize it (both ISDK's own).
+        val start = Pose(Vector3(0f, Window.HEIGHT_ABOVE_FLOOR_M, Window.DISTANCE_M))
         val window = Entity.createPanelEntity(
             R.id.lumiere_window,
-            Transform(anchored ?: Pose(Vector3(0f, Window.HEIGHT_ABOVE_FLOOR_M, Window.DISTANCE_M))),
+            Transform(start),
             Grabbable(enabled = true, type = GrabbableType.PIVOT_Y, minHeight = Window.MIN_HEIGHT_M, maxHeight = Window.MAX_HEIGHT_M),
+            IsdkPanelResize(
+                true, ResizeMode.Relayout,
+                Vector2(Window.MIN_WIDTH_M, Window.MIN_WIDTH_M * Window.HEIGHT_M / Window.WIDTH_M),
+                Vector2(Window.MAX_WIDTH_M, Window.MAX_WIDTH_M * Window.HEIGHT_M / Window.WIDTH_M),
+            ),
         )
-        // Beside the window's left edge, along its curve, and carried with it (Cinema keeps it so).
-        val beside = Seats.sidebarBeside(Seats.room(Seats.ROOM.size / 2, curved = true))
+        // The tab bar: its own panel, with its own grab bar; it starts beside the window's left
+        // edge and goes wherever you put it. Recentring docks it again (Cinema.recenter).
         val sidebar = Entity.createPanelEntity(
             R.id.lumiere_sidebar,
-            Transform(Pose(Vector3(beside[0], 0f, beside[1]), com.meta.spatial.core.Quaternion.fromDirection(Vector3(beside[2], 0f, beside[3])))),
-            TransformParent(window),
+            Transform(Docking.beside(start, Window.WIDTH_M)),
+            Grabbable(enabled = true, type = GrabbableType.PIVOT_Y),
         )
         // Running long enough to count as a good start; the next one tries everything again.
         scope.launch {
@@ -180,8 +188,23 @@ class LumiereSpace : AppSystemActivity() {
         // The lights go down for a film.
         val objects = systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>()
         val panelOf = { e: Entity -> objects.getSceneObject(e)?.getNow(null) as? com.meta.spatial.runtime.PanelSceneObject }
-        runCatching { Cinema(scene, window, sidebar, ornament, wall, panelOf).start(scope) }
+        runCatching { Cinema(scene, window, sidebar, ornament, wall, panelOf).also { cinema = it }.start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "cinema unavailable", it) }
+    }
+
+    private var cinema: Cinema? = null
+
+    /**
+     * Holding the Meta button: the headset recentres its room space on you,
+     * and everything Lumiere shows comes back in front of you, as in any
+     * Quest app. A moment's wait first, for the new space to settle.
+     */
+    override fun onRecenter(isUserInitiated: Boolean) {
+        super.onRecenter(isUserInitiated)
+        scope.launch {
+            kotlinx.coroutines.delay(250)
+            runCatching { cinema?.recenter() }.onFailure { android.util.Log.w("Lumiere", "recenter", it) }
+        }
     }
 
     override fun onDestroy() {

@@ -194,3 +194,33 @@ Learnt on the Quest 3S, and kept as tests where a test can hold them:
 - **Sound from the screen** (`ScreenAudio`, `ScreenSound`): a Media3 audio processor leans the soundtrack toward the screen's direction in your head's frame, every frame; 5.1/7.1 are folded to two ears. Identity when facing the screen; never above unity gain.
 - **180° and 360°** (`Surround`, `SurroundSphere`): explicit tags (VR180, 360°, 180x180) or a bare 180/360 beside an eye tag or on an equirect-shaped picture; a film merely called "360" stays flat. The player's video goes to a `VideoSurfacePanelRegistration` sphere with the film's stereo mode, made only while it plays.
 - **Poster wall** (`PosterWall`): the library as a 155° curved wall, three posters high, loaded as they come into view and filtered by the Private Room like everywhere else. While it is up every controller and gesture key is the wall's, so nothing reaches the hidden window (`Remote.deliver`).
+
+## 13. Spatial-first redesign (2026-10-10)
+The headset verdict: sizes, curve and anchor felt stuck; the cinema screen too small with no environment; the sidebar fixed in place; poster covers blank and the wall too low; holding the Meta button didn't bring things back. Root cause: Lumiere on Quest was a TV screen in a box. Spatial features were bolted on as sidebar buttons, and the film was trapped inside the TV interface's window. The redesign keeps the TV app as the browsing window and builds everything spatial on Quest-native mechanics.
+
+**Principles**
+1. Native mechanics before buttons: Horizon OS grab bars, corner resize, Meta-button recentre, ray and pinch. Nothing you can grab gets a size button.
+2. The picture leaves the window: films play on their own screen, a video layer that is sharp at any size, curved or flat, true 3D, shaped to the film.
+3. Places, not modes: Room (your room, dimmed), Cinema (a lit theatre that takes the film's light), Void (black, for OLED-like contrast).
+4. Controls come to you: a transport bar near your hands that appears when you need it, and captions placed for reading. The tab bar is yours to move.
+5. Comfort and performance are budgets: screens near the eye line, nothing head-locked, a few draw calls per environment, and no per-frame work that isn't needed.
+
+**By facet**
+| Facet | Now | Redesign |
+|---|---|---|
+| Recentre | Ignored | `onRecenter`: window, tab bar, screen and controls come back in front of you; in the cinema, you're re-seated |
+| Browse window | Curved, size buttons, Scale/reshape that didn't show | Flat Horizon window: ISDK grab bar and corner resize (`IsdkPanelResize`, Relayout: the content reflows at the same text size) |
+| Tab bar | Glued to the window's edge | Its own panel with a grab bar; starts beside the window; recentre docks it again |
+| Anchor | A lock that felt stuck | Gone: windows stay where you put them, as on Horizon OS |
+| Watching | The film inside the TV interface's window | The Theater: a video panel (`VideoSurfacePanelRegistration`, quad or cylinder) sized from the film's own shape; 3D via the panel's stereo mode; 180°/360° on the same path |
+| Transport | The TV interface's overlay, in the window | A floating bar under your gaze: play/pause, ±10 s, scrubber, screen size, curve, place, exit. Auto-hides; any button or pinch brings it back |
+| Captions | In the window's subtitle view | Their own panel in front of the screen, from the player's cues (libass gives way to Media3's own SSA parser in the Theater) |
+| Screen size | Presets that didn't render | Five sizes by angle (40°–90°), applied by remaking the video panel at its real size, the one path proven on the headset |
+| Environments | An unlit near-black void | Room (passthrough, dimmed); Cinema (walls, raked rows of seats, stage, aisle lights, lit by the scene's lighting, which takes the film's colour); Void |
+| Poster wall | Blank covers, too low | The app's signed-in image loader is shared with every panel; the wall is raised to just above your eyes |
+| Sound | Steered toward the window | Steered toward the Theater screen |
+
+**Phases**
+- **A1 (now):** recentre; flat window with grab bar and corner resize; free tab bar; anchor and size buttons removed; poster wall images and height.
+- **A2 (now):** the Theater: video screen, transport, captions, environments, film light, sizes by angle, curve.
+- **B (next):** browsing beyond the TV: an ambient backdrop of the focused title behind the window; hand scrubbing (pinch and drag); a wrist menu; an album wall in the music room; environment art from a generated glTF; a first-run tour of the gestures.

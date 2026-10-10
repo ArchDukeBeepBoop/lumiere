@@ -38,6 +38,10 @@ object Window {
     const val NEAR_SIDEBAR_ANGLE_DEG = 35f
     const val NEAR_SIDEBAR_BELOW_EYES_M = 0.2f
 
+    /** How narrow and wide its corners can make it (its shape kept). */
+    const val MIN_WIDTH_M = 0.9f
+    const val MAX_WIDTH_M = 3.2f
+
     /** How low and high it can be carried. */
     const val MIN_HEIGHT_M = 0.6f
     const val MAX_HEIGHT_M = 2.4f
@@ -60,14 +64,15 @@ object Window {
 
     /**
      * The poster wall: a band of glass curved round you, 2.2 m away and
-     * about 155 degrees wide, its middle a little above your eyes. Laid out
+     * about 155 degrees wide, 1.6 m tall, its middle a little above your eyes. Laid out
      * at 400 dp a metre (twice the window's size per dp) so a poster is
      * about a third of a metre wide, and drawn at 240 dpi.
      */
     const val WALL_WIDTH_DP = 2400
-    const val WALL_HEIGHT_DP = 720
+    const val WALL_HEIGHT_DP = 640
     const val WALL_DP_PER_M = 400f
     const val WALL_RADIUS_M = 2.2f
     const val WALL_DPI = 240
-    const val WALL_ABOVE_EYES_M = 0.05f
+    /** Raised so the middle row is a touch above your eyes and the lowest isn't at your knees. */
+    const val WALL_ABOVE_EYES_M = 0.25f
 }

@@ -60,7 +60,7 @@ object Floating {
     val showing: Boolean get() = enabled && (upNext != null || scrub != null || listening)
 
     @Composable
-    fun Ornament() {
+    fun Ornament() = WithAppImages {
         LumiereTheme {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 val offer = upNext

@@ -62,6 +62,8 @@ dependencies {
     implementation("com.meta.spatial:meta-spatial-sdk-toolkit:$spatial")
     implementation("com.meta.spatial:meta-spatial-sdk-vr:$spatial")
     implementation("com.meta.spatial:meta-spatial-sdk-compose:$spatial")
+    // Interaction SDK: the Horizon-style grab bar and corner resize on panels.
+    implementation("com.meta.spatial:meta-spatial-sdk-isdk:$spatial")
 
     testImplementation("junit:junit:4.13.2")
 }

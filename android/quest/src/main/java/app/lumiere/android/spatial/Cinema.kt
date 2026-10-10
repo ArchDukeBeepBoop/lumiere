@@ -16,7 +16,6 @@ import com.meta.spatial.runtime.Scene
 import com.meta.spatial.toolkit.Grabbable
 import com.meta.spatial.toolkit.GrabbableType
 import com.meta.spatial.toolkit.Transform
-import com.meta.spatial.toolkit.TransformParent
 import com.meta.spatial.toolkit.Visible
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -53,9 +52,8 @@ class Cinema(
     private var shownBrightness = -1f
     private var shownTint: Triple<Float, Float, Float>? = null
     /** The window's shape as last made: at first, as LumiereSpace registered it, so a start at the usual size reshapes nothing. */
-    private var shownShape: Seats.Shape? = Seats.room(Seats.ROOM.size / 2, curved = true)
+    private var shownShape: Seats.Shape? = ROOM_WINDOW
     private var sidebarNear = false
-    private var lockedSeen = Stage.locked
     private var place: Stage.Place? = null
     private var roomPose: Pose? = null
     private var seenAsks = Stage.bringHereAsks
@@ -82,7 +80,7 @@ class Cinema(
             val playing = PictureInPicture.playing
             val reduced = app.lumiere.android.Motion.reduced
             if (Stage.place != place) enter(Stage.place)
-            if (Stage.bringHereAsks != seenAsks) { seenAsks = Stage.bringHereAsks; bringHere() }
+            if (Stage.bringHereAsks != seenAsks) { seenAsks = Stage.bringHereAsks; recenter() }
             val cinema = place == Stage.Place.CINEMA
             if (cinema && Stage.seat != seat) seatAt(Stage.seat)
             // A 180° or 360° film: the sphere round you instead of the room or the theatre.
@@ -123,17 +121,16 @@ class Cinema(
             val tint = Ambient.colour?.let { Triple(it.red, it.green, it.blue) }
             if (cinema) theatre.light(brightness, tint) else light(brightness, tint)
 
-            // The screen's real size and curve; the sidebar follows its edge, or comes to you in the cinema.
-            val shape = if (cinema) Seats.cinema(Stage.seat, Stage.curved) else Seats.room(Stage.roomSize, Stage.curved)
+            // In the room the window's size is yours, from its corners; the cinema gives it the
+            // screen's, and the sidebar comes to your side there.
+            val shape = if (cinema) Seats.cinema(Stage.seat, curved = false) else ROOM_WINDOW
             if (shape != shownShape && resize(window, shape)) {
                 shownShape = shape
                 if (cinema) seatAt(Stage.seat)
                 placeSidebar(cinema)
                 settle()
             }
-            // Anchored: the spot is remembered, and given back at the next start (LumiereSpace).
-            if (Stage.locked != lockedSeen) { lockedSeen = Stage.locked; if (Stage.locked) rememberAnchor() }
-            grab(!cinema && !Stage.locked, if (tilted) GrabbableType.FACE else GrabbableType.PIVOT_Y)
+            grab(!cinema, if (tilted) GrabbableType.FACE else GrabbableType.PIVOT_Y)
             // Out of the way while a film plays; back the moment it pauses.
             val showSidebar = !(inPlayer && playing)
             if (showSidebar != sidebarShown) { sidebarShown = showSidebar; sidebar.setComponent(Visible(showSidebar)) }
@@ -177,13 +174,23 @@ class Cinema(
         if (tilted) {
             val at = head.t + look * Window.DISTANCE_M
             window.setComponent(Transform(Pose(at, com.meta.spatial.core.Quaternion.fromDirection(look))))
-            if (Stage.locked) rememberAnchor()
             return
         }
         val ahead = head.removePitchAndRoll()
         val at = head.t + flat(ahead.forward()) * Window.DISTANCE_M
         window.setComponent(Transform(Pose(Vector3(at.x, head.t.y - 0.1f, at.z), ahead.q)))
-        if (Stage.locked) rememberAnchor()
+    }
+
+    /**
+     * Everything back in front of you, as holding the Meta button does in
+     * any Quest app: the window (or, in the cinema, your seat before the
+     * screen), the tab bar docked beside it, and the wall and ornament if up.
+     */
+    fun recenter() {
+        if (place == Stage.Place.CINEMA) { seat = -1; seatAt(Stage.seat); placeSidebar(cinema = true) }
+        else { bringHere(); placeSidebar(cinema = false) }
+        if (wallShown) placeWall()
+        if (ornamentShown) placeOrnament()
     }
 
     /** The wall's middle before you, its curve centred on you, a little above your eyes. */
@@ -244,15 +251,14 @@ class Cinema(
     }
 
     /**
-     * The sidebar: in your room, carried on along the screen's curve just
-     * past its left edge, turned to you, and moving with it; in the cinema,
-     * where a remote would be — by your left hand, within reach, since the
-     * screen is metres away.
+     * The sidebar: in your room, docked beside the window's left edge; in
+     * the cinema, where a remote would be — by your left hand, since the
+     * screen is metres away. Either way it can then be carried anywhere.
      */
     private fun placeSidebar(cinema: Boolean) {
         if (cinema) {
             val seat = seatPose ?: return
-            if (!sidebarNear) { sidebarNear = true; sidebar.tryRemoveComponent<TransformParent>() }
+            sidebarNear = true
             val left = flat(seat.q * Vector3(1f, 0f, 0f))
             val forward = flat(seat.q * Vector3(0f, 0f, 1f))
             val turn = Math.toRadians(Window.NEAR_SIDEBAR_ANGLE_DEG.toDouble())
@@ -262,17 +268,10 @@ class Cinema(
             sidebar.setComponent(Transform(Pose(at, com.meta.spatial.core.Quaternion.fromDirection(flat(at - seat.t)))))
             return
         }
-        val shape = shownShape ?: Seats.room(Stage.roomSize, Stage.curved)
-        val (x, z, dx, dz) = Seats.sidebarBeside(shape)
+        // Docked beside the window's left edge; from there it is yours to move (it has its own grab bar).
         sidebarNear = false
-        sidebar.setComponent(TransformParent(window))
-        sidebar.setComponent(Transform(Pose(Vector3(x, 0f, z), com.meta.spatial.core.Quaternion.fromDirection(Vector3(dx, 0f, dz)))))
-    }
-
-    /** The screen's spot written to Stage, to be given back at the next start. */
-    private fun rememberAnchor() {
-        val p = window.getComponent<Transform>().transform
-        Stage.rememberAnchor(floatArrayOf(p.t.x, p.t.y, p.t.z, p.q.w, p.q.x, p.q.y, p.q.z))
+        val width = panelOf(window)?.getPanelShapeConfig()?.width ?: Window.WIDTH_M
+        sidebar.setComponent(Transform(Docking.beside(window.getComponent<Transform>().transform, width)))
     }
 
     /**
@@ -283,6 +282,11 @@ class Cinema(
      */
     private fun settle() {
         window.setComponent(Transform(window.getComponent<Transform>().transform))
+    }
+
+    private companion object {
+        /** The window's own shape, as LumiereSpace makes it: flat, 1.6 m wide. */
+        val ROOM_WINDOW = Seats.Shape(Window.WIDTH_M, Window.HEIGHT_M, Seats.FLAT_RADIUS_M)
     }
 
     private fun flat(v: Vector3): Vector3 = Vector3(v.x, 0f, v.z).let { if (it.length() < 1e-3f) Vector3(0f, 0f, 1f) else it.normalize() }

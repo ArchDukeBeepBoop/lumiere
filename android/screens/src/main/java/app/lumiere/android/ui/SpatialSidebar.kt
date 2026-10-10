@@ -15,10 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.CenterFocusStrong
-import androidx.compose.material.icons.filled.Crop169
-import androidx.compose.material.icons.filled.Panorama
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
@@ -44,8 +41,9 @@ import app.lumiere.android.tabs
 /**
  * visionOS's tab bar, for the Quest: a column of glass beside Lumiere's
  * window, carried with it. Home, Library, Search, Music and Settings, and
- * the private room; then the screen itself: larger, smaller, the room or
- * the cinema, bring it here, curved or flat, anchored in place. It works on the window's own
+ * the private room; the poster wall; the room or the cinema (and its rows);
+ * everything brought back in front of you; the sleep timer. It is a panel
+ * of its own, with a grab bar: put it wherever suits you. It works on the window's own
  * state, so a tab here is the same as one from the TV's menu.
  */
 @Composable
@@ -75,19 +73,17 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
         }
         Box(Modifier.size(28.dp, 1.dp).background(Color.White.copy(alpha = 0.12f)))
         val cinema = Stage.place == Stage.Place.CINEMA
-        RailButton(Icons.Default.ZoomIn, if (cinema) "A row nearer" else "Larger", chosen = false) { Stage.larger() }
-        RailButton(Icons.Default.ZoomOut, if (cinema) "A row back" else "Smaller", chosen = false) { Stage.smaller() }
+        // The window resizes from its corners and moves by its bar, as Quest windows do; rows are the cinema's.
+        if (cinema) RailButton(Icons.Default.ZoomIn, "A row nearer", chosen = false) { Stage.larger() }
+        if (cinema) RailButton(Icons.Default.ZoomOut, "A row back", chosen = false) { Stage.smaller() }
         RailButton(if (cinema) Icons.Default.Weekend else Icons.Default.Theaters,
             if (cinema) "Back to your room" else "Cinema", chosen = cinema) { Stage.toggleCinema() }
         if (PosterWall.enabled) RailButton(Icons.Default.ViewModule, "Poster wall", chosen = PosterWall.open) { PosterWall.open = !PosterWall.open }
-        RailButton(Icons.Default.CenterFocusStrong, "Bring the screen here", chosen = false) { Stage.bringHere() }
-        RailButton(if (Stage.curved) Icons.Default.Crop169 else Icons.Default.Panorama,
-            if (Stage.curved) "Make the screen flat" else "Curve the screen round you", chosen = false) { Stage.toggleCurve() }
+        RailButton(Icons.Default.CenterFocusStrong, "Bring everything here", chosen = false) { Stage.bringHere() }
         // The sleep timer: each press the next step, its minutes shown under the moon.
         RailButton(Icons.Default.Bedtime, if (Stage.sleepMinutes == 0) "Sleep timer" else "Sleep in ${Stage.sleepMinutes} minutes",
             chosen = Stage.sleepMinutes > 0, caption = Stage.sleepMinutes.takeIf { it > 0 }?.toString()) { Stage.cycleSleep() }
-        if (!cinema) RailButton(Icons.Default.Anchor,
-            if (Stage.locked) "Release the screen" else "Anchor the screen here", chosen = Stage.locked) { Stage.toggleLock() }
+
     }
 }
 

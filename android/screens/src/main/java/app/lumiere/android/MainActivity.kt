@@ -357,6 +357,7 @@ private fun App(state: AppState, onExit: () -> Unit) {
             .build()
             .also { loader -> Diagnostics.imageCacheMb = { (loader.memoryCache?.size ?: 0) / 1_048_576L } }
     }
+    androidx.compose.runtime.LaunchedEffect(images) { OpenApp.images = images }
     // Bumped whenever a screen comes back into view, so it reloads: a title
     // just watched has moved on by the time Back returns to Home.
     var refresh by remember { mutableIntStateOf(0) }
