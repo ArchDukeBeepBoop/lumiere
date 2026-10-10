@@ -94,6 +94,16 @@ class LumiereSpace : AppSystemActivity() {
         // system stays (input reads it every frame; removing it stopped the app at launch), turned off.
         runCatching { systemManager.findSystem<LocomotionSystem>().enableLocomotion(false) }
             .onFailure { android.util.Log.w("Lumiere", "locomotion left on", it) }
+        // Thumb taps and swipes are the remote too; the hands' own turning is off for them.
+        runCatching { systemManager.findSystem<com.meta.spatial.vr.HandMicrogestureLocomotionSystem>().enableHandLocomotion(false) }
+        runCatching {
+            val gestures = systemManager.tryFindSystem<com.meta.spatial.toolkit.MicrogesturesSystem>()
+                ?: com.meta.spatial.toolkit.MicrogesturesSystem().also { systemManager.registerSystem(it) }
+            gestures.addListener { gesture, _ ->
+                val inPlayer = app.lumiere.android.OpenApp.state?.top is app.lumiere.android.Screen.Player
+                Gestures.keysFor(gesture, inPlayer).forEach { key -> app.lumiere.android.OpenApp.press?.invoke(key) }
+            }
+        }.onFailure { android.util.Log.w("Lumiere", "no hand gestures", it) }
         // The lights go down for a film.
         runCatching { Cinema(scene, window, sidebar).start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "cinema unavailable", it) }

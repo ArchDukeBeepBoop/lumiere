@@ -18,6 +18,10 @@ object PictureInPicture {
     var player: ExoPlayer? = null
     /** A film is playing, not paused: for the Quest's room, which dims for it. */
     val playing: Boolean get() = player?.isPlaying == true
+    /** The film's frames a second, or 0 until known: the Quest matches its display to it. */
+    val frameRate: Float get() = player?.videoFormat?.frameRate?.takeIf { it > 0 } ?: 0f
+    /** Stops where it is: the sleep timer's last act. */
+    fun pause() { player?.pause() }
     var inPip by mutableStateOf(false)
 
     fun enter(activity: Activity) {

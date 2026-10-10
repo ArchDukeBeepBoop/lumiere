@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.LockOpen
@@ -31,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import app.lumiere.android.AppState
 import app.lumiere.android.OpenApp
 import app.lumiere.android.Stage
@@ -57,7 +59,7 @@ fun SpatialSidebar(activity: android.app.Activity) {
 private fun Rail(state: AppState, activity: android.app.Activity) {
     val top = state.top
     Column(Modifier.frosted(40).padding(vertical = 14.dp, horizontal = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         tabs(state, tv = true).forEach { tab ->
             RailButton(tab.icon, tab.label, chosen = tab.owns(top)) { tab.screen()?.let(state::tab) }
         }
@@ -73,6 +75,9 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
         RailButton(if (cinema) Icons.Default.Weekend else Icons.Default.Theaters,
             if (cinema) "Back to your room" else "Cinema", chosen = cinema) { Stage.toggleCinema() }
         RailButton(Icons.Default.CenterFocusStrong, "Bring the screen here", chosen = false) { Stage.bringHere() }
+        // The sleep timer: each press the next step, its minutes shown under the moon.
+        RailButton(Icons.Default.Bedtime, if (Stage.sleepMinutes == 0) "Sleep timer" else "Sleep in ${Stage.sleepMinutes} minutes",
+            chosen = Stage.sleepMinutes > 0, caption = Stage.sleepMinutes.takeIf { it > 0 }?.toString()) { Stage.cycleSleep() }
         if (!cinema) RailButton(if (Stage.locked) Icons.Default.PushPin else Icons.Outlined.PushPin,
             if (Stage.locked) "Unpin the screen" else "Pin the screen in place", chosen = Stage.locked) { Stage.toggleLock() }
     }
@@ -80,7 +85,7 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
 
 /** A round glass button; brighter where you point, filled when its screen is open. */
 @Composable
-private fun RailButton(icon: ImageVector, label: String, chosen: Boolean, onClick: () -> Unit) {
+private fun RailButton(icon: ImageVector, label: String, chosen: Boolean, caption: String? = null, onClick: () -> Unit) {
     val source = remember { MutableInteractionSource() }
     val hovered by source.collectIsHoveredAsState()
     val ground = when {
@@ -88,9 +93,12 @@ private fun RailButton(icon: ImageVector, label: String, chosen: Boolean, onClic
         hovered -> Color.White.copy(alpha = 0.22f)
         else -> Color.Transparent
     }
-    Box(Modifier.size(56.dp).background(ground, CircleShape).hoverable(source)
+    val ink = if (chosen) Palette.canvas else Palette.textPrimary
+    Box(Modifier.size(52.dp).background(ground, CircleShape).hoverable(source)
         .clickable(interactionSource = source, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center) {
-        Icon(icon, label, tint = if (chosen) Palette.canvas else Palette.textPrimary, modifier = Modifier.size(26.dp))
+        Icon(icon, label, tint = ink, modifier = Modifier.size(24.dp).then(if (caption != null) Modifier.padding(bottom = 10.dp) else Modifier))
+        if (caption != null) androidx.compose.material3.Text(caption, color = ink,
+            style = androidx.compose.ui.text.TextStyle(fontSize = 11.sp), modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp))
     }
 }

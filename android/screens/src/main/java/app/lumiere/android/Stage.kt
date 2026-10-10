@@ -26,6 +26,24 @@ object Stage {
         private set
     var locked by mutableStateOf(false)
         private set
+    /** When the sleep timer ends, in milliseconds since 1970; 0 when it's off. */
+    var sleepAt by mutableStateOf(0L)
+        private set
+    /** Minutes the timer was set for, for its label; 0 off. */
+    var sleepMinutes by mutableIntStateOf(0)
+        private set
+    val SLEEP_STEPS = intArrayOf(0, 15, 30, 60, 90)
+
+    /** The next step: off, 15, 30, 60, 90 minutes from now, off again. */
+    fun cycleSleep(now: Long = System.currentTimeMillis()) {
+        val next = SLEEP_STEPS[(SLEEP_STEPS.indexOf(sleepMinutes) + 1) % SLEEP_STEPS.size]
+        sleepMinutes = next
+        sleepAt = if (next == 0) 0L else now + next * 60_000L
+    }
+
+    /** The timer has run its course. */
+    fun sleepDone() { sleepMinutes = 0; sleepAt = 0L }
+
     /** Counts up each time the screen is asked to come in front of you. */
     var bringHereAsks by mutableIntStateOf(0)
         private set

@@ -41,6 +41,9 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
     private var seat = -1
     private var grabbable: Boolean? = null
     private var sidebarShown = true
+    private var tilted = false
+    private var displayRate = 0f
+    private val usualRate by lazy { runCatching { scene.getConfirmedFrameRate() }.getOrDefault(0f) }
 
     fun start(scope: CoroutineScope): Job = scope.launch {
         while (isActive) {
@@ -61,7 +64,13 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
             val cinema = place == Stage.Place.CINEMA
             if (cinema && Stage.seat != seat) seatAt(Stage.seat)
 
-            val target = CinemaLight.target(inPlayer, playing)
+            matchDisplay(if (inPlayer) Display.rateFor(PictureInPicture.frameRate) else 0f)
+            // The sleep timer: the room fades over its last minute, then the film stops.
+            val sleepLeft = if (Stage.sleepAt == 0L) Long.MAX_VALUE else Stage.sleepAt - System.currentTimeMillis()
+            if (sleepLeft <= 0) { PictureInPicture.pause(); Stage.sleepDone() }
+            val fading = inPlayer && sleepLeft < 60_000
+            val target = if (fading) CinemaLight.PLAYING * (sleepLeft.coerceAtLeast(0) / 60_000f)
+                else CinemaLight.target(inPlayer, playing)
             brightness = if (reduced) target else CinemaLight.ease(brightness, target)
             val tint = Ambient.colour?.let { Triple(it.red, it.green, it.blue) }
             if (cinema) theatre.light(brightness, tint) else light(brightness, tint)
@@ -69,7 +78,7 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
             val wanted = if (cinema) Seats.CINEMA_SCALE else Seats.roomScale(Stage.roomSize)
             size = if (reduced) wanted else CinemaLight.ease(size, wanted)
             window.setComponent(Scale(Vector3(size)))
-            grab(!cinema && !Stage.locked)
+            grab(!cinema && !Stage.locked, if (tilted) GrabbableType.FACE else GrabbableType.PIVOT_Y)
             // Out of the way while a film plays; back the moment it pauses.
             val showSidebar = !(inPlayer && playing)
             if (showSidebar != sidebarShown) { sidebarShown = showSidebar; sidebar.setComponent(Visible(showSidebar)) }
@@ -97,6 +106,14 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
     private fun bringHere() {
         if (place == Stage.Place.CINEMA) { seat = -1; seatAt(Stage.seat); return }
         val head = scene.getViewerPose()
+        val look = head.forward().normalize()
+        // Lying down and looking up: the screen goes where you look, tilted to face you.
+        tilted = Display.lookingUp(look.y)
+        if (tilted) {
+            val at = head.t + look * Window.DISTANCE_M
+            window.setComponent(Transform(Pose(at, com.meta.spatial.core.Quaternion.fromDirection(look))))
+            return
+        }
         val ahead = head.removePitchAndRoll()
         val at = head.t + flat(ahead.forward()) * Window.DISTANCE_M
         window.setComponent(Transform(Pose(Vector3(at.x, head.t.y - 0.1f, at.z), ahead.q)))
@@ -114,10 +131,21 @@ class Cinema(private val scene: Scene, private val window: Entity, private val s
 
     private fun flat(v: Vector3): Vector3 = Vector3(v.x, 0f, v.z).let { if (it.length() < 1e-3f) Vector3(0f, 0f, 1f) else it.normalize() }
 
-    private fun grab(on: Boolean) {
-        if (grabbable == on) return
-        grabbable = on
-        window.setComponent(Grabbable(enabled = on, type = GrabbableType.PIVOT_Y, minHeight = Window.MIN_HEIGHT_M, maxHeight = Window.MAX_HEIGHT_M))
+    private var grabType: GrabbableType? = null
+
+    /** Movable or pinned; a tilted screen keeps facing you as it's carried, an upright one stays upright. */
+    private fun grab(on: Boolean, type: GrabbableType) {
+        if (grabbable == on && grabType == type) return
+        grabbable = on; grabType = type
+        window.setComponent(Grabbable(enabled = on, type = type, minHeight = Window.MIN_HEIGHT_M, maxHeight = if (type == GrabbableType.FACE) 4f else Window.MAX_HEIGHT_M))
+    }
+
+    /** The headset's display at [rate] for a film (0: its usual rate again). */
+    private fun matchDisplay(rate: Float) {
+        val wanted = if (rate > 0f) rate else usualRate
+        if (wanted <= 0f || wanted == displayRate) return
+        displayRate = wanted
+        if (!scene.requestExactDisplayRate(wanted)) scene.setPreferredDisplayRate(wanted)
     }
 
     private fun light(level: Float, tint: Triple<Float, Float, Float>?) {
