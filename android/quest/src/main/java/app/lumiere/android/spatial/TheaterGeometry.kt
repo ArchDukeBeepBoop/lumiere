@@ -28,6 +28,8 @@ object TheaterGeometry {
     const val CINEMA_SCREEN_WIDTH_M = 24f
     /** The cabin's screen: a home cinema's wall screen, 5.5 m across; a size is how near the sofa is (5.3 m to 1.75 m). */
     const val CABIN_SCREEN_WIDTH_M = 5.5f
+    /** The space station's screen, on its front bulkhead: a size is how near you float to it. */
+    const val STATION_SCREEN_WIDTH_M = 4.0f
 
     /**
      * How far the screen stands, by place and size: in the cinema and the
@@ -39,6 +41,9 @@ object TheaterGeometry {
         Stage.Place.CINEMA -> CINEMA_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
         Stage.Place.CABIN -> CABIN_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
         Stage.Place.LAKE -> 14f
+        Stage.Place.CLOUDS -> 16f
+        Stage.Place.MOON -> 18f
+        Stage.Place.STATION -> STATION_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
         Stage.Place.VOID -> 10f
         Stage.Place.SPACE -> 12f
     }
@@ -53,12 +58,15 @@ object TheaterGeometry {
         Stage.Place.CINEMA -> 0.3f
         Stage.Place.CABIN -> 0.2f
         Stage.Place.LAKE -> 0.9f
+        Stage.Place.CLOUDS -> 0.9f
+        Stage.Place.MOON -> 1.2f
+        Stage.Place.STATION -> 0.3f
         Stage.Place.VOID -> 0.1f
         Stage.Place.SPACE -> 0.2f
     }
 
     /** Whether the screen is part of the place (the cinema's wall, the cabin's), so it stays put; elsewhere it's yours to carry. */
-    fun fixedScreen(place: Stage.Place): Boolean = place == Stage.Place.CINEMA || place == Stage.Place.CABIN
+    fun fixedScreen(place: Stage.Place): Boolean = place == Stage.Place.CINEMA || place == Stage.Place.CABIN || place == Stage.Place.STATION
 
     /**
      * How steeply you look down to the screen's foot, in metres down for each
@@ -97,6 +105,15 @@ object TheaterGeometry {
         val aspect = eyeAspect(request.eyes, request.width, request.height).coerceIn(1.2f, 2.8f)
         return Spec(request.projection, request.eyes, width, width / aspect, if (curved) d else null,
             d, aboveEyes(place), pw, ph)
+    }
+
+    /** The film's shape across, kept within what a screen can sensibly be. */
+    fun aspectOf(request: Theater.Request): Float = eyeAspect(request.eyes, request.width, request.height).coerceIn(1.2f, 2.8f)
+
+    /** The screen on your wall (WallMount): flat, [widthM] across, [distanceM] from where you stood to mount it. */
+    fun mounted(request: Theater.Request, widthM: Float, distanceM: Float): Spec {
+        val (pw, ph) = pictureSize(request)
+        return Spec(request.projection, request.eyes, widthM, widthM / aspectOf(request), null, distanceM, 0f, pw, ph)
     }
 
     /** A sphere this far out: far enough that its curve and your small movements don't show. */

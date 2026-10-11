@@ -39,7 +39,12 @@ class Director(
     private val wall: Entity, private val transport: Entity,
     /** The place's own sounds; none on a plain start. */
     private val ambience: Ambience? = null,
+    /** Your room's walls from Space Setup, for the screen on your wall; none on a plain start. */
+    private val walls: RoomWalls? = null,
 ) {
+    private var seenMountAsks = Stage.mountAsks
+    /** The room is read for a mount made before at most once a start, and only if already allowed. */
+    private var wallsTried = false
     private val screen = TheaterScreen()
     private val marquee = MarqueeScreen()
     private val sky = Sky()
@@ -52,6 +57,12 @@ class Director(
     private val cabin by cabinMade
     private val dockMade = lazy { Scenery(Dock::colour, Dock::surface, Dock::moves) }
     private val dock by dockMade
+    private val terraceMade = lazy { Scenery(Terrace::colour, Terrace::surface, Terrace::moves) }
+    private val terrace by terraceMade
+    private val moonMade = lazy { Scenery(MoonBase::colour, MoonBase::surface, MoonBase::moves) }
+    private val moonBase by moonMade
+    private val stationMade = lazy { Scenery(Station::colour, Station::surface, Station::moves) }
+    private val station by stationMade
 
     // What's up now, so each change is made once.
     private var theaterOn = false
@@ -92,6 +103,9 @@ class Director(
         if (app.lumiere.android.Motion.reduced) return
         if (cabinMade.isInitialized()) cabin.animate(seconds)
         if (dockMade.isInitialized()) dock.animate(seconds)
+        if (terraceMade.isInitialized()) terrace.animate(seconds)
+        if (moonMade.isInitialized()) moonBase.animate(seconds)
+        if (stationMade.isInitialized()) station.animate(seconds)
     }
 
     fun soundSource(): Entity? = when {
@@ -116,6 +130,7 @@ class Director(
         val inPlayer = OpenApp.state?.top is Screen.Player
         val playing = PictureInPicture.playing
         if (Stage.bringHereAsks != seenAsks) { seenAsks = Stage.bringHereAsks; recenter() }
+        if (Stage.mountAsks != seenMountAsks) { seenMountAsks = Stage.mountAsks; mountOrUnmount() }
 
         // The Theater: up for a film, down after it — and not down between episodes.
         val request = hold.request(Theater.request, inPlayer, now).also { shownRequest = it }
@@ -144,7 +159,9 @@ class Director(
         if (on) {
             val spec = TheaterGeometry.spec(request!!, place, Stage.screenSize, Stage.curved)
             val s = seat ?: seatHere().also { seat = it }
-            if (screen.follow(spec, s, movable = !TheaterGeometry.fixedScreen(place))) {
+            val hung = if (place == Stage.Place.ROOM && request.projection == Projection.FLAT) onYourWall(request, s) else null
+            if (hung != null) { if (screen.follow(hung.first, s, movable = false, on = hung.second)) shownPlace = null }
+            else if (screen.follow(spec, s, movable = !TheaterGeometry.fixedScreen(place))) {
                 surround(place, s, spec)
                 shownPlace = null
             }
@@ -156,6 +173,9 @@ class Director(
         val hall = place == Stage.Place.CINEMA && seated
         val inCabin = place == Stage.Place.CABIN && seated
         val onDock = place == Stage.Place.LAKE && seated
+        val onTerrace = place == Stage.Place.CLOUDS && seated
+        val onMoon = place == Stage.Place.MOON && seated
+        val aboard = place == Stage.Place.STATION && seated
         // The place's sound, from where its sources are as you turn; quiet, and gone while a film plays.
         ambience?.let { a ->
             val sounds = if (sphere || (place != Stage.Place.SPACE && !seated)) null else Soundscape.sceneFor(place, hall)
@@ -169,6 +189,9 @@ class Director(
             if (theatreMade.isInitialized() || hall) theatre.show(hall)
             if (cabinMade.isInitialized() || inCabin) cabin.show(inCabin)
             if (dockMade.isInitialized() || onDock) dock.show(onDock)
+            if (terraceMade.isInitialized() || onTerrace) terrace.show(onTerrace)
+            if (moonMade.isInitialized() || onMoon) moonBase.show(onMoon)
+            if (stationMade.isInitialized() || aboard) station.show(aboard)
             sky.show(if (sphere) null else Sky.pictureFor(place))
             shownBrightness = -1f; shownTint = null
         }
@@ -236,9 +259,54 @@ class Director(
             hall -> theatre.light(brightness, tint)
             inCabin -> cabin.light(brightness, tint)
             onDock -> dock.light(brightness, tint)
+            onTerrace -> terrace.light(brightness, tint)
+            onMoon -> moonBase.light(brightness, tint)
+            aboard -> station.light(brightness, tint)
             place == Stage.Place.ROOM && !sphere -> lightRoom(brightness, tint)
         }
         return brightness != target
+    }
+
+    /**
+     * The screen on your wall, if you mounted it and the wall is known: its
+     * spec (your size, from where you stood, kept on the wall) and pose.
+     */
+    private fun onYourWall(request: Theater.Request, s: TheaterScreen.Seat): Pair<TheaterGeometry.Spec, Pose>? {
+        val m = Stage.mount ?: return null
+        val w = walls ?: return null
+        if (w.state != RoomWalls.State.READY) {
+            if (!wallsTried && w.allowed()) { wallsTried = true; w.load { shownPlace = null } }
+            return null
+        }
+        val wall = w.wall(m.wall) ?: return null
+        val aspect = TheaterGeometry.aspectOf(request)
+        val width = WallMount.width(wall, TheaterGeometry.SIZE_DEGREES[Stage.screenSize.coerceIn(0, TheaterGeometry.SIZE_DEGREES.lastIndex)], m.distance, aspect)
+        val (x, y) = WallMount.fit(wall, m.x, m.y, width, width / aspect)
+        return TheaterGeometry.mounted(request, width, m.distance) to WallMount.pose(wall, x, y, s.eye)
+    }
+
+    /** The screen onto the wall you face, or off it again; what happened is said over the transport. */
+    private fun mountOrUnmount() {
+        if (Stage.mount != null) { Stage.mounted(null); Theater.say("The screen floats again"); return }
+        val w = walls ?: return Theater.say("Your room's walls can't be read on this start")
+        Theater.say("Reading your room's walls…")
+        w.load { state ->
+            when (state) {
+                RoomWalls.State.READY -> {
+                    val head = scene.getViewerPose()
+                    val hit = WallMount.facing(w.walls(), head.t, head.forward().normalize())
+                    if (hit == null) Theater.say("Look at a wall of your room, then choose this again")
+                    else {
+                        val (wall, at) = hit
+                        Stage.mounted(Stage.Mount(wall.id, at.first, at.second, WallMount.distance(wall, head.t)))
+                        Theater.say("On your wall: films in your room play here now")
+                    }
+                }
+                RoomWalls.State.NO_PERMISSION -> Theater.say("To use your walls, allow Lumiere spatial data (Settings › Privacy)")
+                RoomWalls.State.NO_ROOM -> Theater.say("Set up your space first: Settings › Physical space › Space setup")
+                else -> Theater.say("Your room's walls couldn't be read just now: try again in a moment")
+            }
+        }
     }
 
     /** Where you look, level, for the place's sounds to come from where their sources are. */
@@ -279,6 +347,11 @@ class Director(
                 Cabin.build(spec.widthM, spec.heightM, middle, spec.distanceM, eye, slope)
             }
             Stage.Place.LAKE -> dock.build(s.floor, listOf(eye, slope)) { Dock.build(eye, slope) }
+            Stage.Place.CLOUDS -> terrace.build(s.floor, listOf(eye, slope)) { Terrace.build(eye, slope) }
+            Stage.Place.MOON -> moonBase.build(s.floor, listOf(eye, slope)) { MoonBase.build(eye, slope) }
+            Stage.Place.STATION -> station.build(s.floor, listOf(spec.widthM, spec.heightM, middle, spec.distanceM, eye)) {
+                Station.build(spec.widthM, spec.heightM, middle, spec.distanceM, eye)
+            }
             Stage.Place.ROOM, Stage.Place.VOID, Stage.Place.SPACE -> {}
         }
     }

@@ -42,13 +42,14 @@ class TheaterScreen {
      * was made anew. [movable]: it has a grab bar and goes wherever you carry
      * it, facing you (your room, the dark); the cinema's belongs to its hall.
      */
-    fun follow(spec: TheaterGeometry.Spec, seat: Seat, movable: Boolean): Boolean {
-        if (spec == made && movable == madeMovable && entity != null) return false
+    fun follow(spec: TheaterGeometry.Spec, seat: Seat, movable: Boolean, on: Pose? = null): Boolean {
+        if (spec == made && movable == madeMovable && on == pinned && entity != null) return false
         clear()
         made = spec
         madeMovable = movable
+        pinned = on
         current = spec
-        val screen = Entity.createPanelEntity(R.id.lumiere_screen, Transform(screenPose(spec, seat)),
+        val screen = Entity.createPanelEntity(R.id.lumiere_screen, Transform(on ?: screenPose(spec, seat)),
             Grabbable(enabled = movable && spec.projection == Projection.FLAT, type = GrabbableType.FACE))
         entity = screen
         // A flat screen's captions ride on it, wherever it's carried; a sphere's stay before you.
@@ -59,10 +60,13 @@ class TheaterScreen {
     }
 
     private var madeMovable = false
+    /** Where the screen hangs on your wall (WallMount), if it does: it stays there, wherever you sit. */
+    private var pinned: Pose? = null
 
-    /** Where you now sit: the screen (and a sphere's captions) move with you, unmade. */
+    /** Where you now sit: the screen (and a sphere's captions) move with you, unmade; one on your wall stays. */
     fun place(seat: Seat) {
         val spec = made ?: return
+        if (pinned != null) return
         entity?.setComponent(Transform(screenPose(spec, seat)))
         if (spec.projection != Projection.FLAT) captions?.setComponent(Transform(sphereCaptions(seat)))
     }
@@ -72,7 +76,7 @@ class TheaterScreen {
         Theater.surface = null
         entity?.let { runCatching { it.destroy() } }
         captions?.let { runCatching { it.destroy() } }
-        entity = null; captions = null; made = null
+        entity = null; captions = null; made = null; pinned = null
     }
 
     private fun screenPose(spec: TheaterGeometry.Spec, seat: Seat): Pose =

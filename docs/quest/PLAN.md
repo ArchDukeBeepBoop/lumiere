@@ -303,3 +303,15 @@ See the reply of 2026-10-11; recorded here so the list survives.
 12. Depth in the browse window: posters with parallax layers, as Apple TV's cards tilt.
 13. Comfort: recentre automatically when you sit or stand, a seated or standing height calibration, a "lie back" mode that tilts the whole place.
 14. Watch together with friends' avatars in the same place (larger; later).
+
+## 18. Batch 1 of the proposals (2026-10-11)
+**The screen on your wall.** In your room, "Screen on the wall before you" (under More on the transport, pinnable) reads your Space Setup through Meta's Mixed Reality Utility Kit (`meta-spatial-sdk-mruk`, the `com.oculus.permission.USE_SCENE` permission asked for only then; with no Space Setup the headset offers to run it). The wall your gaze meets takes the screen: flush, 3 cm proud, square and upright, your size from where you stood but never past the wall's edges, its middle at least a TV's height (WallMount, tested). The wall's own id, where on it and your distance are saved (Stage.mount), so every film in your room plays there until you take it off; a wall Space Setup no longer has, or a refused permission, leaves the screen floating as before. MRUK is left out of a plain start (StartGuard.peek), so a failure there can't stop the app.
+
+**Three places.**
+| Place | Sky | Around you | Sound |
+|---|---|---|---|
+| Above the clouds | A cumulus sea at golden hour (`Scripts/clouds.py`) | A teak terrace: rails, two loungers and a low table with drinks behind you, olive trees in planters, lanterns; the deck stops short of your sightline; screen 16 m out, 0.9 m over your eyes | Wind in long gusts |
+| The Moon | Lunar highlands, the Earth over the horizon (`Scripts/moon.py`) | A lunar base's tread-plate deck on legs: safety rails, cases, oxygen bottles, a toolbox, work lights, a mast with a dish and a blinking beacon; screen 18 m out on the surface | A suit's quiet hum, a radio click now and then |
+| The space station | The Earth from 400 km, its limb, night side and city lights (`Scripts/orbit.py`) | An observation module round a 4 m wall screen: hull panels, windows down both sides, one in the floor and a skylight, handrails, light strips, lockers and the hatch, blinking panel lights, a grow box, a laptop on its arm, things drifting free | Fans, a hum, a soft chime |
+
+Tests: WallMountTest; NewPlacesTest (no part of any new place hides the screen at any size, film shape or eye height; every box has a size; tall things beside you or behind; each has a sky and a sound).

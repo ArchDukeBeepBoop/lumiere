@@ -15,7 +15,7 @@ object Shortcuts {
     /** Every action the transport can carry. The ids are saved: never change one, only add. */
     enum class Action(val id: String) {
         TRACKS("tracks"), SMALLER("smaller"), LARGER("larger"), CURVE("curve"), PLACE("place"),
-        PLAYER_MENU("menu"), SLEEP("sleep"), BRING_HERE("here"), SPEED("speed"), SOUNDS("sounds");
+        PLAYER_MENU("menu"), SLEEP("sleep"), BRING_HERE("here"), SPEED("speed"), SOUNDS("sounds"), WALL("wall");
 
         companion object { fun of(id: String): Action? = entries.firstOrNull { it.id == id } }
     }

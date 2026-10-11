@@ -93,6 +93,10 @@ object Theater {
     /** The window's own player screen asked for in front (its tracks, info), over the Theater. */
     var windowAsked by mutableStateOf(false)
 
+    /** A word over the transport for a few seconds: the screen went on your wall, or why it couldn't. */
+    var notice by mutableStateOf<String?>(null)
+    fun say(words: String) { notice = words; poke() }
+
     /** When you last did anything — a button, a pinch, the transport — so it shows. */
     var lastActivity by mutableLongStateOf(0L)
         private set

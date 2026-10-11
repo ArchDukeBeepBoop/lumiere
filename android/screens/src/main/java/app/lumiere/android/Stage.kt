@@ -21,7 +21,8 @@ object Stage {
      * order the place button comes round to them; saved by name, so the order is free to change.
      */
     enum class Place(val label: String) {
-        ROOM("your room"), CINEMA("the cinema"), CABIN("the cabin"), LAKE("the lakeside"), VOID("the dark"), SPACE("space")
+        ROOM("your room"), CINEMA("the cinema"), CABIN("the cabin"), LAKE("the lakeside"), CLOUDS("above the clouds"),
+        MOON("the Moon"), STATION("the space station"), VOID("the dark"), SPACE("space")
     }
 
     /** A saved place by its name; a missing or unknown one (from another version) is the cinema, where everyone starts. */
@@ -80,6 +81,7 @@ object Stage {
         screenSize = if (p.getInt("sizes", 1) < 2) DEFAULT_SIZE else p.getInt("screenSize", DEFAULT_SIZE).coerceIn(0, SCREEN_SIZES - 1)
         curved = p.getBoolean("screenCurved", false)
         ambience = p.getBoolean("ambience", true)
+        mount = p.getString("mountWall", null)?.let { Mount(it, p.getFloat("mountX", 0f), p.getFloat("mountY", 1.2f), p.getFloat("mountDistance", 3f)) }
         app.lumiere.android.ui.Shortcuts.load(p)
     }
 
@@ -92,7 +94,27 @@ object Stage {
     fun smaller() { screenSize = (screenSize - 1).coerceAtLeast(0); save() }
     fun toggleCurve() { curved = !curved; save() }
     fun toggleAmbience() { ambience = !ambience; save() }
-    /** Room, cinema, cabin, lakeside, the dark, space, round again. */
+    /** Room, cinema, cabin, lakeside, above the clouds, the Moon, the space station, the dark, space, round again. */
     fun nextPlace() { place = Place.entries[(place.ordinal + 1) % Place.entries.size]; save() }
     fun bringHere() { bringHereAsks++ }
+
+    /**
+     * The screen on a wall of your room: which wall (Space Setup's id for
+     * it), where on it (its own x along and y up), and how far you stood,
+     * which with the size sets how big it is. Null: it floats as before.
+     */
+    data class Mount(val wall: String, val x: Float, val y: Float, val distance: Float)
+    var mount by mutableStateOf<Mount?>(null)
+        private set
+    /** Asked to mount the screen on the wall before you, or take it off (the Director answers). */
+    var mountAsks by mutableIntStateOf(0)
+        private set
+    fun askMount() { mountAsks++ }
+    fun mounted(m: Mount?) {
+        mount = m
+        prefs?.edit()?.apply {
+            if (m == null) remove("mountWall")
+            else putString("mountWall", m.wall).putFloat("mountX", m.x).putFloat("mountY", m.y).putFloat("mountDistance", m.distance)
+        }?.apply()
+    }
 }

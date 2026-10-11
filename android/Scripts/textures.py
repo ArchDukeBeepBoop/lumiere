@@ -240,6 +240,35 @@ def art_landscape():
     return out * brush[:, :, None]
 
 
+def hull():
+    """A spacecraft's inside: white panels in a grid, their seams, rows of rivets, a faint wear."""
+    yy, xx = np.mgrid[:N, :N]
+    out = np.ones((N, N)) * 0.92
+    cell = N // 2
+    seam = (xx % cell < 3) | (yy % cell < 3)
+    out[seam] = 0.55
+    rivets = ((xx % cell - 12) % (cell // 4) < 4) & (((yy % cell) - 12) % (cell - 24) < 4)
+    out[rivets] = 0.7
+    inner = ((xx % cell) > 40) & ((xx % cell) < cell - 40) & ((yy % cell) > 40) & ((yy % cell) < cell - 40)
+    out = np.where(inner & ((xx % cell == 41) | (yy % cell == 41)), 0.8, out)
+    return out * (0.94 + 0.06 * periodic_noise(1.4, seed=111))
+
+
+def grating():
+    """A metal deck's tread plate: raised diamonds in a herringbone, scuffed."""
+    yy, xx = np.mgrid[:N, :N] / N
+    cells = 16
+    u = (xx * cells) % 1 - 0.5
+    v = (yy * cells) % 1 - 0.5
+    flip = ((np.floor(xx * cells) + np.floor(yy * cells)) % 2) * 2 - 1
+    a = (u + flip * v) / 1.414
+    b = (u - flip * v) / 1.414
+    diamond = (np.abs(a) < 0.32) & (np.abs(b) < 0.07)
+    out = np.where(diamond, 0.95, 0.72)
+    scuff = periodic_noise(1.6, seed=121)
+    return out * (0.85 + 0.15 * scuff)
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     save("wood", wood())
@@ -256,3 +285,5 @@ if __name__ == "__main__":
     save("panel", panel())
     save("art_abstract", art_abstract(), colour=True)
     save("art_landscape", art_landscape(), colour=True)
+    save("hull", hull())
+    save("grating", grating())

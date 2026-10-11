@@ -16,7 +16,8 @@ class StageTest {
         repeat(Stage.Place.entries.size) { if (Stage.place != Stage.Place.ROOM) Stage.nextPlace() }
         assertEquals(Stage.Place.ROOM, Stage.place)
         val seen = (0 until Stage.Place.entries.size).map { Stage.nextPlace(); Stage.place }
-        assertEquals(listOf(Stage.Place.CINEMA, Stage.Place.CABIN, Stage.Place.LAKE, Stage.Place.VOID, Stage.Place.SPACE, Stage.Place.ROOM), seen)
+        assertEquals(listOf(Stage.Place.CINEMA, Stage.Place.CABIN, Stage.Place.LAKE, Stage.Place.CLOUDS, Stage.Place.MOON,
+            Stage.Place.STATION, Stage.Place.VOID, Stage.Place.SPACE, Stage.Place.ROOM), seen)
     }
 
     @Test fun placesSavedByEarlierVersionsStillLoad() {

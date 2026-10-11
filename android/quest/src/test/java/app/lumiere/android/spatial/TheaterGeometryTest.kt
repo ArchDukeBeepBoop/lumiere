@@ -54,7 +54,7 @@ class TheaterGeometryTest {
         }
         assertTrue("each size larger", sizes.zipWithNext().all { (a, b) -> b.widthM > a.widthM })
         assertTrue("yours to carry, as in the dark and space", !TheaterGeometry.fixedScreen(Stage.Place.LAKE))
-        assertEquals(listOf(Stage.Place.CINEMA, Stage.Place.CABIN), Stage.Place.entries.filter { TheaterGeometry.fixedScreen(it) })
+        assertEquals(listOf(Stage.Place.CINEMA, Stage.Place.CABIN, Stage.Place.STATION), Stage.Place.entries.filter { TheaterGeometry.fixedScreen(it) })
     }
 
     @Test fun theLineToTheScreensFootIsSteeperForACurve() {

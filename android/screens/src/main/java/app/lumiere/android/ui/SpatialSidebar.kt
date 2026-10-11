@@ -16,6 +16,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.SatelliteAlt
+import androidx.compose.material.icons.filled.NightsStay
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.filled.Lock
@@ -109,6 +112,9 @@ fun placeIcon(place: Stage.Place): ImageVector = when (place) {
     Stage.Place.CINEMA -> Icons.Default.Theaters
     Stage.Place.CABIN -> Icons.Default.Cabin
     Stage.Place.LAKE -> Icons.Default.Landscape
+    Stage.Place.CLOUDS -> Icons.Default.Cloud
+    Stage.Place.MOON -> Icons.Default.NightsStay
+    Stage.Place.STATION -> Icons.Default.SatelliteAlt
     Stage.Place.VOID -> Icons.Default.DarkMode
     Stage.Place.SPACE -> Icons.Default.AutoAwesome
 }
@@ -119,6 +125,9 @@ fun placeCaption(place: Stage.Place): String = when (place) {
     Stage.Place.CINEMA -> "Cinema"
     Stage.Place.CABIN -> "Cabin"
     Stage.Place.LAKE -> "Lake"
+    Stage.Place.CLOUDS -> "Clouds"
+    Stage.Place.MOON -> "Moon"
+    Stage.Place.STATION -> "Station"
     Stage.Place.VOID -> "Dark"
     Stage.Place.SPACE -> "Space"
 }

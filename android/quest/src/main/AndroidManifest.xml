@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="com.oculus.permission.HAND_TRACKING" />
+    <!-- Your room's walls from Space Setup, asked for only when you mount the screen on one. -->
+    <uses-permission android:name="com.oculus.permission.USE_SCENE" />
 
     <uses-feature android:name="android.hardware.vr.headtracking" android:required="true" />
     <uses-feature android:name="oculus.software.handtracking" android:required="false" />

@@ -112,6 +112,9 @@ object StartGuard {
         return plain(unsettled)
     }
 
+    /** What [begin] will say, without counting a start: for choices made before it runs (the Quest's features). */
+    fun peek(context: Context): Boolean = plain(prefs(context).getInt("unsettled", 0))
+
     fun settled(context: Context) { prefs(context).edit().putInt("unsettled", 0).apply() }
 
     /** Whether a start after [unsettled] failed ones should be a plain one. */

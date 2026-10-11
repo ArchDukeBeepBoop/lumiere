@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin as PushPinOutline
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.media3.common.C
@@ -118,6 +119,8 @@ fun TheaterBar() = WithAppImages {
                 Shortcuts.Action.SLEEP -> Stage.cycleSleep()
                 Shortcuts.Action.BRING_HERE -> Stage.bringHere()
                 Shortcuts.Action.SOUNDS -> Stage.toggleAmbience()
+                Shortcuts.Action.WALL -> if (Stage.place == Stage.Place.ROOM) Stage.askMount()
+                    else Theater.say("The screen goes on a wall in your room: choose your room first")
                 // The player may have just been let go as the film ended; the speed then simply stays.
                 Shortcuts.Action.SPEED -> runCatching {
                     c.player.setPlaybackSpeed(Shortcuts.nextSpeed(c.player.playbackParameters.speed))
@@ -126,7 +129,12 @@ fun TheaterBar() = WithAppImages {
             }
         }
         // The panel is tall and clear above the bar, so audio and subtitles, or More, open over it.
+        // A word for a few seconds, over everything else.
+        val notice = Theater.notice
+        LaunchedEffect(notice) { if (notice != null) { delay(5000); Theater.notice = null } }
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Bottom)) {
+            if (notice != null) Text(notice, style = MaterialTheme.typography.titleMedium, color = Palette.textPrimary,
+                modifier = Modifier.align(Alignment.CenterHorizontally).spatialGlass(28).padding(horizontal = 22.dp, vertical = 12.dp))
             when (sheet) {
                 Sheet.TRACKS -> TrackSheet(c) { sheet = Sheet.NONE }
                 Sheet.MORE -> MoreSheet(::look, ::perform) { sheet = Sheet.NONE }
@@ -197,6 +205,11 @@ private fun lookOf(a: Shortcuts.Action, speed: Float, tracksOpen: Boolean): Look
     }
     Shortcuts.Action.BRING_HERE -> Look(Icons.Default.CenterFocusStrong, "Bring everything here")
     Shortcuts.Action.SPEED -> Shortcuts.speedLabel(speed).let { Look(Icons.Default.Speed, "Playback speed", caption = it, value = it, chosen = it != "1×") }
+    Shortcuts.Action.WALL -> when {
+        Stage.mount != null -> Look(Icons.Default.Tv, "Take the screen off the wall", value = "On your wall now", chosen = true)
+        Stage.place != Stage.Place.ROOM -> Look(Icons.Default.Tv, "Screen on your wall", value = "In your room")
+        else -> Look(Icons.Default.Tv, "Screen on the wall before you", value = "Look at a wall, then tap")
+    }
     Shortcuts.Action.SOUNDS -> if (Stage.ambience) Look(Icons.Default.GraphicEq, "Sounds of the place", value = "On: heard while paused", chosen = true)
         else Look(Icons.Default.GraphicEq, "Sounds of the place", value = "Off")
 }

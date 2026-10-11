@@ -42,7 +42,24 @@ class LumiereSpace : AppSystemActivity() {
     private var plain = false
 
     // ComposeFeature hosts the sidebar's Compose panel; without it the panel can't start.
-    override fun registerFeatures(): List<SpatialFeature> = listOf(VRFeature(this), ComposeFeature())
+    override fun registerFeatures(): List<SpatialFeature> {
+        val features = mutableListOf<SpatialFeature>(VRFeature(this), ComposeFeature())
+        // Your room's walls (Space Setup), for the screen on your wall; left out of a plain start.
+        if (!app.lumiere.android.StartGuard.peek(this))
+            runCatching { com.meta.spatial.mruk.MRUKFeature(this, systemManager) }.onSuccess { mruk = it; features += it }
+                .onFailure { android.util.Log.w("Lumiere", "no room understanding", it) }
+        return features
+    }
+
+    private var mruk: com.meta.spatial.mruk.MRUKFeature? = null
+    private var roomWalls: RoomWalls? = null
+
+    @Deprecated("The headset asks for the spatial data permission the platform way.")
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        @Suppress("DEPRECATION") super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == RoomWalls.REQUEST)
+            roomWalls?.answered(grantResults.firstOrNull() == android.content.pm.PackageManager.PERMISSION_GRANTED)
+    }
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -214,7 +231,8 @@ class LumiereSpace : AppSystemActivity() {
             R.id.lumiere_transport, Transform(Window.parked()),
             Grabbable(enabled = true, type = GrabbableType.FACE), com.meta.spatial.toolkit.Visible(false),
         )
-        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience).also { director = it }.start(scope) }
+        roomWalls = mruk?.let { RoomWalls(this, it) }
+        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls).also { director = it }.start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "director unavailable", it) }
         // The place's own sounds, while the app is in front (onResume and onPause start and stop them).
         ambience.start()

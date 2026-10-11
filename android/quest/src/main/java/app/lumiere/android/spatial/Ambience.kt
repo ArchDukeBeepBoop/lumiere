@@ -16,7 +16,7 @@ import kotlin.math.sin
  * Ambience plays it.
  */
 class Soundscape(private val rate: Int = RATE, seed: Long = 1729L) {
-    enum class Scene { CABIN, LAKE, CINEMA, SPACE }
+    enum class Scene { CABIN, LAKE, CINEMA, SPACE, CLOUDS, MOON, STATION }
 
     private var noise = seed or 1L
     private fun white(): Float {
@@ -29,6 +29,8 @@ class Soundscape(private val rate: Int = RATE, seed: Long = 1729L) {
     private var low1 = 0f; private var low2 = 0f; private var low3 = 0f
     private var crackle = 0f; private var crackleTone = 0f
     private var swell = 0f
+    private var gust = 0f
+    private var beep = 0
     private var t = 0L
     private val crickets = listOf(Cricket(4300f, 1.9f, 0.0f), Cricket(4650f, 2.6f, 0.7f), Cricket(4480f, 3.3f, 1.6f))
 
@@ -85,6 +87,40 @@ class Soundscape(private val rate: Int = RATE, seed: Long = 1729L) {
                     low3 += 0.008f * (white() - low3)
                     l += low1 * 1.2f; r += low3 * 1.2f
                 }
+                Scene.CLOUDS -> {
+                    // Wind high up: a broad rush rising and falling in long gusts, a little brighter as it rises.
+                    val w = white()
+                    low1 += 0.04f * (w - low1); low3 += 0.004f * (w - low3)
+                    val g = (0.55 + 0.45 * sin(2 * PI * 0.07 * seconds) * sin(2 * PI * 0.023 * seconds + 0.6)).toFloat()
+                    gust += 0.0005f * (g - gust)
+                    val air = (low1 - low3) * (0.6f + 1.4f * gust) * 1.3f
+                    l += air * (0.8f + 0.2f * sin(2 * PI * 0.05 * seconds).toFloat()); r += air * (0.8f - 0.2f * sin(2 * PI * 0.05 * seconds).toFloat())
+                }
+                Scene.MOON -> {
+                    // No air to carry a sound: only your suit's own quiet hum, and now and then a faint radio click.
+                    val hum = (sin(2 * PI * 100 * seconds) * 0.5 + sin(2 * PI * 200 * seconds) * 0.2).toFloat() * 0.02f
+                    low1 += 0.05f * (white() - low1)
+                    if (crackle < 0.002f && white() > 1f - 0.4f * 2f / rate) crackle = 0.4f
+                    crackle *= 0.995f
+                    val click = low1 * crackle * 0.6f
+                    l += hum + low1 * 0.05f + click; r += hum + low1 * 0.05f + click
+                }
+                Scene.STATION -> {
+                    // A station's air: fans pushing it round, a low electrical hum, and a soft chime now and then.
+                    val w = white()
+                    low1 += 0.06f * (w - low1); low3 += 0.01f * (w - low3)
+                    val fans = (low1 - low3) * 0.9f + low3 * 0.6f
+                    val hum = (sin(2 * PI * 60 * seconds) * 0.4 + sin(2 * PI * 120 * seconds) * 0.25).toFloat() * 0.03f
+                    if (beep <= 0 && white() > 1f - 0.08f * 2f / rate) beep = (rate * 0.25f).toInt()
+                    var chime = 0f
+                    if (beep > 0) {
+                        val k = 1f - beep / (rate * 0.25f)
+                        chime = (sin(2 * PI * 1318.5 * seconds) * (1 - k) * (1 - k)).toFloat() * 0.05f
+                        beep--
+                    }
+                    val (gl, gr) = pan(STATION_CHIME_ANGLE - turn)
+                    l += fans + hum + chime * gl; r += fans * 0.95f + hum + chime * gr
+                }
                 Scene.SPACE -> {
                     // A deep, slow drone, two low notes beating against each other.
                     swell = (0.6 + 0.4 * sin(2 * PI * 0.05 * seconds)).toFloat()
@@ -106,6 +142,8 @@ class Soundscape(private val rate: Int = RATE, seed: Long = 1729L) {
         const val CRACKS_PER_SECOND = 5f
         /** Where the fireplace is from your seat in the cabin: on your left, a little behind. */
         const val FIRE_ANGLE = 1.95f
+        /** Where the station's panel that chimes is: behind you, on the back wall. */
+        const val STATION_CHIME_ANGLE = 3.0f
         /** Where the crickets are from your seat at the lake: left, behind you, right. */
         val CRICKET_ANGLES = floatArrayOf(1.2f, 2.7f, -1.9f)
 
@@ -128,6 +166,9 @@ class Soundscape(private val rate: Int = RATE, seed: Long = 1729L) {
             app.lumiere.android.Stage.Place.LAKE -> Scene.LAKE
             app.lumiere.android.Stage.Place.CINEMA -> if (hall) Scene.CINEMA else null
             app.lumiere.android.Stage.Place.SPACE -> Scene.SPACE
+            app.lumiere.android.Stage.Place.CLOUDS -> Scene.CLOUDS
+            app.lumiere.android.Stage.Place.MOON -> Scene.MOON
+            app.lumiere.android.Stage.Place.STATION -> Scene.STATION
             else -> null
         }
 

@@ -46,4 +46,25 @@ object Life {
 
     /** The share of its beat a firefly glows for. */
     const val GLOW_SHARE = 0.24f
+
+    /** A light that blinks every [period] seconds, on for [share] of it (a beacon, a status light), from [phase] in. */
+    fun blink(t: Float, period: Float, share: Float, phase: Float = 0f): Sway {
+        val at = ((t + phase) % period + period) % period / period
+        return Sway(0f, 0f, 0f, at < share)
+    }
+
+    /**
+     * Something floating free in a space station, [i] at [t] seconds: a slow
+     * drift of a few centimetres each way, as if nudged long ago and never
+     * quite still. Always showing.
+     */
+    fun drift(i: Int, t: Float): Sway {
+        val k = i * 2.11f
+        return Sway(
+            0.05f * sin(0.13f * t + k) + 0.02f * sin(0.41f * t + k * 1.7f),
+            0.06f * sin(0.11f * t + k * 0.6f) + 0.02f * sin(0.37f * t + k),
+            0.05f * cos(0.09f * t + k * 1.3f) + 0.02f * sin(0.33f * t + k * 0.4f),
+            true,
+        )
+    }
 }

@@ -46,6 +46,9 @@ class Sky {
         fun pictureFor(place: Stage.Place): Int? = when (place) {
             Stage.Place.SPACE -> R.drawable.lumiere_starfield
             Stage.Place.LAKE, Stage.Place.CABIN -> R.drawable.lumiere_lakeside
+            Stage.Place.CLOUDS -> R.drawable.lumiere_clouds
+            Stage.Place.MOON -> R.drawable.lumiere_moon
+            Stage.Place.STATION -> R.drawable.lumiere_orbit
             Stage.Place.ROOM, Stage.Place.CINEMA, Stage.Place.VOID -> null
         }
     }
