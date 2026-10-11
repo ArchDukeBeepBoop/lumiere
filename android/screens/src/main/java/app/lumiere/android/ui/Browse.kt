@@ -97,7 +97,10 @@ fun GridScreen(state: AppState, title: String, empty: String, header: @Composabl
 fun FavouritesScreen(state: AppState) {
     val userId = state.session?.userId ?: return
     val server = state.server ?: return
-    GridScreen(state, "Favourites", "Nothing starred yet. Choose ☆ Favourite on a title or album.",
+    // On the TV and the Quest the same list is My List, chosen with + My List on a title's page.
+    val tv = LocalFormFactor.current.isTv
+    GridScreen(state, if (tv) "My List" else "Favourites",
+        if (tv) "Nothing in My List yet. Choose + My List on a film or show." else "Nothing starred yet. Choose ☆ Favourite on a title or album.",
         header = {
             Row(Modifier.padding(horizontal = LocalFormFactor.current.gutter.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 LChip(false, { state.push(Screen.Collections) }, { Text("Collections") })

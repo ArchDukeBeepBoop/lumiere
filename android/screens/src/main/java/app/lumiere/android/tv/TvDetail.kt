@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.lumiere.android.AppState
 import app.lumiere.android.Screen
+import app.lumiere.android.changeMyList
 import app.lumiere.android.api.Item
 import app.lumiere.android.api.TICKS_PER_SECOND
 import app.lumiere.android.api.extras
@@ -136,6 +137,9 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
     var below by remember { mutableStateOf(0) }
     var section by remember { mutableStateOf(0) }
     var onlyUnwatched by remember { mutableStateOf(false) }
+    // Why My List went back, for a few seconds under the buttons.
+    var listNote by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(listNote) { if (listNote != null) { kotlinx.coroutines.delay(4_000); listNote = null } }
     LaunchedEffect(topFocused) { if (topFocused) list.animateScrollToItem(0) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Palette.canvas)) {
@@ -168,8 +172,12 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
             item {
                 Top(state, current, nextUp, Modifier.height(h * 0.86f).onFocusChanged { topFocused = it.hasFocus }, topFirst,
                     inOrder = if (current.type == "BoxSet") children.filter { it.isPlayable }.sortedBy { it.year ?: 9999 }.let { c -> c.firstOrNull { !it.played } ?: c.firstOrNull() } else null,
-                    onFavourite = { fav -> scope.launch { server.setFavorite(current.id, fav); item = current.copy(favorite = fav) } },
-                    onPlayed = { p -> scope.launch { server.setPlayed(current.id, p); item = current.copy(played = p) } })
+                    // My List changes the moment it's pressed; if the Mac refuses, it goes back and says so.
+                    onFavourite = { _ -> scope.launch { runCatching { state.changeMyList(current) }.onFailure {
+                        if (it !is kotlinx.coroutines.CancellationException) listNote = "Couldn't change My List: ${it.message ?: "the Mac didn't answer"}" } } },
+                    // Finished here: a show taken off Up Next comes back with its next episode.
+                    onPlayed = { p -> scope.launch { runCatching { server.setPlayed(current.id, p) }.onSuccess {
+                        item = current.copy(played = p); if (p) state.settings.upNextDismissed(userId).restore(current.seriesId) } } }, note = listNote)
             }
             if (seasons.isNotEmpty()) {
                 item {
@@ -282,7 +290,7 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
 
 @Composable
 private fun Top(state: AppState, item: Item, nextUp: Item?, modifier: Modifier, first: FocusRequester, inOrder: Item? = null,
-                onFavourite: (Boolean) -> Unit, onPlayed: (Boolean) -> Unit) {
+                onFavourite: (Boolean) -> Unit, onPlayed: (Boolean) -> Unit, note: String? = null) {
     val server = state.server ?: return
     LaunchedEffect(item.id) { kotlinx.coroutines.delay(150); runCatching { first.requestFocus() } }
     Box(modifier.fillMaxWidth()) {
@@ -353,6 +361,11 @@ private fun Top(state: AppState, item: Item, nextUp: Item?, modifier: Modifier, 
                         })
                     }
                 }
+                // My List beside Play, as Netflix has it; it changes the moment it's pressed.
+                item {
+                    val listed = state.myList.has(item)
+                    LButton(primary = false, onClick = { onFavourite(!listed) }) { Text(if (listed) "✓  My List" else "+  My List") }
+                }
                 // A finished show: from the beginning again, the history left as it is.
                 if (item.isSeries && item.played) item {
                     val scope = androidx.compose.runtime.rememberCoroutineScope()
@@ -372,12 +385,9 @@ private fun Top(state: AppState, item: Item, nextUp: Item?, modifier: Modifier, 
                     Round(if (item.played) androidx.compose.material.icons.Icons.Default.RemoveDone else androidx.compose.material.icons.Icons.Default.Done,
                         if (item.played) "Unwatched" else "Watched") { onPlayed(!item.played) }
                 }
-                item {
-                    Round(if (item.favorite) androidx.compose.material.icons.Icons.Default.Star else androidx.compose.material.icons.Icons.Default.StarBorder,
-                        "Favourite") { onFavourite(!item.favorite) }
-                }
                 item { Round(androidx.compose.material.icons.Icons.Default.MoreHoriz, "More") { state.actionsFor = item } }
             }
+            note?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = Palette.accent) }
         }
     }
 }

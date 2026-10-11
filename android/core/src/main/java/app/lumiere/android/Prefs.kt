@@ -189,6 +189,13 @@ class Prefs(context: Context) {
     var notInterested: List<String> get() = _notInterested.value
         set(v) { _notInterested.value = v; saveIds("notInterested", v) }
 
+    private var dismissed: UpNextDismissed? = null
+    /** The shows [userId] took off Up Next on this device; see UpNextDismissed. */
+    fun upNextDismissed(userId: String): UpNextDismissed = dismissed?.takeIf { it.owner == userId }
+        ?: UpNextDismissed(userId, store.getString("upNextDismissed.$userId", null)) {
+            store.edit().putString("upNextDismissed.$userId", it).apply()
+        }.also { dismissed = it }
+
     private val _tick = flag("focusSound", false)
     /** A soft tick as the remote moves, as tvOS has. */
     var focusSound: Boolean get() = _tick.value
@@ -300,7 +307,7 @@ class Prefs(context: Context) {
 
     private val _rowOrder = mutableStateOf(store.getString("tvRowOrder", null)?.split(',')?.filter { it.isNotBlank() } ?: TV_ROWS)
     /** The TV Home's rows, in order — the Mac's Home Order. */
-    var tvRowOrder: List<String> get() = (_rowOrder.value + TV_ROWS.filter { it !in _rowOrder.value })
+    var tvRowOrder: List<String> get() = withNewRows(_rowOrder.value)
         set(v) { _rowOrder.value = v; store.edit().putString("tvRowOrder", v.joinToString(",")).apply() }
 
     private val _rowsHidden = mutableStateOf(store.getStringSet("tvRowsHidden", emptySet())!!.toSet())
@@ -510,11 +517,37 @@ class Prefs(context: Context) {
         val SHARED = listOf("playsNext", "skipsIntros", "stillWatchingAfter", "subtitlesOn", "animeJapanese", "burnsInSubtitles",
             "subtitleSize", "subtitleStyle", "dialogueBoost", "nightSound", "skipCountdown", "privateFollowsMac", "roomLockMinutes",
             "roomUsesOwnTheme", "roomBlursCovers", "pictureTone", "tvUpNextMerged", "tvTopBar", "textScale")
-        val TV_ROWS = listOf("continue", "nextup", "finish", "series", "libraries", "recent", "because", "topfilms", "topseries",
+        val TV_ROWS = listOf("continue", "nextup", "finish", "mylist", "series", "libraries", "recent", "because", "topfilms", "topseries",
             "topanime", "genres", "collections", "watched")
         val TV_ROW_NAMES = mapOf("continue" to "Continue Watching", "nextup" to "Next Up", "finish" to "Finish the Season",
             "series" to "Continue the Series", "libraries" to "Libraries", "recent" to "Recently Added", "topfilms" to "Top 10 Films",
             "topseries" to "Top 10 Series", "topanime" to "Top 10 Anime", "genres" to "Genres", "watched" to "Watched Lately",
-            "because" to "Because You Watched", "collections" to "Collections")
+            "because" to "Because You Watched", "collections" to "Collections", "mylist" to "My List")
+
+        /**
+         * A saved order with each row it doesn't know put in its place: after
+         * the row it follows in [all], as Netflix puts My List after Continue
+         * Watching, rather than at the very end.
+         */
+        fun withNewRows(saved: List<String>, all: List<String> = TV_ROWS): List<String> {
+            val out = saved.toMutableList()
+            all.forEachIndexed { i, key ->
+                if (key in out) return@forEachIndexed
+                val after = (i - 1 downTo 0).map { all[it] }.firstOrNull { it in out }
+                out.add(if (after == null) 0 else out.indexOf(after) + 1, key)
+            }
+            return out
+        }
+
+        /**
+         * The rows TV Home draws, in order, without those switched off. A
+         * compact Home keeps its first six as before; My List, among them,
+         * takes no place, so it never pushes Recently Added off.
+         */
+        fun homeRows(order: List<String>, hidden: Set<String>, compact: Boolean): List<String> {
+            val on = order.filter { it !in hidden }
+            val six = on.filter { it != "mylist" }.take(6)
+            return if (!compact || six.isEmpty()) on else on.take(on.indexOf(six.last()) + 1)
+        }
     }
 }
