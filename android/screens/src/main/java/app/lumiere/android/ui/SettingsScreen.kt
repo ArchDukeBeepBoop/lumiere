@@ -187,7 +187,7 @@ fun SettingsScreen(state: AppState) {
         }
         item { LButton(primary = false, onClick = { state.askWhoIsWatching() }) { Text("Switch Profile") } }
         if (state.profiles.size >= 2) item {
-            Toggle("Ask who’s watching at start", p.askWhoIsWatching, "When two or more profiles are signed in on this phone.") {
+            Toggle("Ask who\u2019s watching at start", p.askWhoIsWatching, "When two or more profiles are signed in on this phone.") {
                 p.askWhoIsWatching = it
             }
         }
