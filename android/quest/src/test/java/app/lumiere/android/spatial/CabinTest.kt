@@ -33,6 +33,18 @@ class CabinTest {
         }
     }
 
+    /** A box with no size, or turned inside out, is nothing to the eye and may be a crash to the SDK. */
+    @Test fun everyBoxHasASize() {
+        rooms().forEach { room ->
+            room.parts.forEach { b -> assertTrue("$room: ${b.kind} is ${b.w} × ${b.h} × ${b.d}", b.w > 0f && b.h > 0f && b.d > 0f) }
+        }
+        listOf(0.9f, 1.2f, 1.7f).forEach { eyes ->
+            listOf(0f, 0.05f, 0.2f).forEach { slope ->
+                Dock.build(eyes, slope).forEach { b -> assertTrue("pontoon at $eyes m: ${b.kind} is ${b.w} × ${b.h} × ${b.d}", b.w > 0f && b.h > 0f && b.d > 0f) }
+            }
+        }
+    }
+
     @Test fun everySightlineToTheScreenIsClear() {
         val across = listOf(-0.5f, -0.25f, 0f, 0.25f, 0.5f)
         rooms().forEach { room ->

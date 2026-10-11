@@ -255,3 +255,23 @@ The headset verdict after A2: it opens now, but the cinema screen is still too s
 - Pinnable transport shortcuts (NEX's first layer): choose which 4–6 buttons are always there.
 - Netflix and Apple TV parity: a search field with voice; remove from Up Next; My List; trailers in the banner after a few seconds (no spoiler previews); loading skeletons; profiles.
 - Close (×) buttons on every overlay, alongside tap-outside and Back.
+
+## 15. Phase D (2026-10-11)
+Built as eight features on their own branches, merged, then the whole build and tests run together (182 tests). Trailers were left out at the owner's request; the spotlight's preview is unchanged.
+
+| Feature | What changed |
+|---|---|
+| Lakeside | A sixth place: a 360° mountain lake at blue hour (`Scripts/lakeside.py`, a ray-marched terrain, deterministic), a timber pontoon under you that stops short of your sightline, the screen floating 14 m out over the water |
+| Cabin | A seventh place: a modern timber room built round a 5.5 m wall screen (a size is how near you sit), window bays onto the lake, beams, a fireplace, a sofa behind you; its floor steps down so the film's foot is never hidden |
+| Window and marquee | Away from your room the window sits low and tipped back, under the big screen; a film starting there never flashes the window over the screen (TheaterHold) |
+| Private Room | Empty, it lists your libraries to choose from; ids from the Mac are matched however they're spelt |
+| Shortcuts | The transport's first layer is yours: pin up to six actions (speed and sleep timer among them); everything else is in More |
+| Profiles | "Who's watching?": several people on one device, each with their own My List, recents and Not Interested; the picker appears only once two or more are saved |
+| My List and Up Next | My List on title pages, Home and the actions panel (the server's favourites); titles come off Continue Watching and Up Next, with undo |
+| Search | A real field on the Quest (Horizon's keyboard dictates), a compact remote keyboard on TV, Speak where a recogniser exists, recent searches |
+| Skeletons | Home's first load, the library grid and a title's page come in outline with a soft sheen |
+| Pointer polish | × on Quest overlays; the window's controls stay up under the ray; phone drags off on Quest; a pinchable Undo; cast faces ring; a Quest-specific first-run tour |
+
+**Headset checks:** the lakeside sky's orientation (the calm water should be behind the screen; turn the skybox if not), the cabin at 115° (the poster wall sits behind the front wall at that size), voice dictation in the Quest's search field.
+
+**Next:** trailers (when wanted, with a LocalTrailers route on the Lumiere server), snow on the lakeside's peaks if wanted, the poster wall in the cabin at the largest size.
