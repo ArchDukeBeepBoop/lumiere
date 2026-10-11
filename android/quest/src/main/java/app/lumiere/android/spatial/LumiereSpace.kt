@@ -214,14 +214,31 @@ class LumiereSpace : AppSystemActivity() {
             R.id.lumiere_transport, Transform(Window.parked()),
             Grabbable(enabled = true, type = GrabbableType.FACE), com.meta.spatial.toolkit.Visible(false),
         )
-        runCatching { Director(scene, window, sidebar, ornament, wall, transport).also { director = it }.start(scope) }
+        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience).also { director = it }.start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "director unavailable", it) }
+        // The place's own sounds, while the app is in front (onResume and onPause start and stop them).
+        ambience.start()
+        // Flames and fireflies, every frame.
+        runCatching { systemManager.registerSystem(Animator { director }) }
+            .onFailure { android.util.Log.w("Lumiere", "animation unavailable", it) }
         // The film's sound from where its picture is, every frame.
         runCatching { systemManager.registerSystem(ScreenSound(scene) { director?.soundSource() }) }
             .onFailure { android.util.Log.w("Lumiere", "screen sound unavailable", it) }
     }
 
     private var director: Director? = null
+    /** The place's own sounds: playing only while the app is in front. */
+    private val ambience = Ambience()
+
+    override fun onResume() {
+        super.onResume()
+        if (director != null) ambience.start()
+    }
+
+    override fun onPause() {
+        ambience.stop()
+        super.onPause()
+    }
 
     /**
      * Holding the Meta button: the headset recentres its room space on you,

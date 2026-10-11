@@ -37,6 +37,8 @@ class Director(
     private val scene: Scene,
     private val window: Entity, private val sidebar: Entity, private val ornament: Entity,
     private val wall: Entity, private val transport: Entity,
+    /** The place's own sounds; none on a plain start. */
+    private val ambience: Ambience? = null,
 ) {
     private val screen = TheaterScreen()
     private val marquee = MarqueeScreen()
@@ -46,9 +48,9 @@ class Director(
     private var shownRequest: Theater.Request? = null
     private val theatreMade = lazy { Theatre() }
     private val theatre by theatreMade
-    private val cabinMade = lazy { Scenery(Cabin::colour) }
+    private val cabinMade = lazy { Scenery(Cabin::colour, Cabin::surface, Cabin::moves) }
     private val cabin by cabinMade
-    private val dockMade = lazy { Scenery(Dock::colour) }
+    private val dockMade = lazy { Scenery(Dock::colour, Dock::surface, Dock::moves) }
     private val dock by dockMade
 
     // What's up now, so each change is made once.
@@ -81,6 +83,17 @@ class Director(
     }
 
     /** The film's sound comes from here: the Theater's flat screen, the window, or (in a sphere) all round. */
+    /**
+     * What moves in the place you're in, [seconds] in: the fire and the
+     * candles flicker, the fireflies wander. Every frame (Animator); nothing
+     * moves for anyone who asked for less motion.
+     */
+    fun animate(seconds: Float) {
+        if (app.lumiere.android.Motion.reduced) return
+        if (cabinMade.isInitialized()) cabin.animate(seconds)
+        if (dockMade.isInitialized()) dock.animate(seconds)
+    }
+
     fun soundSource(): Entity? = when {
         !theaterOn -> window
         shownRequest?.projection != Projection.FLAT -> null
@@ -143,6 +156,13 @@ class Director(
         val hall = place == Stage.Place.CINEMA && seated
         val inCabin = place == Stage.Place.CABIN && seated
         val onDock = place == Stage.Place.LAKE && seated
+        // The place's sound, from where its sources are as you turn; quiet, and gone while a film plays.
+        ambience?.let { a ->
+            val sounds = if (sphere || (place != Stage.Place.SPACE && !seated)) null else Soundscape.sceneFor(place, hall)
+            val from = (if (on) seat else browseSeat)?.facing
+            val turned = from?.let { turnedFrom(it, lookingAt()) } ?: 0f
+            a.set(sounds, Stage.ambience && !(on && playing), turned)
+        }
         if (shownPlace != place to seated) {
             shownPlace = place to seated
             scene.enablePassthrough(place == Stage.Place.ROOM && !sphere)
@@ -220,6 +240,9 @@ class Director(
         }
         return brightness != target
     }
+
+    /** Where you look, level, for the place's sounds to come from where their sources are. */
+    private fun lookingAt(): Vector3 = scene.getViewerPose().forward()
 
     /** A film starts: you're seated where you are, the window steps aside. */
     private fun enterTheater() {

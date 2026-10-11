@@ -1,12 +1,10 @@
 package app.lumiere.android.spatial
 
 import androidx.core.net.toUri
-import com.meta.spatial.core.Color4
 import com.meta.spatial.core.Entity
 import com.meta.spatial.core.Pose
 import com.meta.spatial.core.Vector3
 import com.meta.spatial.toolkit.Box
-import com.meta.spatial.toolkit.Material
 import com.meta.spatial.toolkit.Mesh
 import com.meta.spatial.toolkit.MeshCollision
 import com.meta.spatial.toolkit.Transform
@@ -41,7 +39,7 @@ class Theatre {
             p to Entity.create(listOf(
                 Mesh("mesh://box".toUri(), hittable = MeshCollision.NoCollision),
                 Box(Vector3(-p.w / 2, -p.h / 2, -p.d / 2), Vector3(p.w / 2, p.h / 2, p.d / 2)),
-                material(Auditorium.colour(p.kind, 1f, null)),
+                boxMaterial(Auditorium.colour(p.kind, 1f, null), Auditorium.surface(p.kind), p.w, p.h, p.d),
                 Transform(Pose(at, seat.q)),
                 Visible(shown),
             ))
@@ -59,7 +57,7 @@ class Theatre {
     fun light(level: Float, tint: Triple<Float, Float, Float>?) {
         if (lit == level to tint || parts.isEmpty()) return
         lit = level to tint
-        parts.forEach { (p, e) -> e.setComponent(material(Auditorium.colour(p.kind, level, tint))) }
+        parts.forEach { (p, e) -> e.setComponent(boxMaterial(Auditorium.colour(p.kind, level, tint), Auditorium.surface(p.kind), p.w, p.h, p.d)) }
     }
 
     fun clear() {
@@ -68,8 +66,4 @@ class Theatre {
         builtFor = null
     }
 
-    private fun material(c: Triple<Float, Float, Float>) = Material().apply {
-        baseColor = Color4(c.first, c.second, c.third, 1f)
-        unlit = true
-    }
 }

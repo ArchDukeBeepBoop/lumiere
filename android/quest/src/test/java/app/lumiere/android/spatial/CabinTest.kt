@@ -127,7 +127,7 @@ class CabinTest {
     }
 
     @Test fun aFewDrawCallsWorth() {
-        rooms().forEach { room -> assertTrue("${room.parts.size} boxes: $room", room.parts.size <= 60) }
+        rooms().forEach { room -> assertTrue("${room.parts.size} boxes: $room", room.parts.size <= Cabin.MOST_BOXES) }
     }
 
     @Test fun whatFacesTheScreenCatchesMoreOfTheFilm() {

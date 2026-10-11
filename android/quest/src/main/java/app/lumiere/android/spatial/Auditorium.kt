@@ -18,7 +18,12 @@ import kotlin.math.min
  * headset; Theatre turns it into entities.
  */
 object Auditorium {
-    enum class Kind { FLOOR, STEP, SEAT, SEAT_BACK, WALL, PANEL, CEILING, STAGE, MASK, SCREEN_WALL, AISLE_LIGHT, EXIT_SIGN, BALCONY }
+    enum class Kind {
+        FLOOR, STEP, SEAT, SEAT_BACK, WALL, PANEL, CEILING, STAGE, MASK, SCREEN_WALL, AISLE_LIGHT, EXIT_SIGN, BALCONY,
+        // A picture palace's dressing: velvet curtains drawn back from the screen under a valance,
+        // warm sconces along the walls, the projection booth's windows high behind you.
+        CURTAIN, VALANCE, SCONCE, BOOTH,
+    }
 
     /** One box: its middle and its size, in metres. */
     data class Part(val kind: Kind, val x: Float, val y: Float, val z: Float, val w: Float, val h: Float, val d: Float) {
@@ -127,6 +132,27 @@ object Auditorium {
         // Green exit signs high in the front corners.
         parts += Part(Kind.EXIT_SIGN, half - 0.8f, screenTop + 0.8f, distance - 0.5f, 0.6f, 0.25f, 0.05f)
         parts += Part(Kind.EXIT_SIGN, -half + 0.8f, screenTop + 0.8f, distance - 0.5f, 0.6f, 0.25f, 0.05f)
+
+        // Velvet curtains drawn back either side of the screen, in pleats, and a valance over it: beyond
+        // its edges and above its top, so they frame the picture and never cross it.
+        for (side in floatArrayOf(1f, -1f)) for (k in 0 until 2) {
+            val x = side * (screenWidth / 2 + 0.15f + 0.35f + k * 0.7f)
+            val z = distance - 0.2f - 0.1f * k
+            parts += Part(Kind.CURTAIN, x, (frontFloor + ceiling - 0.4f) / 2, z, 0.7f, ceiling - 0.4f - frontFloor, 0.12f)
+        }
+        val valanceBottom = screenTop + 0.25f
+        if (ceiling - valanceBottom > 0.3f)
+            parts += Part(Kind.VALANCE, 0f, (valanceBottom + ceiling) / 2, distance - 0.3f, screenWidth + 3.3f, ceiling - valanceBottom, 0.12f)
+        // Warm sconces down both walls, between every other pair of panels, at a lamp's height over the floor beneath.
+        z = -BEHIND + 2.75f
+        while (z < distance - 1.5f) {
+            val floor = if (z <= 0f) 0f else max(frontFloor, -(z / ROW_PITCH) * rake)
+            parts += Part(Kind.SCONCE, half - 0.06f, floor + 2.4f, z, 0.12f, 0.3f, 0.18f)
+            parts += Part(Kind.SCONCE, -half + 0.06f, floor + 2.4f, z, 0.12f, 0.3f, 0.18f)
+            z += 5f
+        }
+        // The projection booth's two windows, high in the back wall behind you.
+        for (x in floatArrayOf(-0.6f, 0.6f)) parts += Part(Kind.BOOTH, x, ceiling - 1.0f, -BEHIND + 0.11f, 0.5f, 0.32f, 0.02f)
         return parts
     }
 
@@ -154,11 +180,15 @@ object Auditorium {
         Kind.BALCONY -> Triple(0.20f, 0.16f, 0.14f)
         Kind.AISLE_LIGHT -> Triple(1.0f, 0.62f, 0.22f)
         Kind.EXIT_SIGN -> Triple(0.2f, 0.95f, 0.45f)
+        Kind.CURTAIN, Kind.VALANCE -> Triple(0.36f, 0.05f, 0.07f)
+        Kind.SCONCE -> Triple(1.0f, 0.70f, 0.40f)
+        Kind.BOOTH -> Triple(0.85f, 0.82f, 0.72f)
     }
 
     /** How much of the film's light a kind catches (what faces the screen most catches most); lights shine on their own. */
     fun spill(kind: Kind): Float = when (kind) {
-        Kind.AISLE_LIGHT, Kind.EXIT_SIGN, Kind.MASK -> 0f
+        Kind.AISLE_LIGHT, Kind.EXIT_SIGN, Kind.MASK, Kind.SCONCE, Kind.BOOTH -> 0f
+        Kind.CURTAIN, Kind.VALANCE -> 0.5f
         Kind.SEAT, Kind.STAGE, Kind.BALCONY -> 0.55f
         Kind.CEILING -> 0.25f
         else -> 0.4f
@@ -171,11 +201,25 @@ object Auditorium {
      */
     fun colour(kind: Kind, level: Float, tint: Triple<Float, Float, Float>?): Triple<Float, Float, Float> {
         val (r, g, b) = baseColour(kind)
-        if (kind == Kind.AISLE_LIGHT || kind == Kind.EXIT_SIGN) return Triple(r, g, b)
+        if (kind == Kind.AISLE_LIGHT || kind == Kind.EXIT_SIGN || kind == Kind.BOOTH) return Triple(r, g, b)
+        // The sconces go down with the house lights, almost out during a film, as a cinema's do.
+        if (kind == Kind.SCONCE) return (0.1f + 0.9f * level).let { k -> Triple(r * k, g * k, b * k) }
         val house = 0.3f + 0.7f * level
         val (tr, tg, tb) = tint ?: Triple(0.5f, 0.5f, 0.55f)
         val s = spill(kind) * (1f - level) * 0.35f
         fun mix(base: Float, t: Float) = (base * house + t * s).coerceIn(0f, 1f)
         return Triple(mix(r, tr), mix(g, tg), mix(b, tb))
+    }
+
+    /** What each kind is made of: patterned carpet, seats in velvet with their armrests, cloth walls and panels, curtains, timber. */
+    fun surface(kind: Kind): Surface? = when (kind) {
+        Kind.FLOOR, Kind.STEP -> Surface(R.drawable.lumiere_tex_carpet, 2.4f, 2.4f)
+        Kind.SEAT -> Surface(R.drawable.lumiere_tex_seats, 0.56f, 0f)
+        Kind.SEAT_BACK -> Surface(R.drawable.lumiere_tex_seatback, 0.56f, 0f)
+        Kind.WALL, Kind.BALCONY -> Surface(R.drawable.lumiere_tex_fabric, 1.2f, 1.2f)
+        Kind.PANEL -> Surface(R.drawable.lumiere_tex_panel, 0.4f, 0f)
+        Kind.CURTAIN, Kind.VALANCE -> Surface(R.drawable.lumiere_tex_velvet, 0.6f, 0f)
+        Kind.STAGE -> Surface(R.drawable.lumiere_tex_wood, 1.5f, 1.5f)
+        else -> null
     }
 }

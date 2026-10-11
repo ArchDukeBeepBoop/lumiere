@@ -43,8 +43,12 @@ class DockTest {
         assertTrue(parts.filter { it.kind == Dock.Kind.POST }.all { it.top <= -0.2f })
         assertEquals(2, parts.count { it.kind == Dock.Kind.BOLLARD })
         assertEquals(2, parts.count { it.kind == Dock.Kind.LANTERN })
-        // No water plane, nothing wider than the pontoon: the sky's lake stays in view all round.
-        parts.forEach { assertTrue("${it.kind} keeps to the pontoon", it.w <= 3.3f && it.x + it.w / 2 <= 1.7f && it.x - it.w / 2 >= -1.7f) }
+        // No water plane, nothing wider than the pontoon: the sky's lake stays in view all round. Only the
+        // boat tied alongside and the fireflies over the water go beyond its edges, and the boat lies low.
+        parts.forEach { assertTrue("${it.kind} is no wider than the pontoon", it.w <= 3.3f && it.d <= Dock.AHEAD + Dock.BEHIND) }
+        val beyond = setOf(Dock.Kind.HULL, Dock.Kind.HULL_INSIDE, Dock.Kind.THWART, Dock.Kind.OAR, Dock.Kind.FIREFLY)
+        parts.filter { it.kind !in beyond }.forEach { assertTrue("${it.kind} keeps to the pontoon", it.x + it.w / 2 <= 1.7f && it.x - it.w / 2 >= -1.7f) }
+        assertTrue("the boat lies below the deck", parts.filter { it.kind in beyond - Dock.Kind.FIREFLY }.all { it.top < 0f })
         assertEquals("the lanterns burn on in the dark", Dock.baseColour(Dock.Kind.LANTERN), Dock.colour(Dock.Kind.LANTERN, CinemaLight.PLAYING, null))
         assertTrue("the boards dim for a film", Dock.colour(Dock.Kind.PLANK, CinemaLight.PLAYING, null).first < Dock.colour(Dock.Kind.PLANK, 1f, null).first)
     }
@@ -54,7 +58,8 @@ class DockTest {
         views().forEach { (spec, eyes, parts) ->
             val eye = Point(0f, eyes, 0f)
             screenPoints(spec, eyes, across, listOf(-0.5f, -0.4f, -0.25f, 0f)).forEach { target ->
-                parts.forEach { p ->
+                // The fireflies are specks that drift past, as real ones do; everything else stays out of the way.
+                parts.filter { it.kind != Dock.Kind.FIREFLY }.forEach { p ->
                     if (segmentHits(p, eye, target))
                         fail("${p.kind} at (${p.x}, ${p.y}, ${p.z}) hides the screen at (${target.x}, ${target.y}, ${target.z}): " +
                             "${spec.widthM} m${if (spec.radiusM != null) " curved" else ""}, eyes at $eyes")
@@ -70,5 +75,18 @@ class DockTest {
         val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 1080), Stage.Place.LAKE, 0, false)
         val deck = Dock.build(1.2f, TheaterGeometry.footSlope(spec)).filter { it.kind in planks }
         assertTrue("${deck.maxOf { it.front }} m ahead", deck.maxOf { it.front } > 3.5f)
+    }
+
+    @Test fun anEveningOnThePontoon() {
+        val parts = Dock.build(1.2f)
+        assertEquals("two chairs", 12, parts.count { it.kind == Dock.Kind.CHAIR })
+        assertTrue("flames in both lanterns and the jar", parts.count { it.kind == Dock.Kind.FLAME } == 3)
+        assertTrue("fireflies over the water", parts.count { it.kind == Dock.Kind.FIREFLY } >= 12)
+        // Everything someone left out is beside or behind you, never before you where the screen is.
+        val things = setOf(Dock.Kind.CHAIR, Dock.Kind.CRATE, Dock.Kind.MUG, Dock.Kind.JAR, Dock.Kind.COOLER, Dock.Kind.BULB)
+        assertTrue(parts.filter { it.kind in things }.all { it.front <= 0f })
+        assertTrue("a few draw calls' worth: ${parts.size}", parts.size <= 100)
+        // The lanterns' flames move; the deck doesn't.
+        assertTrue(Dock.moves(Dock.Kind.FLAME, 1, 1f) != null && Dock.moves(Dock.Kind.PLANK, 1, 1f) == null)
     }
 }

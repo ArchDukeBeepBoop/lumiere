@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material.icons.filled.Lock
@@ -87,6 +88,9 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
             caption = placeCaption(Stage.place)) { Stage.nextPlace() }
         if (PosterWall.enabled) RailButton(Icons.Default.ViewModule, "Poster wall", chosen = PosterWall.open) { PosterWall.open = !PosterWall.open }
         RailButton(Icons.Default.CenterFocusStrong, "Bring everything here", chosen = false) { Stage.bringHere() }
+        // The place's own sounds (the fire, the lake at night): on or off.
+        RailButton(Icons.Default.GraphicEq, if (Stage.ambience) "Sounds of the place: on" else "Sounds of the place: off",
+            chosen = Stage.ambience) { Stage.toggleAmbience() }
         // The sleep timer: each press the next step, its minutes shown under the moon.
         RailButton(Icons.Default.Bedtime, if (Stage.sleepMinutes == 0) "Sleep timer" else "Sleep in ${Stage.sleepMinutes} minutes",
             chosen = Stage.sleepMinutes > 0, caption = Stage.sleepMinutes.takeIf { it > 0 }?.toString()) { Stage.cycleSleep() }

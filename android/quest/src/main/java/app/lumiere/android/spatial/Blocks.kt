@@ -33,3 +33,32 @@ fun houseLit(base: Triple<Float, Float, Float>, spill: Float, level: Float, tint
     fun mix(base: Float, t: Float) = (base * house + t * s).coerceIn(0f, 1f)
     return Triple(mix(r, tr), mix(g, tg), mix(b, tb))
 }
+
+/**
+ * What a box is made of, beyond its colour: a [texture] (a drawable from
+ * Scripts/textures.py), repeated every [across] metres along the box's long
+ * side and every [up] metres up it (or, for a flat box such as a floor, its
+ * short side); 0 lays it once across. The part's colour, lit by the house
+ * lights and the film, is multiplied over it.
+ */
+data class Surface(val texture: Int, val across: Float, val up: Float) {
+    /** How many times the texture repeats each way on a box [w] × [h] × [d]. */
+    fun repeats(w: Float, h: Float, d: Float): Pair<Float, Float> {
+        val long = maxOf(w, d)
+        val tall = if (h < minOf(w, d)) minOf(w, d) else h
+        fun times(extent: Float, tile: Float) = if (tile <= 0f) 1f else (extent / tile).coerceAtLeast(0.25f)
+        return times(long, across) to times(tall, up)
+    }
+}
+
+/** A box's unlit material: [colour] over its [surface], if it has one. */
+fun boxMaterial(colour: Triple<Float, Float, Float>, surface: Surface?, w: Float, h: Float, d: Float): com.meta.spatial.toolkit.Material =
+    com.meta.spatial.toolkit.Material().apply {
+        baseColor = com.meta.spatial.core.Color4(colour.first, colour.second, colour.third, 1f)
+        unlit = true
+        if (surface != null) {
+            baseTextureAndroidResourceId = surface.texture
+            val (u, v) = surface.repeats(w, h, d)
+            repeatU = u; repeatV = v
+        }
+    }

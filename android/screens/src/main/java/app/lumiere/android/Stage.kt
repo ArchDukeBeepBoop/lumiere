@@ -37,6 +37,9 @@ object Stage {
     /** The film's screen curved round you, or flat as most cinemas' are. */
     var curved by mutableStateOf(false)
         private set
+    /** The place's own quiet sounds (the fire, the lake at night), while no film plays. */
+    var ambience by mutableStateOf(true)
+        private set
     /** When the sleep timer ends, in milliseconds since 1970; 0 when it's off. */
     var sleepAt by mutableStateOf(0L)
         private set
@@ -76,17 +79,19 @@ object Stage {
         // Sizes were made larger (to 55°–115°); an older saved choice starts afresh at the default.
         screenSize = if (p.getInt("sizes", 1) < 2) DEFAULT_SIZE else p.getInt("screenSize", DEFAULT_SIZE).coerceIn(0, SCREEN_SIZES - 1)
         curved = p.getBoolean("screenCurved", false)
+        ambience = p.getBoolean("ambience", true)
         app.lumiere.android.ui.Shortcuts.load(p)
     }
 
     private fun save() {
         prefs?.edit()?.putString("watchIn", place.name)?.putInt("screenSize", screenSize)?.putInt("sizes", 2)
-            ?.putBoolean("screenCurved", curved)?.apply()
+            ?.putBoolean("screenCurved", curved)?.putBoolean("ambience", ambience)?.apply()
     }
 
     fun larger() { screenSize = (screenSize + 1).coerceAtMost(SCREEN_SIZES - 1); save() }
     fun smaller() { screenSize = (screenSize - 1).coerceAtLeast(0); save() }
     fun toggleCurve() { curved = !curved; save() }
+    fun toggleAmbience() { ambience = !ambience; save() }
     /** Room, cinema, cabin, lakeside, the dark, space, round again. */
     fun nextPlace() { place = Place.entries[(place.ordinal + 1) % Place.entries.size]; save() }
     fun bringHere() { bringHereAsks++ }

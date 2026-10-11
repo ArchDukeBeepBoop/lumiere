@@ -275,3 +275,31 @@ Built as eight features on their own branches, merged, then the whole build and 
 **Headset checks:** the lakeside sky's orientation (the calm water should be behind the screen; turn the skybox if not), the cabin at 115° (the poster wall sits behind the front wall at that size), voice dictation in the Quest's search field.
 
 **Next:** trailers (when wanted, with a LocalTrailers route on the Lumiere server), snow on the lakeside's peaks if wanted, the poster wall in the cabin at the largest size.
+
+## 16. Phase E1: places that feel lived in (2026-10-11)
+| Place | Added |
+|---|---|
+| All | Real surfaces from `Scripts/textures.py` (14 seamless textures: oak boards, timber, weathered deck, fabric, velvet, carpet, a wool rug, stone, book spines, two pictures), tinted by the existing light model so dimming and the film's colour still work. Each texture loads once (the SDK caches by resource). |
+| Cabin | A wall of books behind you (three bays, a vase, a photo, a plant), side tables (a mug, a candle, books), cushions and a knitted throw, a tall plant, pictures over the shelves and the mantel, logs in the fire with flickering flames and embers, a woodpile, candles on the mantel, floor-standing speakers beside the screen, pendant lights, a coffee table where the sightline allows |
+| Lakeside | Two chairs and a crate (mugs, a jar candle) behind you, a rod and tackle box, a cool box, rope, a rowing boat tied alongside, string lights, flames in the lanterns, fireflies drifting over the water |
+| Cinema | Seats as individual seats with armrests (texture), patterned carpet, cloth walls and acoustic panels, velvet curtains drawn back under a valance, sconces that dim for the film, the projection booth's windows behind you |
+| Sound | Each place's own sound, synthesised live and placed where its source is: the fire's crackle from the fireplace, water lapping and crickets round the pontoon, a hall's hush, a deep drone in space. Fades out when a film plays, back when you pause; "Sounds of the place" on the tab bar and under More |
+
+Motion runs every frame (Animator → Director.animate → Scenery.animate) from pure, tested functions (Life); nothing moves with Reduce Motion on.
+
+## 17. Proposals (for the owner to choose)
+See the reply of 2026-10-11; recorded here so the list survives.
+1. Wall-mounted screen in your room, from Space Setup (MRUK): snaps flush to a real wall, remembered by the wall's anchor.
+2. New places: the Moon (Earthrise), a space station's observation deck, above the clouds, plus a drive-in, an Art Deco picture palace, a rooftop over a city at night, a winter cabin with snowfall, under the sea.
+3. Places that change: time of day and weather (the lake at dawn, rain on the cabin glass, snow), slowly moving cloud and star layers.
+4. Curtains that open as the film starts and close at the credits; house lights that fade at the cinema's own pace; an optional pre-show.
+5. Ambilight-style light from the picture's left and right halves onto the matching walls, refreshed faster.
+6. Your library on the walls: framed posters of your favourites in the cabin and the cinema's lobby.
+7. A hand menu: turn your palm up for play/pause, volume and the place, without reaching for a panel.
+8. Choose your seat in the cinema (front, middle, balcony) instead of size steps.
+9. Spatial captions: follow your gaze comfortably, size and depth options, two languages at once.
+10. Truer film sound: head-tracked spatial audio (HRTF) from the screen and surround channels placed round you.
+11. Picture: per-film brightness and black level, sharpening, a "fill the IMAX wall" zoom for 2.39:1 films.
+12. Depth in the browse window: posters with parallax layers, as Apple TV's cards tilt.
+13. Comfort: recentre automatically when you sit or stand, a seated or standing height calibration, a "lie back" mode that tilts the whole place.
+14. Watch together with friends' avatars in the same place (larger; later).

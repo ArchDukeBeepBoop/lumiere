@@ -49,7 +49,7 @@ class AuditoriumTest {
             assertTrue("stage below the screen's foot", stage.top <= middle - spec.heightM / 2)
             val ceiling = parts.single { it.kind == Auditorium.Kind.CEILING }
             assertTrue("ceiling above the screen", ceiling.bottom > middle + spec.heightM / 2)
-            assertTrue("a few draw calls' worth: ${parts.size}", parts.size < 150)
+            assertTrue("a few draw calls' worth: ${parts.size}", parts.size < 170)
         }
     }
 

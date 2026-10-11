@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.outlined.PushPin as PushPinOutline
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.media3.common.C
@@ -116,6 +117,7 @@ fun TheaterBar() = WithAppImages {
                 Shortcuts.Action.PLAYER_MENU -> Theater.windowAsked = !Theater.windowAsked
                 Shortcuts.Action.SLEEP -> Stage.cycleSleep()
                 Shortcuts.Action.BRING_HERE -> Stage.bringHere()
+                Shortcuts.Action.SOUNDS -> Stage.toggleAmbience()
                 // The player may have just been let go as the film ended; the speed then simply stays.
                 Shortcuts.Action.SPEED -> runCatching {
                     c.player.setPlaybackSpeed(Shortcuts.nextSpeed(c.player.playbackParameters.speed))
@@ -195,6 +197,8 @@ private fun lookOf(a: Shortcuts.Action, speed: Float, tracksOpen: Boolean): Look
     }
     Shortcuts.Action.BRING_HERE -> Look(Icons.Default.CenterFocusStrong, "Bring everything here")
     Shortcuts.Action.SPEED -> Shortcuts.speedLabel(speed).let { Look(Icons.Default.Speed, "Playback speed", caption = it, value = it, chosen = it != "1×") }
+    Shortcuts.Action.SOUNDS -> if (Stage.ambience) Look(Icons.Default.GraphicEq, "Sounds of the place", value = "On: heard while paused", chosen = true)
+        else Look(Icons.Default.GraphicEq, "Sounds of the place", value = "Off")
 }
 
 /**
