@@ -22,8 +22,10 @@ import kotlinx.coroutines.launch
 class MyList(val owner: String?) {
     /** The server's list as Home last loaded it, kept so Home comes back drawn; null until then. */
     var saved by mutableStateOf<List<Item>?>(null)
+        private set
 
-    private data class Choice(val item: Item, val on: Boolean, val at: Long)
+    // [at] when chosen and [settled] when the server answered, both on one count of events.
+    private data class Choice(val item: Item, val on: Boolean, val at: Long, val settled: Long? = null)
     // What you see: in the list or not, with the title as it was when chosen.
     private val wanted = mutableStateMapOf<String, Choice>()
     // What the server last confirmed, and the titles with a change on its way.
@@ -51,6 +53,7 @@ class MyList(val owner: String?) {
         val want = wanted[id]?.on ?: value
         if (want != value) return want
         sending -= id
+        wanted[id]?.let { wanted[id] = it.copy(settled = ++count) }
         return null
     }
 
@@ -58,7 +61,22 @@ class MyList(val owner: String?) {
     fun failed(id: String) {
         sending -= id
         val back = known[id] ?: return
-        wanted[id]?.let { wanted[id] = it.copy(on = back) }
+        wanted[id]?.let { wanted[id] = it.copy(on = back, settled = ++count) }
+    }
+
+    /** Where a load of the server's list begins; give it to [loaded] with the answer. */
+    fun mark(): Long = count
+
+    /**
+     * The server's answer to a load begun at [mark]. Choices the server had
+     * settled before it began are the server's to show from now on, so a
+     * title taken out on your phone leaves the TV's row too. Any settled
+     * since, or still on their way, stay over it: the load may have been
+     * answered before the change reached the server.
+     */
+    fun loaded(list: List<Item>, mark: Long) {
+        saved = list
+        wanted.filter { (_, c) -> c.settled != null && c.settled <= mark }.keys.forEach { wanted.remove(it); known.remove(it) }
     }
 
     /** [server]'s list as you see it: what you just added first, newest first, and what you just took out gone. */
@@ -96,22 +114,19 @@ suspend fun AppState.changeMyList(item: Item) {
 /**
  * Takes [item] off Home's [row] (see UpNextDismissed.removal): gone from
  * Home at once, the server told behind it, and the notice offers it back.
- * Returns what the notice says.
  */
-suspend fun AppState.takeOffRow(item: Item, row: String): String {
-    val server = server ?: return ""
-    val userId = session?.userId ?: return ""
+suspend fun AppState.takeOffRow(item: Item, row: String) {
+    val server = server ?: return
+    val userId = session?.userId ?: return
     val dismissed = settings.upNextDismissed(userId)
     val r = UpNextDismissed.removal(row, item, settings.watchlist)
     val listedAt = settings.watchlist.indexOf(item.id)
     if (r.unlist) settings.watchlist = settings.watchlist - item.id
     r.dismiss?.let { dismissed.dismiss(it) }
-    if (r.hide) offContinue = offContinue + item.id
-    if (r.hide) server.hideFromContinueWatching(item.id)
-    val label = "Removed from ${UpNextDismissed.rowName(row)}"
+    if (r.hide) { offContinue = offContinue + item.id; server.hideFromContinueWatching(item.id) }
     // Five seconds to take it back, as Apple TV offers: on its own scope, as the
     // panel that asked has gone by the time Menu is pressed.
-    undo = label to {
+    undo = "Removed from ${UpNextDismissed.rowName(row)}" to {
         if (r.unlist && item.id !in settings.watchlist)
             settings.watchlist = settings.watchlist.toMutableList().apply { add(listedAt.coerceIn(0, size), item.id) }
         r.dismiss?.let { dismissed.restore(it) }
@@ -121,7 +136,6 @@ suspend fun AppState.takeOffRow(item: Item, row: String): String {
             homeRefresh++
         }
     }
-    return label
 }
 
 /**

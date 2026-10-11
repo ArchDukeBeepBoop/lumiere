@@ -504,13 +504,13 @@ class Prefs(context: Context) {
 
         /**
          * The rows TV Home draws, in order, without those switched off. A
-         * compact Home keeps the first six that can show: with one Up Next
-         * row, Next Up and Finish the Season are inside it and take no place,
-         * so My List doesn't push Recently Added off.
+         * compact Home keeps its first six as before; My List, among them,
+         * takes no place, so it never pushes Recently Added off.
          */
-        fun homeRows(order: List<String>, hidden: Set<String>, merged: Boolean, compact: Boolean): List<String> {
+        fun homeRows(order: List<String>, hidden: Set<String>, compact: Boolean): List<String> {
             val on = order.filter { it !in hidden }
-            return if (!compact) on else on.filter { !merged || (it != "nextup" && it != "finish") }.take(6)
+            val six = on.filter { it != "mylist" }.take(6)
+            return if (!compact || six.isEmpty()) on else on.take(on.indexOf(six.last()) + 1)
         }
     }
 }

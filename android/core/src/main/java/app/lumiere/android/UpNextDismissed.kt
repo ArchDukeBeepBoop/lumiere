@@ -40,34 +40,41 @@ class UpNextDismissed(val owner: String, saved: String?, private val save: (Stri
     data class Removal(val unlist: Boolean, val hide: Boolean, val dismiss: String?)
 
     companion object {
-        /** The rows a card can be taken off: Continue Watching and Next Up when apart, Up Next when one. */
+        /**
+         * The rows a card can be taken off: Continue Watching, Next Up and
+         * Finish the Season when apart, Up Next when they are one.
+         */
         const val CONTINUE = "continue"
         const val NEXT_UP = "nextup"
+        const val FINISH = "finish"
         const val UP_NEXT = "upnext"
         const val MAX = 100
 
         /** A row's name, as its title on Home says it. */
-        fun rowName(row: String): String = when (row) { CONTINUE -> "Continue Watching"; NEXT_UP -> "Next Up"; else -> "Up Next" }
+        fun rowName(row: String): String = when (row) {
+            CONTINUE -> "Continue Watching"; NEXT_UP -> "Next Up"; FINISH -> "Finish the Season"; else -> "Up Next"
+        }
 
         /** The show a card stands for: an episode's series, or the title itself. */
         fun showOf(item: Item): String = item.seriesId ?: item.id
 
         fun encode(ids: List<String>): String = ids.joinToString(",")
 
-        /** A saved line back into ids; nothing saved, or a damaged line, is an empty list. */
+        /** A saved line back into ids: nothing saved is none, and stray commas, spaces and repeats are dropped. */
         fun decode(raw: String?): List<String> =
             raw.orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(MAX)
 
         /**
          * Taking [item] off [row]. Continue Watching only forgets where you
-         * were; Next Up only keeps the show off; the one Up Next row does all
-         * three, as everything in it would otherwise bring the title back.
+         * were; Next Up and Finish the Season (made from it) only keep the
+         * show off; the one Up Next row does all three, as everything in it
+         * would otherwise bring the title back.
          */
         fun removal(row: String, item: Item, watchlist: List<String>): Removal {
             val show = if (item.isEpisode) item.seriesId else item.id.takeIf { item.isSeries }
             return when (row) {
                 CONTINUE -> Removal(unlist = false, hide = true, dismiss = null)
-                NEXT_UP -> Removal(unlist = false, hide = false, dismiss = show)
+                NEXT_UP, FINISH -> Removal(unlist = false, hide = false, dismiss = show)
                 else -> Removal(unlist = item.id in watchlist, hide = item.positionTicks > 0, dismiss = show)
             }
         }

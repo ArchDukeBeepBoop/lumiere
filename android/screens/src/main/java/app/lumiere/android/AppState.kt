@@ -120,7 +120,7 @@ class AppState(context: Context) {
     var justWatched by mutableStateOf<Set<String>>(emptySet())
     /** Titles just taken off Continue Watching: kept off Home before the server's next answer, until played again. */
     var offContinue by mutableStateOf<Set<String>>(emptySet())
-    /** My List's changes on their way, for whoever is signed in: a new one for each account. See MyList. */
+    /** My List as you've changed it, for whoever is signed in: a new one for each account. See MyList. */
     val myList: MyList get() = session?.userId.let { u -> myListFor.takeIf { it.owner == u } ?: MyList(u).also { myListFor = it } }
     private var myListFor = MyList(null)
     /** "Leave Lumiere?" is showing. */

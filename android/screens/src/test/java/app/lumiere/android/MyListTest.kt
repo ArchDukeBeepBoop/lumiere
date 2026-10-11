@@ -69,6 +69,35 @@ class MyListTest {
         assertEquals(listOf(heat, arrival), list.over(emptyList()))
     }
 
+    @Test fun aChangeMadeElsewhereShowsAfterTheNextLoad() {
+        val list = MyList("me")
+        list.toggle(arrival); list.sent("a", true)
+        // Taken out on the phone since: the TV's next load has it gone.
+        list.loaded(emptyList(), list.mark())
+        assertEquals(emptyList<Item>(), list.over(list.saved.orEmpty()))
+        assertFalse(list.has(arrival))
+    }
+
+    @Test fun aLoadAnsweredBeforeTheChangeArrivedDoesNotUndoIt() {
+        val list = MyList("me")
+        list.toggle(arrival)
+        val mark = list.mark()
+        list.sent("a", true)
+        list.loaded(emptyList(), mark)
+        assertEquals(listOf(arrival), list.over(list.saved.orEmpty()))
+        assertTrue(list.has(arrival))
+    }
+
+    @Test fun aLoadBegunBeforeAChangeDoesNotUndoIt() {
+        val list = MyList("me")
+        val mark = list.mark()
+        list.toggle(arrival); list.sent("a", true)
+        list.toggle(dune)
+        list.loaded(listOf(dune), mark)
+        assertEquals(listOf(arrival), list.over(list.saved.orEmpty()))
+        assertFalse("still on its way: stays as chosen", list.has(dune))
+    }
+
     @Test fun untouchedTitlesFollowTheServer() {
         val list = MyList("me")
         assertTrue(list.has(dune))

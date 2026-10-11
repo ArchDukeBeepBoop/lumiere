@@ -27,13 +27,20 @@ class HomeRowsTest {
         assertEquals(Prefs.TV_ROWS, Prefs.withNewRows(Prefs.TV_ROWS))
     }
 
-    @Test fun aCompactHomeStillReachesRecentlyAdded() {
-        val rows = Prefs.homeRows(Prefs.TV_ROWS, emptySet(), merged = true, compact = true)
-        assertEquals(listOf("continue", "mylist", "series", "libraries", "recent", "because"), rows)
+    @Test fun aCompactHomeKeepsItsSixAndAddsMyList() {
+        val rows = Prefs.homeRows(Prefs.TV_ROWS, emptySet(), compact = true)
+        assertEquals(listOf("continue", "nextup", "finish", "mylist", "series", "libraries", "recent"), rows)
+        assertEquals(Prefs.homeRows(before, emptySet(), compact = true), rows - "mylist")
+    }
+
+    @Test fun aCompactHomeLeavesMyListOutWhenMovedBelowTheSix() {
+        val rows = Prefs.homeRows(before + "mylist", emptySet(), compact = true)
+        assertEquals(before.take(6), rows)
+        assertEquals(listOf("mylist"), Prefs.homeRows(listOf("mylist", "genres"), setOf("genres"), compact = true))
     }
 
     @Test fun rowsSwitchedOffAreLeftOut() {
-        val rows = Prefs.homeRows(Prefs.TV_ROWS, setOf("mylist"), merged = false, compact = false)
+        val rows = Prefs.homeRows(Prefs.TV_ROWS, setOf("mylist"), compact = false)
         assertEquals(Prefs.TV_ROWS - "mylist", rows)
     }
 }

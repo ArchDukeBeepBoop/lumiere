@@ -64,6 +64,8 @@ class UpNextDismissedTest {
     @Test fun nextUpOnlyKeepsTheShowOff() {
         val r = UpNextDismissed.removal(NEXT_UP, episode("e5", "severance", at = 9), listOf("e5"))
         assertEquals(UpNextDismissed.Removal(unlist = false, hide = false, dismiss = "severance"), r)
+        assertEquals(r, UpNextDismissed.removal(UpNextDismissed.FINISH, episode("e5", "severance", at = 9), listOf("e5")))
+        assertEquals("Finish the Season", UpNextDismissed.rowName(UpNextDismissed.FINISH))
     }
 
     @Test fun theOneUpNextRowUndoesEverythingThatWouldBringItBack() {

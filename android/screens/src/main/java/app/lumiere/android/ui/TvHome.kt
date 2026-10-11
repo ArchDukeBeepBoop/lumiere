@@ -202,8 +202,9 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
     // drawn meanwhile, so Home comes back as it was left.
     LaunchedEffect(state.homeRefresh) {
         val list = state.myList
+        val mark = list.mark()
         runCatching { server.libraryPage(userId, null, 0, 40, "SortName", false, favourites = true,
-            types = app.lumiere.android.MyList.KINDS.joinToString(",")) }.onSuccess { list.saved = it }
+            types = app.lumiere.android.MyList.KINDS.joinToString(",")) }.onSuccess { list.loaded(it, mark) }
     }
     val dismissed = state.settings.upNextDismissed(userId)
     val spotlight = remember(rows) {
@@ -334,7 +335,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                 }
                 // In the order Settings gives, each row on or off — the Mac's Home Order.
                 for (key in app.lumiere.android.Prefs.homeRows(state.settings.tvRowOrder, state.settings.tvRowsHidden,
-                    state.settings.tvUpNextMerged, state.settings.compactHome)) when (key) {
+                    state.settings.compactHome)) when (key) {
                     // One Up Next row, as the Apple TV app shows it: what is in
                     // progress, then what comes next, then seasons nearly done.
                     // What you took off it stays off: before the distinct, so a
@@ -359,7 +360,9 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                             else "Finish the Season" to extras.finishSeason
                         val shown = dismissed.filter(items)
                         if (shown.isNotEmpty()) shelf(key) {
-                            TvShelf(title) { items(shown, key = { it.id }) { WideCard(it, state, { focused = it }, row = UpNextDismissed.NEXT_UP) { play(it) } } }
+                            TvShelf(title) { items(shown, key = { it.id }) {
+                                WideCard(it, state, { focused = it }, row = if (key == "nextup") UpNextDismissed.NEXT_UP else UpNextDismissed.FINISH) { play(it) }
+                            } }
                         }
                     }
                     // Netflix's place for it, after what you're watching; your
