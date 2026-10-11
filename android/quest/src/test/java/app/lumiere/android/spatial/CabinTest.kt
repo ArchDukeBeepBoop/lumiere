@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
+/** The cabin round its wall screen: nothing hides the screen, the room holds it at every size, its windows look out, and your seat is your own. */
 class CabinTest {
     private class Room(val spec: TheaterGeometry.Spec, val eyes: Float, val parts: List<Block<Cabin.Kind>>) {
         val middle get() = eyes + spec.aboveEyesM

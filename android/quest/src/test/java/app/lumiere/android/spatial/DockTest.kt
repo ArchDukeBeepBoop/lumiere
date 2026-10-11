@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 
+/** The lakeside's pontoon: under you at your floor, with its beams, posts, bollards and lanterns, and never over the screen's foot. */
 class DockTest {
     private val planks = setOf(Dock.Kind.PLANK, Dock.Kind.PLANK_WORN)
 

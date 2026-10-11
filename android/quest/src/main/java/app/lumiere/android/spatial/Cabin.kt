@@ -15,11 +15,12 @@ import kotlin.math.min
  * you on a wool rug, and the back wall three metres behind you. At most
  * sixty boxes, flat-shaded.
  *
- * The screen is a wall 5.5 m across, so with a tall film or a near seat its
- * foot comes below your own floor. Then the great room is a step down
- * before you: you sit on a raised oak dais, and the floor under the screen
- * is low enough for the credenza beneath its foot. The dais's edge and every
- * step stay under your sightline to the screen's foot.
+ * The screen is a wall 5.5 m across with its middle just above your eyes,
+ * so seated, a 16:9 film's foot comes below your own floor, and even a
+ * 2.39:1 one's leaves no room for the credenza. Then the great room is a
+ * step down before you: you sit on a raised oak dais, and the floor under
+ * the screen is low enough for the credenza beneath its foot. The dais's
+ * edge and every step stay under your sightline to the screen's foot.
  *
  * Laid out in your seat's own frame as Auditorium is: you at the origin on
  * the real floor (y = 0), facing +Z, your left +X; the screen's middle at
