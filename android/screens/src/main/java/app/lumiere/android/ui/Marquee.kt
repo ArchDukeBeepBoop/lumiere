@@ -5,6 +5,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -76,7 +78,14 @@ object Marquee {
                         ).joinToString("  ·  ")
                         if (facts.isNotEmpty()) Text(facts, fontSize = 28.sp, color = Color.White.copy(alpha = 0.8f),
                             modifier = Modifier.padding(top = 16.dp))
-                        shown.overview?.let {
+                        // A film on its way to this screen: said, so the wait isn't a stall.
+                        if (app.lumiere.android.player.Theater.controls != null) Row(Modifier.padding(top = 28.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            androidx.compose.material3.CircularProgressIndicator(color = Color.White, strokeWidth = 4.dp,
+                                modifier = Modifier.size(44.dp))
+                            Text("Starting", fontSize = 34.sp, color = Color.White, modifier = Modifier.padding(start = 18.dp))
+                        }
+                        else shown.overview?.let {
                             Text(it, style = MaterialTheme.typography.bodyLarge.copy(fontSize = 26.sp, lineHeight = 36.sp),
                                 color = Color.White.copy(alpha = 0.75f), maxLines = 2, overflow = TextOverflow.Ellipsis,
                                 modifier = Modifier.padding(top = 12.dp))

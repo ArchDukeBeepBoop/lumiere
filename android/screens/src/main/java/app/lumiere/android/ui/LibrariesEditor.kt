@@ -107,11 +107,18 @@ fun LibrariesEditor(state: AppState, showsRoom: Boolean = true) {
     }
 }
 
-/** Moves a library into or out of the Private Room, on the server for every device. */
-suspend fun setPrivate(state: AppState, id: String, on: Boolean) {
+/**
+ * Moves a library into or out of the Private Room, on the server for every
+ * device. If the server won't take it, this device keeps the choice itself
+ * (it stops following the Mac) rather than lose it at the next refresh;
+ * true when the server took it.
+ */
+suspend fun setPrivate(state: AppState, id: String, on: Boolean): Boolean {
     val ids = state.privateLibraries.toMutableSet().apply { if (on) add(id) else remove(id) }
-    state.server?.setPrivateLibraries(ids)
-    if (state.settings.privateFollowsMac) state.macPrivate = ids else state.settings.privateLibraries = ids
+    val saved = runCatching { state.server?.setPrivateLibraries(ids) }.isSuccess && state.server != null
+    if (!saved) { state.settings.privateFollowsMac = false; state.settings.privateLibraries = ids }
+    else if (state.settings.privateFollowsMac) state.macPrivate = ids else state.settings.privateLibraries = ids
+    return saved
 }
 
 @OptIn(ExperimentalLayoutApi::class)

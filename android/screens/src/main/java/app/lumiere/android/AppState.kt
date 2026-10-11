@@ -80,8 +80,16 @@ class AppState(context: Context) {
      */
     val privacyKnown: Boolean get() = !settings.privateFollowsMac || _macPrivate != null
 
+    /** The private libraries, spelt as this account's own library ids (RoomLibraries). */
     val privateLibraries: Set<String>
-        get() = if (settings.privateFollowsMac) macPrivate else settings.privateLibraries
+        get() {
+            val raw = if (settings.privateFollowsMac) macPrivate else settings.privateLibraries
+            val shown = views
+            privateMemo?.let { (r, v, out) -> if (r == raw && v === shown) return out }
+            return RoomLibraries.match(raw, shown.map { it.id }).also { privateMemo = Triple(raw, shown, it) }
+        }
+    // Asked for once per card in a row: matched once per change, not each time.
+    private var privateMemo: Triple<Set<String>, List<Item>, Set<String>>? = null
 
     /** The card the remote is on, for Play/Pause to start it. */
     var focusedItem: Item? = null
