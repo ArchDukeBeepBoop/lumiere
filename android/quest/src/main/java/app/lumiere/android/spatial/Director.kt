@@ -40,6 +40,9 @@ class Director(
     private val screen = TheaterScreen()
     private val marquee = MarqueeScreen()
     private val sky = Sky()
+    private val hold = TheaterHold()
+    /** The film's screen as shown: the player's request, held through the gaps (TheaterHold). */
+    private var shownRequest: Theater.Request? = null
     private val theatreMade = lazy { Theatre() }
     private val theatre by theatreMade
 
@@ -55,6 +58,8 @@ class Director(
     private var transportShown = false
     private var seenAsks = Stage.bringHereAsks
     private var tilted = false
+    /** Whether the window was last brought before you for away from your room (low) or for it; null at the start. */
+    private var windowAway: Boolean? = null
 
     // Light: the room's passthrough, or the cinema's hall.
     private var brightness = CinemaLight.LIT
@@ -73,7 +78,7 @@ class Director(
     /** The film's sound comes from here: the Theater's flat screen, the window, or (in a sphere) all round. */
     fun soundSource(): Entity? = when {
         !theaterOn -> window
-        Theater.request?.projection != Projection.FLAT -> null
+        shownRequest?.projection != Projection.FLAT -> null
         else -> screen.entity
     }
 
@@ -94,8 +99,8 @@ class Director(
         val playing = PictureInPicture.playing
         if (Stage.bringHereAsks != seenAsks) { seenAsks = Stage.bringHereAsks; recenter() }
 
-        // The Theater: up for a film, down after it.
-        val request = Theater.request
+        // The Theater: up for a film, down after it — and not down between episodes.
+        val request = hold.request(Theater.request, inPlayer, now).also { shownRequest = it }
         val on = request != null
         if (on != theaterOn) { theaterOn = on; if (on) enterTheater() else leaveTheater() }
         val sphere = on && request!!.projection != Projection.FLAT
@@ -104,6 +109,9 @@ class Director(
         // title you're on until a film takes it; the dark and space have the big screen too.
         val place = Stage.place
         val away = place != Stage.Place.ROOM
+        // A film starting away from your room: the window steps aside the moment you press Play,
+        // the big screen showing the title until the picture comes (or a while, if it never does).
+        val waiting = hold.waiting(inPlayer && Theater.controls != null, on, now) && away
         if (!on && away) {
             // Not before the headset knows where your head is (at the very start it may read the floor).
             val s = browseSeat ?: seatHere().takeIf { it.eye.y > MIN_EYE_HEIGHT_M }?.also { browseSeat = it }
@@ -141,13 +149,24 @@ class Director(
         val wallWanted = PosterWall.open && !on
         val mode = when {
             on && Theater.windowAsked -> WindowMode.ASKED
-            on || wallWanted -> WindowMode.HIDDEN
+            on || wallWanted || waiting -> WindowMode.HIDDEN
             else -> WindowMode.HOME
         }
         if (mode != windowMode) setWindow(mode)
+        // Browsing, the window comes before you as the place asks: low away from your room, so the big
+        // screen shows above it; as a Quest window in it. Only as you go between the two (and once at the
+        // start, away), so wherever you carry it otherwise, it stays.
+        if (mode == WindowMode.HOME && windowAway != away) {
+            val head = scene.getViewerPose()
+            if (head.t.y > MIN_EYE_HEIGHT_M) {
+                val first = windowAway == null
+                windowAway = away
+                if (!first || away) { windowInFront(); dockSidebar() }
+            }
+        }
 
         // The tab bar: there while browsing; the transport has the Theater's controls.
-        val showSidebar = !on
+        val showSidebar = !on && !waiting
         if (showSidebar != sidebarShown) { sidebarShown = showSidebar; show(sidebar, showSidebar) }
 
         // The poster wall round you.
@@ -279,8 +298,7 @@ class Director(
             return
         }
         val ahead = head.removePitchAndRoll()
-        val at = head.t + flat(ahead.forward()) * Window.DISTANCE_M
-        window.setComponent(Transform(Pose(Vector3(at.x, head.t.y - 0.1f, at.z), ahead.q)))
+        window.setComponent(Transform(WindowPlacement.pose(head.t, flat(ahead.forward()), ahead.q, Stage.place != Stage.Place.ROOM)))
     }
 
     /** The tab bar docked beside the window's left edge; from there it's yours to move. */

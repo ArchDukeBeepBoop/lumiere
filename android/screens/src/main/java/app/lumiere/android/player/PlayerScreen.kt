@@ -180,6 +180,8 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     var subNote by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(item?.id) {
         val it = item ?: return@LaunchedEffect
+        // The big screen shows what's starting while the picture comes (Quest).
+        app.lumiere.android.ui.Marquee.show(it)
         runCatching { app.lumiere.android.ui.Ambient.learn(context, app.lumiere.android.ui.imageFor(it, server, app.lumiere.android.ui.CardShape.Wide, 64)) }
     }
     androidx.compose.runtime.DisposableEffect(Unit) { onDispose { app.lumiere.android.ui.Ambient.colour = null } }
