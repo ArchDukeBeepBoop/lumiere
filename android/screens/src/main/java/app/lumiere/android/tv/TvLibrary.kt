@@ -48,7 +48,8 @@ import app.lumiere.android.ui.focusCard
 
 private sealed class Shelf(val name: String) {
     class Library(val view: Item) : Shelf(view.name)
-    data object Favourites : Shelf("Favourites")
+    // The server's favourites, called My List on the TV as on Home.
+    data object Favourites : Shelf("My List")
     data object Collections : Shelf("Collections")
     data object Playlists : Shelf("Playlists")
     data object Downloads : Shelf("Downloaded")

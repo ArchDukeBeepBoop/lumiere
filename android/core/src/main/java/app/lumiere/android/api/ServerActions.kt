@@ -13,6 +13,11 @@ suspend fun Server.hideFromContinueWatching(itemId: String) {
     report("Sessions/Playing/Stopped", itemId, 0, java.util.UUID.randomUUID().toString().replace("-", ""), false)
 }
 
+/** Undoes [hideFromContinueWatching]: the resume point put back where it was. */
+suspend fun Server.backOnContinueWatching(itemId: String, positionTicks: Long) {
+    report("Sessions/Playing/Stopped", itemId, positionTicks, java.util.UUID.randomUUID().toString().replace("-", ""), false)
+}
+
 suspend fun Server.refreshMetadata(itemId: String, replaceAll: Boolean) {
     post("Items/$itemId/Refresh", null, mapOf(
         "metadataRefreshMode" to "FullRefresh", "imageRefreshMode" to "FullRefresh",

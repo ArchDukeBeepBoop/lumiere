@@ -118,6 +118,11 @@ class AppState(context: Context) {
     var undo by mutableStateOf<Pair<String, () -> Unit>?>(null)
     /** Titles just marked watched: kept off Up Next before the server's next answer. */
     var justWatched by mutableStateOf<Set<String>>(emptySet())
+    /** Titles just taken off Continue Watching: kept off Home before the server's next answer, until played again. */
+    var offContinue by mutableStateOf<Set<String>>(emptySet())
+    /** My List's changes on their way, for whoever is signed in: a new one for each account. See MyList. */
+    val myList: MyList get() = session?.userId.let { u -> myListFor.takeIf { it.owner == u } ?: MyList(u).also { myListFor = it } }
+    private var myListFor = MyList(null)
     /** "Leave Lumiere?" is showing. */
     var confirmExit by mutableStateOf(false)
     /** What stopped the app last time, shown once at the next start (CrashLog.unseen). */
@@ -125,6 +130,8 @@ class AppState(context: Context) {
 
     /** A card whose actions are open on the TV; see TvActions. */
     var actionsFor by mutableStateOf<Item?>(null)
+    /** The Home row that card was held in, when it can be taken off it; see UpNextDismissed.removal. */
+    var actionsRow: String? = null
     /** Bumped when an action changed something Home shows. */
     var homeRefresh by mutableStateOf(0)
 

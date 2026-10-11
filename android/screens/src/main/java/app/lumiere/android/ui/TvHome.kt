@@ -6,6 +6,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.graphicsLayer
 import app.lumiere.android.api.isNew
 import app.lumiere.android.api.byIds
+import app.lumiere.android.api.libraryPage
+import app.lumiere.android.UpNextDismissed
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -196,6 +198,14 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
         watchlist = if (state.roomOpen) emptyList() else state.visible(runCatching {
             server.byIds(userId, state.settings.watchlist) }.getOrDefault(emptyList())).filter { it.libraryId !in state.privateLibraries }
     }
+    // My List, asked for again whenever something changed; the last answer is
+    // drawn meanwhile, so Home comes back as it was left.
+    LaunchedEffect(state.homeRefresh) {
+        val list = state.myList
+        runCatching { server.libraryPage(userId, null, 0, 40, "SortName", false, favourites = true,
+            types = app.lumiere.android.MyList.KINDS.joinToString(",")) }.onSuccess { list.saved = it }
+    }
+    val dismissed = state.settings.upNextDismissed(userId)
     val spotlight = remember(rows) {
         rows.shelves.firstOrNull { it.first.startsWith("Recently Added") }?.let { _ ->
             rows.shelves.filter { it.first.startsWith("Recently Added") }.flatMap { it.second }
@@ -323,29 +333,43 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                     }
                 }
                 // In the order Settings gives, each row on or off — the Mac's Home Order.
-                for (key in state.settings.tvRowOrder.filter { it !in state.settings.tvRowsHidden }
-                    .let { if (state.settings.compactHome) it.take(6) else it }) when (key) {
+                for (key in app.lumiere.android.Prefs.homeRows(state.settings.tvRowOrder, state.settings.tvRowsHidden,
+                    state.settings.tvUpNextMerged, state.settings.compactHome)) when (key) {
                     // One Up Next row, as the Apple TV app shows it: what is in
                     // progress, then what comes next, then seasons nearly done.
+                    // What you took off it stays off: before the distinct, so a
+                    // show's next episode still stands in for one taken off.
                     "continue" -> if (state.settings.tvUpNextMerged) {
-                        val items = (rows.shelves.firstOrNull { it.first == "Continue Watching" }?.second.orEmpty() + watchlist +
+                        val items = dismissed.filter((rows.shelves.firstOrNull { it.first == "Continue Watching" }?.second.orEmpty() +
+                            watchlist.filter { it.id in state.settings.watchlist } +
                             rows.shelves.firstOrNull { it.first == "Next Up" }?.second.orEmpty() + extras.finishSeason)
-                            .distinctBy { it.seriesId ?: it.id }.filter { it.id !in state.justWatched }
+                            .filter { it.id !in state.justWatched && it.id !in state.offContinue }).distinctBy { it.seriesId ?: it.id }
                         state.upNextTop = items.firstOrNull()
                         if (items.isNotEmpty()) shelf("upnext") {
-                            TvShelf("Up Next") { items(items, key = { it.id }) { WideCard(it, state, { focused = it }) { play(it) } } }
+                            TvShelf("Up Next") { items(items, key = { it.id }) { WideCard(it, state, { focused = it }, row = UpNextDismissed.UP_NEXT) { play(it) } } }
                         }
                     } else {
-                        val items = rows.shelves.firstOrNull { it.first == "Continue Watching" }?.second.orEmpty()
+                        val items = rows.shelves.firstOrNull { it.first == "Continue Watching" }?.second.orEmpty().filter { it.id !in state.offContinue }
                         if (items.isNotEmpty()) shelf(key) {
-                            TvShelf("Continue Watching") { items(items, key = { it.id }) { WideCard(it, state, { focused = it }) { play(it) } } }
+                            TvShelf("Continue Watching") { items(items, key = { it.id }) { WideCard(it, state, { focused = it }, row = UpNextDismissed.CONTINUE) { play(it) } } }
                         }
                     }
                     "nextup", "finish" -> if (!state.settings.tvUpNextMerged) {
                         val (title, items) = if (key == "nextup") "Next Up" to rows.shelves.firstOrNull { it.first == "Next Up" }?.second.orEmpty()
                             else "Finish the Season" to extras.finishSeason
+                        val shown = dismissed.filter(items)
+                        if (shown.isNotEmpty()) shelf(key) {
+                            TvShelf(title) { items(shown, key = { it.id }) { WideCard(it, state, { focused = it }, row = UpNextDismissed.NEXT_UP) { play(it) } } }
+                        }
+                    }
+                    // Netflix's place for it, after what you're watching; your
+                    // changes show at once, before the server's next answer.
+                    "mylist" -> {
+                        val items = state.visible(state.myList.over(state.myList.saved.orEmpty()))
                         if (items.isNotEmpty()) shelf(key) {
-                            TvShelf(title) { items(items, key = { it.id }) { WideCard(it, state, { focused = it }) { play(it) } } }
+                            TvShelf("My List") { items(items, key = { it.id }) {
+                                PosterCard(it, state, null, { focused = it }, caption = if (it.isEpisode) it.episodeLabel ?: it.name else null) { open(it) }
+                            } }
                         }
                     }
                     "watched" -> {
@@ -512,12 +536,15 @@ private fun TvShelf(title: String, subtitle: String? = null, content: androidx.c
     }
 }
 
-/** Continue Watching and Next Up: a still with progress, the show and episode beneath. */
+/**
+ * Continue Watching and Next Up: a still with progress, the show and episode
+ * beneath. Held in a [row] it can be taken off, its actions offer that.
+ */
 @Composable
-private fun WideCard(item: Item, state: AppState, onFocus: () -> Unit, large: Boolean = false, onClick: () -> Unit) {
+private fun WideCard(item: Item, state: AppState, onFocus: () -> Unit, large: Boolean = false, row: String? = null, onClick: () -> Unit) {
     val server = state.server ?: return
     Column(Modifier.width(if (large) LocalTvSizes.current.large else LocalTvSizes.current.wide)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).focusCard(onFocus, onClick) { state.actionsFor = item }.background(Palette.surface)) {
+        Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).focusCard(onFocus, onClick) { state.actionsRow = row; state.actionsFor = item }.background(Palette.surface)) {
             AsyncImage(imageFor(item, server, CardShape.Wide, 600), item.name, contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize())
             // The show's logo on its still, low on the left, as the Apple TV app does.

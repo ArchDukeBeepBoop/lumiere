@@ -37,6 +37,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import app.lumiere.android.AppState
 import app.lumiere.android.Screen
+import app.lumiere.android.UpNextDismissed
+import app.lumiere.android.changeMyList
+import app.lumiere.android.takeOffRow
 import app.lumiere.android.api.Artwork
 import app.lumiere.android.api.Candidate
 import app.lumiere.android.api.Item
@@ -45,7 +48,6 @@ import app.lumiere.android.api.addToPlaylist
 import app.lumiere.android.api.applyArtwork
 import app.lumiere.android.api.collections
 import app.lumiere.android.api.deleteFile
-import app.lumiere.android.api.hideFromContinueWatching
 import app.lumiere.android.api.identifyApply
 import app.lumiere.android.api.identifySearch
 import app.lumiere.android.api.itemJson
@@ -56,7 +58,6 @@ import app.lumiere.android.api.refreshMetadata
 import app.lumiere.android.api.remoteArtwork
 import app.lumiere.android.api.removeArtwork
 import app.lumiere.android.api.removeFromLibrary
-import app.lumiere.android.api.setFavorite
 import app.lumiere.android.api.useFrameFromFile
 import app.lumiere.android.ui.LButton
 import app.lumiere.android.ui.LChip
@@ -92,7 +93,7 @@ fun TvActions(state: AppState) {
     val scope = rememberCoroutineScope()
     var page by remember(item.id) { mutableStateOf<Page>(Page.Menu) }
     var note by remember(item.id) { mutableStateOf<String?>(null) }
-    fun close(changed: Boolean = true) { state.actionsFor = null; if (changed) state.homeRefresh++ }
+    fun close(changed: Boolean = true) { state.actionsFor = null; state.actionsRow = null; if (changed) state.homeRefresh++ }
     fun act(done: String, block: suspend () -> Unit) = scope.launch {
         note = "Working…"
         runCatching { block() }.onSuccess { note = done; kotlinx.coroutines.delay(700); close() }
@@ -129,22 +130,42 @@ fun TvActions(state: AppState) {
                             val eps = server.episodes(userId, item.seriesId!!, null)
                             val at = eps.indexOfFirst { it.id == item.id }
                             eps.take(at + 1).filter { !it.played }.forEach { runCatching { server.setPlayed(it.id, true) } }
+                            // Finished up to here: a show taken off Up Next comes back with its next episode.
+                            state.settings.upNextDismissed(userId).restore(item.seriesId)
                         }
                         "watched" -> act(if (item.played) "Marked unwatched." else "Marked watched.") {
                             val to = !item.played
                             server.setPlayed(item.id, to)
                             state.justWatched = if (to) state.justWatched + item.id else state.justWatched - item.id
-                            // Five seconds to take it back, as Apple TV offers.
+                            if (to) state.settings.upNextDismissed(userId).restore(item.seriesId)
+                            // Five seconds to take it back, as Apple TV offers; on a scope of its own,
+                            // as this panel's has ended by the time Menu is pressed.
                             state.undo = (if (to) "Marked watched" else "Marked unwatched") to {
-                                scope.launch { runCatching { server.setPlayed(item.id, !to) }
+                                kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main.immediate).launch { runCatching { server.setPlayed(item.id, !to) }
                                     state.justWatched = state.justWatched - item.id; state.homeRefresh++ }
                             }
                         }
-                        "favourite" -> act(if (item.favorite) "Removed from Favourites." else "Added to Favourites.") { server.setFavorite(item.id, !item.favorite) }
-                        "hide" -> act("Off Continue Watching.") { server.hideFromContinueWatching(item.id) }
+                        // My List shows the change at once; the server follows, and a refusal puts it back.
+                        "favourite" -> {
+                            val to = !state.myList.has(item)
+                            act(if (to) "Added to My List." else "Removed from My List.") {
+                                state.changeMyList(item)
+                                state.undo = (if (to) "Added to My List" else "Removed from My List") to {
+                                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main.immediate).launch { runCatching { state.changeMyList(item) } }
+                                }
+                            }
+                        }
+                        "hide" -> act("Removed from Continue Watching.") { state.takeOffRow(item, UpNextDismissed.CONTINUE) }
+                        // Held on a card in Continue Watching or Up Next: off that row, with the notice to take it back.
+                        "offrow" -> {
+                            val row = state.actionsRow ?: UpNextDismissed.UP_NEXT
+                            act("Removed from ${UpNextDismissed.rowName(row)}.") { state.takeOffRow(item, row) }
+                        }
                         "watchlist" -> act(if (item.id in state.settings.watchlist) "Off Up Next." else "Added to Up Next.") {
                             val w = state.settings.watchlist
                             state.settings.watchlist = if (item.id in w) w - item.id else listOf(item.id) + w
+                            // Added by hand: a show you once took off Up Next is wanted there again.
+                            if (item.id !in w) state.settings.upNextDismissed(userId).restore(UpNextDismissed.showOf(item))
                         }
                         "notinterested" -> act("You won't see it on Home.") { state.settings.notInterested = state.settings.notInterested + item.id }
                         "playlist" -> page = Page.Playlist
@@ -197,11 +218,14 @@ private fun Menu(state: AppState, item: Item, pick: (String) -> Unit) {
         add("—" to "")
         add("watched" to if (item.played) "Mark as Unwatched" else "Mark as Watched")
         if (item.isEpisode && item.seriesId != null) add("uptohere" to "Mark as Watched up to Here")
-        add("favourite" to if (item.favorite) "Remove from Favourites" else "Add to Favourites")
-        if (!state.roomOpen && (video || item.isSeries) && item.positionTicks == 0L)
+        add("favourite" to if (state.myList.has(item)) "Remove from My List" else "Add to My List")
+        // On a card in Continue Watching or Up Next, taking it off that row stands in for both below.
+        val row = state.actionsRow
+        if (row != null) add("offrow" to "Remove from ${UpNextDismissed.rowName(row)}")
+        else if (!state.roomOpen && (video || item.isSeries) && item.positionTicks == 0L)
             add("watchlist" to if (item.id in state.settings.watchlist) "Remove from Up Next" else "Add to Up Next")
         add("notinterested" to "Not Interested")
-        if (item.positionTicks > 0) add("hide" to "Hide from Continue Watching")
+        if (item.positionTicks > 0 && row == null) add("hide" to "Remove from Continue Watching")
         add("playlist" to "Add to Playlist…")
         if (item.type != "BoxSet") add("collection" to "Add to Collection…")
         if (video && state.downloads.find(item.id) == null) add("download" to "Download")

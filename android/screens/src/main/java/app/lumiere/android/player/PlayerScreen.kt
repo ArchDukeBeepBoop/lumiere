@@ -43,6 +43,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import app.lumiere.android.AppState
 import app.lumiere.android.Screen
+import app.lumiere.android.playing
 import app.lumiere.android.api.Item
 import app.lumiere.android.api.Segment
 import app.lumiere.android.Diagnostics
@@ -241,6 +242,8 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
                     Playback.load(player, server, found, resumeAt, local)
                 }
                 reporter.started(player)
+                // Played again: back on Up Next and Continue Watching if you'd taken it off.
+                state.playing(found)
                 // After the file is asked for, not before: the skip marks are not
                 // needed for the first seconds, and waiting on them delayed the picture.
                 segments = server.segments(found.id)
