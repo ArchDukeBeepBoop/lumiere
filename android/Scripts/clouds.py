@@ -1,6 +1,11 @@
 """Lumiere's Above the Clouds: golden hour over a sea of cumulus, 4096 x 2048 equirect, for a skybox on a Quest.
 
-(draft)
+You float 4.3 km over the tops of a cumulus deck that runs out to the curve of the horizon, the sun 5
+degrees up and 50 to the right of the screen, gold on the lit faces of the heaps and lavender in their
+shade, the haze warm toward the sun and cool away from it; a few wisps of cirrus overhead. The deck is a
+height field of cauliflower lobes at six scales, each column's ray marched out over it front to back,
+with shadows felt for toward the sun; finer lobes fade below each pixel's footprint so the horizon
+doesn't shimmer.
 
     python3 clouds.py [OUT.jpg] [--preview DIR]
 """
@@ -149,11 +154,11 @@ def bilinear(img, r, c):
 # --- The sky -------------------------------------------------------------------------------
 
 # Toward the sun: peach and apricot haze on the horizon, then pale gold, a clean pale blue, deep blue overhead.
-TOWARD = [(0, (222, 160, 116)), (2, (216, 160, 122)), (5, (196, 152, 128)), (10, (160, 140, 140)),
-          (17, (118, 124, 150)), (26, (84, 104, 152)), (40, (56, 84, 144)), (60, (38, 66, 132)), (90, (26, 52, 118))]
+TOWARD = [(0, (220, 156, 112)), (2, (214, 154, 116)), (5, (192, 144, 122)), (10, (150, 128, 134)),
+          (17, (108, 114, 144)), (26, (76, 96, 146)), (40, (54, 80, 140)), (60, (38, 64, 130)), (90, (26, 52, 118))]
 # Away from it: a cooler, paler blue on the horizon with the faintest pink, deepening the same way.
-AWAY = [(0, (118, 124, 154)), (3, (110, 120, 156)), (8, (96, 112, 158)), (16, (78, 100, 154)),
-        (28, (60, 86, 148)), (45, (44, 72, 138)), (65, (33, 60, 126)), (90, (26, 52, 118))]
+AWAY = [(0, (116, 122, 152)), (3, (106, 116, 154)), (8, (90, 104, 150)), (16, (72, 92, 148)),
+        (28, (56, 80, 142)), (45, (42, 68, 134)), (65, (32, 58, 124)), (90, (26, 52, 118))]
 GLOW = lin((255, 190, 120))
 AUREOLE = lin((255, 222, 170))
 
@@ -170,7 +175,7 @@ def sky_colour(x, y, z):
     e = np.maximum(el, 0)
     toward, away = ramp(e, TOWARD), ramp(e, AWAY)
     # The warm side's reach round the horizon, wide at the foot of the sky and narrowing as it rises.
-    w = ((1 + np.cos(dl)) / 2) ** (1.4 + 1.6 * smoothstep(0, 30, e))
+    w = ((1 + np.cos(dl)) / 2) ** (2.2 + 1.4 * smoothstep(0, 30, e))
     out = away + w[..., None] * (toward - away)
     gamma = sun_angle(x, y, z)
     glow = 0.55 * np.exp(-gamma / 1.4) + 0.16 * np.exp(-gamma / 5.0) + 0.07 * np.exp(-(gamma / 20) ** 2)
@@ -195,7 +200,8 @@ def cirrus(out, x, y, z, el, gamma):
     bend = fbm(noises, along * 0.16 + 3.1, across * 0.28 - 1.7, foot * 0.3, 3)
     streak = fbm(noises, along * 0.3 + 5.3, (across + 0.9 * bend) * 2.2, foot * 2.2, 7, 0.58)
     where = fbm(noises, px * 0.2 + 4.2, pz * 0.2 - 2.6, foot * 0.2, 3)
-    cover = smoothstep(0.05, 0.5, streak * 0.8 + where * 0.9 - 0.18)
+    fibre = fbm(noises, along * 0.9 - 2.2, (across + 0.9 * bend) * 11, foot * 11, 4, 0.6)
+    cover = smoothstep(0.05, 0.5, streak * 0.8 + where * 0.9 - 0.18) * smoothstep(-0.45, 0.35, fibre)
     cover *= smoothstep(4, 16, el)
     density = (cover ** 1.5 * 0.42)[..., None]
     lit = np.exp(-(gamma / 40) ** 2)[..., None]
@@ -252,13 +258,14 @@ class Bubbles:
                 if self.heap:
                     cap = r * base * base * (3 - 2 * base)
                 else:
-                    cap = r * base * (2 - base)
+                    root = np.sqrt(base)
+                    cap = r * root
                 w = np.clip(0.5 + 0.5 * (cap - best) / self.K, 0, 1)
                 both = w * (1 - w)
                 best = best + w * (cap - best) + self.K * both
                 crease = np.maximum(crease, 4 * both * (cap > 0.04))
                 if grad:
-                    inv = w * (12 * base if self.heap else 4) * (1 - base) / r
+                    inv = w * 12 * base * (1 - base) / r if self.heap else w / (r * np.maximum(root, 0.3))
                     gu = gu - inv * dx - w * gu
                     gv = gv - inv * dy - w * gv
         if not grad:
@@ -268,7 +275,7 @@ class Bubbles:
 
 # Cumulus at six scales: each lobe's cell (m) and how high it heaps (m).
 DOMES = [(1500, 430), (660, 190), (290, 84), (128, 37), (56, 16), (25, 7)]
-SOFT = [1.0, 1.0, 0.9, 0.75, 0.6, 0.5]                   # how much each scale shapes the light
+SOFT = [1.0, 1.0, 0.85, 0.65, 0.5, 0.4]                   # how much each scale shapes the light
 DEEP = [1.4, 1.2, 0.9, 0.45, 0.2, 0.1]                   # and how much its hollows shade
 PROBES = [18, 45, 110, 260, 600, 1400, 3200]           # how far toward the sun shadows are looked for (m)
 
@@ -278,7 +285,7 @@ class Tops:
 
     def __init__(self):
         g = rng(1)
-        self.bub = [Bubbles(g, k == 0) for k in range(len(DOMES))]
+        self.bub = [Bubbles(g, k < 2) for k in range(len(DOMES))]
         self.turn = g.uniform(0, 2 * np.pi, len(DOMES))
         self.shift = g.uniform(0, 400, (len(DOMES), 2))
         self.macro = [Perlin(g) for _ in range(3)]
@@ -321,7 +328,7 @@ class Tops:
                 soft = SOFT[k] * amp * gain * att / cell              # light diffuses over the smallest lobes
                 hx += soft * (c * gu + s * gv)
                 hz += soft * (-s * gu + c * gv)
-                occl += DEEP[k] * (att * (0.3 * crease + 0.7 * (1 - b)) + (1 - att) * (1 - bub.mean))
+                occl += DEEP[k] * (1 - b)
         if not grad:
             return h
         return h, hx, hz, occl
@@ -338,10 +345,10 @@ def ray_distances():
     return np.array(out)
 
 
-SUN_LIGHT = lin((255, 186, 112))                  # the low sun, gold through the long air
-SKY_ABOVE = lin((80, 104, 168)) * 0.38            # blue light from the sky overhead
-SKY_SIDE = lin((122, 106, 152)) * 0.3             # lavender from the horizon's haze and the clouds round about
-BOUNCE = lin((230, 156, 130)) * 0.1               # a warm return from the lit faces opposite
+SUN_LIGHT = lin((255, 182, 104)) * 0.92           # the low sun, gold through the long air
+SKY_ABOVE = lin((80, 104, 168)) * 0.22            # blue light from the sky overhead
+SKY_SIDE = lin((122, 106, 152)) * 0.17            # lavender from the horizon's haze and the clouds round about
+BOUNCE = lin((230, 156, 130)) * 0.08              # a warm return from the lit faces opposite
 
 
 def shade(tops, px, pz, d, haze):
@@ -374,13 +381,13 @@ def shade(tops, px, pz, d, haze):
     ao = np.clip(np.exp(-0.55 * (occl - 2.2)), 0.3, 1.35).astype(F32)
     wrapd = np.clip((ndl + 0.2) / 1.2, 0, 1) ** 1.5
     turned = np.clip(-(nx * sx + nz * sz) / np.maximum(np.sqrt(nx * nx + nz * nz), 1e-4), 0, 1) * (1 - ny)
-    g = 0.65
-    hg = (1 - g * g) / (1 + g * g - 2 * g * vdl) ** 1.5 / 20
-    rim = np.clip(1 - ndv, 0, 1) ** 2.5
+    g = 0.75
+    hg = (1 - g * g) / (1 + g * g - 2 * g * vdl) ** 1.5 / 40
+    rim = np.clip(1 - ndv, 0, 1) ** 5
     c = (SUN_LIGHT * (wrapd * lit)[..., None]
          + (SKY_ABOVE * (0.5 + 0.5 * ny)[..., None] + SKY_SIDE * (0.5 - 0.5 * ny)[..., None]) * ao[..., None]
          + BOUNCE * (turned * ao)[..., None]
-         + SUN_LIGHT * (1.6 * rim * hg * (0.25 + 0.75 * lit))[..., None])
+         + SUN_LIGHT * (2.2 * rim * hg * (0.2 + 0.8 * lit))[..., None])
     # Mist settles in the hollows further off, and the air hazes everything toward the horizon's colour.
     mist = 0.55 * (1 - np.exp(-d / 9000)) * smoothstep(60, -260, h - 0)
     c = c + mist[..., None] * (haze * 0.95 - c)
