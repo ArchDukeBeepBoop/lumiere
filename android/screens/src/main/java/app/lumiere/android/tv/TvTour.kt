@@ -30,13 +30,22 @@ import app.lumiere.android.AppState
 import app.lumiere.android.ui.LButton
 import app.lumiere.android.ui.Palette
 
-private val pages = listOf(
-    "Around Lumiere" to "Left opens the menu. Hold OK on any poster, or press Menu, for Mark Watched, Favourite, Go to Show and Download.",
+private val tvPages = listOf(
+    "Around Lumiere" to "Left opens the menu. Hold OK on any poster, or press Menu, for Mark Watched, My List, Go to Show and Download.",
     "While watching" to "Left and right skip — hold to go faster, with a preview. Down from the play button shows the season's episodes; down with the controls hidden opens audio and subtitles.",
     "The Menu button" to "During a film it opens speed, fit or fill, subtitle size and look, dialogue boost, night sound and the sleep timer. Back always closes what is open first.",
 )
 
-/** Three cards on a TV's first open: the remote's grammar, once. Settings › TV & Projector can show it again. */
+/** The same three cards for a Quest, whose remote is your hands: the ray, a pinch, the thumbstick, the Meta button. */
+private val questPages = listOf(
+    "Point and pinch" to "Point at anything and pinch, or pull the trigger, to choose it; pointing alone only looks. The thumbstick moves like a remote's arrows. Hold the Meta button to bring everything back in front of you.",
+    "Your windows" to "Grab the bar under a window to carry it anywhere, and pull its corners to resize it. The tab bar beside it moves the same way, and the lock opens the Private Room.",
+    "Watching" to "A film plays on its own screen in the place you choose: your room, a cinema, a cabin, the lakeside, the dark or space. The controls come to your hands; pinch the picture to bring them back, and pin the buttons you use most.",
+)
+
+private val pages get() = if (app.lumiere.android.AppBuild.quest) questPages else tvPages
+
+/** Three cards on a TV's (or a Quest's) first open: the remote's grammar, once. Settings › TV & Projector can show it again. */
 @Composable
 fun TvTour(state: AppState) {
     if (state.settings.tvTourShown) return

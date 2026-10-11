@@ -61,6 +61,7 @@ fun EpisodeStrip(server: Server, userId: String, current: Item, onPick: (Item) -
     }
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.9f)))
         .tapOutsideCloses(onClose), contentAlignment = Alignment.BottomStart) {
+        app.lumiere.android.ui.QuestClose(onClose, Modifier.align(Alignment.TopEnd).padding(24.dp))
         Column(Modifier.keepsTaps().padding(bottom = 24.dp)) {
             Text(current.seasonName ?: "Episodes", style = MaterialTheme.typography.titleLarge, color = Color.White,
                 modifier = Modifier.padding(start = 48.dp))

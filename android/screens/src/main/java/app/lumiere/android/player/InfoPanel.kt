@@ -46,6 +46,7 @@ fun InfoPanel(item: Item?, clock: Clock, startTab: String = "Info", onTracks: ()
             TvPill({ onClose(); onTracks() }) { Text("Subtitles & Audio") }
             if (onEpisodes != null) TvPill({ onClose(); onEpisodes() }) { Text("Episodes") }
             TvPill({ onClose(); onMenu() }) { Text("Speed & Picture") }
+            app.lumiere.android.ui.QuestClose(onClose)
         }
         when (tab) {
             "Info" -> item?.let { it ->

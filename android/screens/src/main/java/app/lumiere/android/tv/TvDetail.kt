@@ -81,6 +81,7 @@ import app.lumiere.android.ui.LChip
 import app.lumiere.android.ui.Palette
 import app.lumiere.android.ui.focusCard
 import app.lumiere.android.ui.imageFor
+import app.lumiere.android.ui.hoverFocuses
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -461,7 +462,8 @@ private fun Cast(item: Item, state: AppState) {
                 // names into view too and nothing is cut at the bottom of the page.
                 var on by remember { mutableStateOf(false) }
                 val lift by androidx.compose.animation.core.animateFloatAsState(if (on) 1.1f else 1f, label = "cast")
-                Column(Modifier.width(120.dp).onFocusChanged { on = it.isFocused }
+                // On a Quest, pointing at a face rings it as the remote would (hoverFocuses).
+                Column(Modifier.width(120.dp).hoverFocuses().onFocusChanged { on = it.isFocused }
                     .clickable { state.push(Screen.Person(p.id, p.name)) }, horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(Modifier.size(104.dp).graphicsLayer { scaleX = lift; scaleY = lift }.clip(CircleShape).background(Palette.surface)
                         .border(3.dp, if (on) Color.White else Color.Transparent, CircleShape), contentAlignment = Alignment.Center) {

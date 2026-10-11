@@ -510,7 +510,11 @@ private fun App(state: AppState, onExit: () -> Unit) {
                     verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                     horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
                     androidx.compose.material3.Text(lastNotice.value, color = androidx.compose.ui.graphics.Color.White)
-                    androidx.compose.material3.Text("Menu to undo", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f))
+                    // A remote's Menu key undoes it; on a Quest, where no Menu key is in reach, a pill to point at and pinch.
+                    if (app.lumiere.android.AppBuild.quest) app.lumiere.android.ui.TvPill({ state.undo?.second?.invoke(); state.undo = null }) {
+                        androidx.compose.material3.Text("Undo")
+                    }
+                    else androidx.compose.material3.Text("Menu to undo", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.6f))
                 }
             }
         }

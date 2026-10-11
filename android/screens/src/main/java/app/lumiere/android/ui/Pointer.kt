@@ -16,6 +16,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.Close
 
 /**
  * What moved the focus last: the controller's ray or a hand (true), or the
@@ -80,4 +81,17 @@ fun Modifier.pointerTap(enabled: Boolean = true, onClick: () -> Unit): Modifier 
     if (!app.lumiere.android.AppBuild.quest || !enabled) return this
     val latest by rememberUpdatedState(onClick)
     return pointerInput(Unit) { detectTapGestures(onTap = { latest() }) }
+}
+
+/**
+ * A panel's × on a Quest, where no Back key is in reach of a pointing hand
+ * (a tap outside the panel closes it too). Elsewhere nothing: a TV remote
+ * has Back, and an extra stop in the panel would only be one more press.
+ */
+@Composable
+fun QuestClose(onClose: () -> Unit, modifier: Modifier = Modifier) {
+    if (!app.lumiere.android.AppBuild.quest) return
+    LIconButton(onClick = onClose, modifier = modifier) {
+        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Default.Close, "Close", tint = Palette.textPrimary)
+    }
 }

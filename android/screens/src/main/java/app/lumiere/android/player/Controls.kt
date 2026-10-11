@@ -16,6 +16,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -116,6 +118,11 @@ fun PlayerOverlay(
     var flash by remember { mutableStateOf<String?>(null) }
     val playFocus = remember { FocusRequester() }
     val rootFocus = remember { FocusRequester() }
+    // On a Quest, the controls stay up while the ray rests on them: they used to fade under it mid-reach.
+    val quest = app.lumiere.android.AppBuild.quest
+    val pointer = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val pointedAt by pointer.collectIsHoveredAsState()
+    val keepsUp = if (quest) Modifier.hoverable(pointer) else Modifier
 
     LaunchedEffect(player) {
         while (true) {
@@ -125,8 +132,8 @@ fun PlayerOverlay(
             delay(250)
         }
     }
-    LaunchedEffect(visible, touched, scrubbing, playing) {
-        if (visible && scrubbing == null && playing) { delay(4000); visible = false }
+    LaunchedEffect(visible, touched, scrubbing, playing, pointedAt) {
+        if (visible && scrubbing == null && playing && !pointedAt) { delay(4000); visible = false }
     }
     LaunchedEffect(visible, modal) {
         // Back from a sheet: the remote returns to the controls.
@@ -214,8 +221,16 @@ fun PlayerOverlay(
                     else -> false
                 }
             }
-            // A Quest has the TV's layout and a pointer: tapping the picture shows the controls there too.
-            .then(if (isTv && !app.lumiere.android.AppBuild.quest) Modifier else Modifier.gestures(context, onTap = { visible = !visible }, onSeek = ::seekBy, lift, onLift)),
+            // A Quest has the TV's layout and a pointer: a pinch on the picture shows the controls, two
+            // skip ten seconds. Not the phone's slides for brightness and volume, nor two fingers for the
+            // subtitles: a controller's ray drifting on a held trigger set them off by accident.
+            .then(when {
+                quest -> Modifier.pointerInput(Unit) {
+                    detectTapGestures(onTap = { visible = !visible }, onDoubleTap = { p -> seekBy(if (p.x < size.width / 2) -10 else 10) })
+                }
+                isTv -> Modifier
+                else -> Modifier.gestures(context, onTap = { visible = !visible }, onSeek = ::seekBy, lift, onLift)
+            }),
     ) {
         error?.let {
             Text(it, color = Color.White, style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
@@ -253,7 +268,7 @@ fun PlayerOverlay(
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
                 0f to Color.Black.copy(alpha = 0.55f), 0.25f to Color.Transparent,
                 0.65f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.75f)))) {
-                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().then(keepsUp).padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     LIconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = app.lumiere.android.ui.pillTint(Color.White)) }
                     Column(Modifier.weight(1f)) {
                         Text(item?.seriesName ?: item?.name ?: "", color = Color.White,
@@ -271,9 +286,9 @@ fun PlayerOverlay(
                     LIconButton(onClick = onMenu) { Icon(Icons.Default.Tune, "Speed, picture and sound", tint = app.lumiere.android.ui.pillTint(Color.White)) }
                     if (!isTv) LIconButton(onClick = onPip) { Icon(Icons.Default.PictureInPictureAlt, "Picture in picture", tint = app.lumiere.android.ui.pillTint(Color.White)) }
                 }
-                Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp),
+                Row(Modifier.align(Alignment.Center).then(keepsUp), horizontalArrangement = Arrangement.spacedBy(36.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    LIconButton(onClick = { seekBy(-10); touched++ }, Modifier.size(56.dp).focusProperties { canFocus = !isTv }) {
+                    LIconButton(onClick = { seekBy(-10); touched++ }, Modifier.size(56.dp).focusProperties { canFocus = !isTv || quest }) {
                         Icon(Icons.Default.Replay10, "Back ten seconds", tint = app.lumiere.android.ui.pillTint(Color.White), modifier = Modifier.size(36.dp))
                     }
                     LIconButton(onClick = { if (player.isPlaying) player.pause() else player.play(); touched++ },
@@ -281,11 +296,11 @@ fun PlayerOverlay(
                         Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (playing) "Pause" else "Play",
                             tint = app.lumiere.android.ui.pillTint(Color.White), modifier = Modifier.size(56.dp))
                     }
-                    LIconButton(onClick = { seekBy(10); touched++ }, Modifier.size(56.dp).focusProperties { canFocus = !isTv }) {
+                    LIconButton(onClick = { seekBy(10); touched++ }, Modifier.size(56.dp).focusProperties { canFocus = !isTv || quest }) {
                         Icon(Icons.Default.Forward10, "Forward ten seconds", tint = app.lumiere.android.ui.pillTint(Color.White), modifier = Modifier.size(36.dp))
                     }
                 }
-                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
+                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().then(keepsUp).padding(horizontal = 20.dp, vertical = 14.dp)) {
                     BoxWithConstraints(Modifier.fillMaxWidth()) {
                         val shown = scrubbing ?: position
                         val trick = trickplay

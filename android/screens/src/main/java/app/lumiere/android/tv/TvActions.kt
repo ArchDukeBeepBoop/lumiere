@@ -105,6 +105,7 @@ fun TvActions(state: AppState) {
         contentAlignment = Alignment.CenterEnd) {
         Column(Modifier.holdsRemote().fillMaxHeight().width(460.dp).padding(24.dp).frosted().keepsTaps().padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            app.lumiere.android.ui.QuestClose({ close(false) }, Modifier.align(Alignment.End))
             // The title held, larger, with what it is about — before what can be done with it.
             androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 coil.compose.AsyncImage(app.lumiere.android.ui.imageFor(item, server, app.lumiere.android.ui.CardShape.Poster, 200), null,

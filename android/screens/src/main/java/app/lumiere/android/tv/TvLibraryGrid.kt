@@ -188,6 +188,7 @@ internal fun PillChooser(title: String, options: List<String>, current: String?,
     androidx.activity.compose.BackHandler(onBack = onClose)
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)).tapOutsideCloses(onClose), contentAlignment = Alignment.TopCenter) {
         Column(Modifier.holdsRemote().padding(top = 70.dp).widthIn(max = 900.dp).frosted().keepsTaps().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            app.lumiere.android.ui.QuestClose(onClose, Modifier.align(Alignment.End))
             Text(title, style = MaterialTheme.typography.titleLarge)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 TvPill({ onPick(null); onClose() }, if (current == null) Modifier.focusRequester(first) else Modifier, selected = current == null) { Text("All") }
