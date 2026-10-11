@@ -7,9 +7,14 @@ blue, with the faint pink Belt of Venus over the Earth's shadow opposite.
 Overhead it deepens to indigo and the first few stars show. Thin streaks of
 high cloud catch the afterglow from below near the pass and stay cool elsewhere.
 
-Ranges of mountains ring the lake, each the skyline of ridged fractal noise at
-its own distance, so the far ones are hazier, bluer (warmer toward the glow) and
-smaller, with mist lying at their feet. Dark spruce stand on the near shore.
+Mountains ring the lake as real land: a height map round you, with a few
+massifs (each a broad dome with one summit, the tallest beside the pass at about
+9 degrees, its partner across it at 6), forested foothills on the far shore and a
+long hazy range 36 km off, all carved by ridged noise into eroded ridges. Each
+column is a ray marched out over it, front to back, so every pixel shows the
+nearest land that rises into it: spurs overlap the summits behind them, each
+hazed by its own distance (bluer far off), with mist at their feet, and faces
+that see the afterglow catch a little of it. Dark spruce stand on the near shore.
 The water mirrors all of it: each pixel of lake is a ray from your eyes (1.7 m
 up) to a rippled surface, reflected and looked up in the sky above, so ripples
 grow as they come toward you, the afterglow breaks into a glitter path under
@@ -22,9 +27,10 @@ far hills over open water, where the film's screen floats; the glow sits beyond
 the screen's edge at every size, so the film stays the brightest thing in view.
 To move it, turn the skybox entity about its vertical axis.
 
-Every feature is made in 3D direction space (sky, clouds, stars, water) or from
-longitude-periodic functions (ridges, trees), so the wrap at longitude 0/360 is
-seamless and nothing pinches at the zenith or nadir. Linear light throughout,
+Every feature is made in 3D direction space (sky, clouds, stars, water), in the
+plane round you (the land) or from longitude-periodic functions (the near trees),
+so the wrap at longitude 0/360 is seamless and nothing pinches at the zenith or
+nadir. Linear light throughout,
 encoded to sRGB at the end with a little grain so the dark gradients don't band.
 Deterministic (seeded), so a rebuild is the same lake.
 
@@ -318,15 +324,16 @@ def heights(lon, km, noises):
     broken = np.clip(0.45 + 1.1 * noises[2](px / 6 + 1.3, pz / 6 - 4.1), 0, 1.3)
     lift += 260 * np.exp(-((d - shore - 2.0) / 1.6) ** 2) * broken * pass_ * calm
     far = np.clip(0.55 + 0.8 * noises[3](px / 16 - 2.2, pz / 16 + 0.7), 0.15, 1.2)       # the far range, hazy
-    lift += 1800 * far * np.exp(-((d - 36) / 8) ** 2) * (1 - 0.55 * bump(col, GLOW_LON, 9)) * (1 - 0.45 * bump(col, SCREEN_LON, 30))
+    lift += 1800 * far * np.exp(-((d - 36) / 8) ** 2) * (1 - 0.55 * bump(col, GLOW_LON, 9)) \
+        * (1 - 0.45 * bump(col, SCREEN_LON, 30))
     # Warp the plane a little, so ridges wander instead of following the noise's lattice.
     wx = px + 1.6 * noises[0](px / 9 + 3.7, pz / 9 - 1.1)
     wz = pz + 1.6 * noises[1](px / 9 - 5.2, pz / 9 + 2.9)
     foot = d * PXR / SS                                                       # a column's width there (km)
     carve = ridged(noises, wx / 6.0, wz / 6.0, foot / 6.0, 10)
     bare = lift * (0.25 + 1.15 * carve)
-    # Spruce on the lower slopes: a canopy of crowns about 15 m high, gone above the tree line and wherever
-    # it would be finer than a pixel.
+    # Spruce on the lower slopes: a canopy of crowns up to 20 m high, so near ridges have a ragged top; gone
+    # above the tree line and wherever it would be finer than a pixel.
     crowns = sum(a * np.clip(1.6 - 2.4 * f * foot, 0, 1) * (0.5 + 0.5 * noises[o](px * f + 9.1 * o, pz * f - 4.4 * o)) ** 2
                  for o, (f, a) in enumerate([(40, 1.0), (97, 0.5)]))
     trees = 14 * crowns * smoothstep(1000, 600, bare) * smoothstep(0, 0.4, d - shore)
