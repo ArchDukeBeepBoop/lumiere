@@ -76,6 +76,7 @@ object Stage {
         // Sizes were made larger (to 55°–115°); an older saved choice starts afresh at the default.
         screenSize = if (p.getInt("sizes", 1) < 2) DEFAULT_SIZE else p.getInt("screenSize", DEFAULT_SIZE).coerceIn(0, SCREEN_SIZES - 1)
         curved = p.getBoolean("screenCurved", false)
+        app.lumiere.android.ui.Shortcuts.load(p)
     }
 
     private fun save() {
