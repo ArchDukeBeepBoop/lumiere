@@ -92,11 +92,7 @@ fun SignInScreen(state: AppState) {
             val server = Server(url, state.deviceId)
             runCatching { if (needsAccount) server.createFirstAccount(user.trim(), password) else server.signIn(user.trim(), password) }
                 .onSuccess { state.signedIn(it, server) }
-                .onFailure {
-                    message = it.message?.takeIf { m -> m.isNotBlank() && !m.startsWith("Failed to connect") }
-                        ?: "Couldn't reach $url. Check that \"Share on my home network\" is on in Lumiere's " +
-                        "Settings on the Mac, and that this device is on the same Wi-Fi."
-                }
+                .onFailure { message = signInFailure(it, url) }
             busy = false
         }
     }
@@ -165,6 +161,12 @@ fun signInProblem(user: String, password: String, confirm: String, needsAccount:
     needsAccount && password != confirm -> "The two passwords don't match." to SignInField.Password
     else -> null
 }
+
+/** What to say when signing in at [url] failed: the server's own words, or how to reach it. */
+fun signInFailure(error: Throwable, url: String): String =
+    error.message?.takeIf { m -> m.isNotBlank() && !m.startsWith("Failed to connect") }
+        ?: "Couldn't reach $url. Check that \"Share on my home network\" is on in Lumiere's " +
+        "Settings on the Mac, and that this device is on the same Wi-Fi."
 
 /** "192.168.60.5" → "http://192.168.60.5:8098": the scheme and port people leave off. */
 fun normalise(raw: String): String {

@@ -216,7 +216,10 @@ fun TvSettingsScreen(state: AppState) {
         Category("Account", listOf(
             Opt.Custom("Signed in", "") { Text("${state.session?.userName} on ${state.session?.serverName}\n${state.session?.serverUrl}",
                 style = MaterialTheme.typography.bodyMedium) },
-            Opt.Action("Sign out", "This device only.") { state.signOut() },
+            Opt.Action("Switch profile", "\u201CWho\u2019s watching?\u201D: everyone signed in on this device, and Add Profile.") { state.askWhoIsWatching() },
+            Opt.Toggle("Ask who\u2019s watching at start", "When two or more profiles are signed in on this device.",
+                { p.askWhoIsWatching }) { p.askWhoIsWatching = it },
+            Opt.Action("Sign out", "This profile, on this device only; the other profiles stay.") { state.signOut() },
         )),
     )
 

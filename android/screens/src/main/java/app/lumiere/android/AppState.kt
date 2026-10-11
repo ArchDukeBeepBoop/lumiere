@@ -54,6 +54,8 @@ class AppState(context: Context) {
 
     /** Starts keeping the copy current, when signed in. */
     fun followLibrary() {
+        // Not for whoever is behind "Who's watching?": the copy may be someone else's in a moment.
+        if (choosing) return
         val s = session ?: return
         server?.let { cacheSync.start(it, s.userId) }
     }
@@ -216,7 +218,10 @@ class AppState(context: Context) {
         return true
     }
 
-    fun signedIn(session: Session, server: Server) {
+    /** Signed in, or a profile chosen: [session] is watching now, and is kept among the profiles. */
+    fun signedIn(session: Session, server: Server, imageTag: String? = null) {
+        // Someone else was watching: none of their place in the app comes along.
+        this.session?.let { was -> if (Profiles.key(was) != Profiles.key(session)) leavePerson(was, session) }
         prefs.edit()
             .putString("server", session.serverUrl).putString("userId", session.userId)
             .putString("userName", session.userName).putString("token", session.token)
@@ -228,20 +233,49 @@ class AppState(context: Context) {
         }
         this.server = server
         this.session = session
+        keepProfile(Profile(session, imageTag ?: profiles.firstOrNull { it.key == Profiles.key(session) }?.imageTag))
+        choosing = false
         stack.clear()
         stack += Screen.Home
         followLibrary()
     }
 
+    /**
+     * Signs out the profile watching now; the others stay on this device. With
+     * someone left, "Who's watching?" follows, the first of them behind it
+     * until a profile is chosen; with nobody, signing in afresh.
+     */
     fun signOut() {
+        val leaving = session?.let(Profiles::key)
+        val (rest, then) = Profiles.remove(profiles, leaving ?: "", leaving)
         prefs.edit().remove("token").remove("cacheOwner").apply()
         app.lumiere.android.api.SnapshotCache.clear()
         cacheSync.forget()
         _macPrivate = null
         prefs.edit().remove("macPrivate").apply()
         closeRoom()
-        session = null
-        server = null
+        leaving?.let(settings::forgetPerson)
+        saveProfiles(rest)
+        val next = rest.firstOrNull()
+        if (then == Profiles.Start.SignIn || next == null) {
+            // Nothing of theirs (searches, lists) is left for whoever signs in next.
+            leaving?.let { settings.switchPerson(null, it) }
+            settings.stopWatchingShared()
+            choosing = false
+            session = null
+            server = null
+            return
+        }
+        session?.let { leavePerson(it, next.session, keepTrail = false) }
+        // The next one's keys, as signedIn writes them, so a start before anyone is chosen finds them.
+        prefs.edit()
+            .putString("server", next.session.serverUrl).putString("userId", next.session.userId)
+            .putString("userName", next.session.userName).putString("token", next.session.token)
+            .putString("serverName", next.session.serverName).apply()
+        server = Server(next.session.serverUrl, deviceId, next.session.token)
+        session = next.session
+        choosingCanCancel = false
+        choosing = true
     }
 
     private fun loadSession(): Session? {
@@ -255,6 +289,138 @@ class AppState(context: Context) {
 
     val lastServer: String? get() = prefs.getString("server", null)
     val lastUser: String? get() = prefs.getString("userName", null)
+
+    /** Everyone signed in on this device, the one watching among them; see Profiles. */
+    var profiles by mutableStateOf(Profiles.migrate(Profiles.decode(settings.profilesJson), session))
+        private set
+
+    /** The one watching now, as a profile: their picture's tag with their session. */
+    val currentProfile: Profile?
+        get() = session?.let { s -> profiles.firstOrNull { it.key == Profiles.key(s) } ?: Profile(s) }
+
+    /** "Who's watching?" is up, in place of every screen (WhoIsWatching). */
+    var choosing by mutableStateOf(false)
+        private set
+    /** It was asked for from inside the app, so Back returns to where you were; at start, Back leaves. */
+    var choosingCanCancel = false
+        private set
+
+    init {
+        // Older versions kept one session: it is the first profile now, saved as one.
+        if (Profiles.encode(profiles) != settings.profilesJson) settings.profilesJson = Profiles.encode(profiles)
+        val start = Profiles.start(profiles.size, session != null, settings.askWhoIsWatching)
+        // Someone signed out with others still here: the first of them behind "Who's watching?", always asked.
+        if (session == null) profiles.firstOrNull()?.let { p ->
+            session = p.session
+            server = Server(p.session.serverUrl, deviceId, p.session.token)
+            choosing = true
+        }
+        // Asked once per start of the app, not again when the window is made afresh (the Quest's panel).
+        if (!askedAtStart) {
+            askedAtStart = true
+            if (start == Profiles.Start.Choose) choosing = true
+        }
+    }
+
+    private fun saveProfiles(list: List<Profile>) {
+        profiles = list
+        settings.profilesJson = Profiles.encode(list)
+    }
+
+    private fun keepProfile(p: Profile) = saveProfiles(Profiles.upsert(profiles, p))
+
+    /** The pictures the server keeps for its people now, by profile key; a key not given is left as it is. */
+    fun updateProfileImages(tags: Map<String, String?>) {
+        val updated = profiles.map { p -> if (p.key in tags && tags[p.key] != p.imageTag) p.copy(imageTag = tags[p.key]) else p }
+        if (updated != profiles) saveProfiles(updated)
+    }
+
+    /**
+     * "Who's watching?", asked for from Settings, the TV's menu bar or the
+     * Quest's tab bar; Back comes back to where you were. Never over a film:
+     * one still open is closed first, as it would be by Back.
+     */
+    fun askWhoIsWatching() {
+        while (top is Screen.Player && pop()) Unit
+        // The private room shuts, as leaving the app shuts it, and nothing of it waits behind for Back.
+        if (roomOpen) { closeRoom(); stack.clear(); stack += Screen.Home }
+        tvMenuOpen = false; quickToggles = false; actionsFor = null; confirmExit = false; undo = null
+        // Play on the remote must not start the last card, behind the picker.
+        focusedItem = null; upNextTop = null
+        // Nothing of theirs on the screensaver, the wall or the cinema's screen while someone else may be choosing.
+        saverPool = emptyList()
+        app.lumiere.android.ui.PosterWall.open = false
+        app.lumiere.android.ui.Marquee.item = null
+        app.lumiere.android.ui.Idle.leftOff = null
+        choosingCanCancel = true
+        choosing = true
+    }
+
+    /** Back on "Who's watching?" asked for from inside the app: the same person, where they were. */
+    fun keepWatching() {
+        if (!choosingCanCancel) return
+        choosing = false
+        followLibrary()
+    }
+
+    /**
+     * [profile] chosen on "Who's watching?". The one already watching carries on
+     * where they were (a title the widget opened at start stays open); anyone
+     * else starts at Home.
+     */
+    fun choose(profile: Profile) {
+        val s = session
+        if (s != null && Profiles.key(s) == profile.key && server != null) {
+            choosing = false
+            // Chosen while the picker came first: the copy is theirs, and kept current.
+            if (prefs.getString("cacheOwner", null) != profile.key) {
+                cacheSync.forget()
+                prefs.edit().putString("cacheOwner", profile.key).apply()
+            }
+            followLibrary()
+            return
+        }
+        signedIn(profile.session, Server(profile.session.serverUrl, deviceId, profile.session.token), profile.imageTag)
+    }
+
+    /** [key] off this device, from Edit on "Who's watching?". The one watching now is signed out. */
+    fun removeProfile(key: String) {
+        if (session?.let(Profiles::key) == key) { signOut(); return }
+        saveProfiles(Profiles.remove(profiles, key, session?.let(Profiles::key)).first)
+        settings.forgetPerson(key)
+    }
+
+    /**
+     * Nothing of [was]'s place in the app is left for [next]: the private room
+     * shut, nothing focused, offered back or half-chosen, Home from the top, the
+     * music stopped, and their searches and lists put away for when they come
+     * back ([keepTrail]; not for someone signed out).
+     */
+    private fun leavePerson(was: Session, next: Session, keepTrail: Boolean = true) {
+        settings.stopWatchingShared()
+        closeRoom()
+        if (app.lumiere.android.music.Music.queue.isNotEmpty()) app.lumiere.android.music.Music.stop()
+        focusedItem = null; upNextTop = null; actionsFor = null; undo = null
+        tvMenuOpen = false; tvAtTop = false; quickToggles = false; confirmExit = false
+        homeScroll = 0 to 0
+        lastEpisode.clear(); libraryQueries.clear()
+        justWatched = emptySet(); saverPool = emptyList(); views = emptyList()
+        autoStreak = 0
+        pinFor = null; pinChooseFor = null; pinOpen = false; leftAt = null
+        app.lumiere.android.ui.Marquee.item = null
+        app.lumiere.android.ui.PosterWall.open = false
+        app.lumiere.android.ui.Idle.leftOff = null
+        // Another server: which of its libraries are private isn't known until it says.
+        if (was.serverUrl != next.serverUrl) { _macPrivate = null; prefs.edit().remove("macPrivate").apply() }
+        settings.switchPerson(if (keepTrail) Profiles.key(was) else null, Profiles.key(next))
+        stack.clear()
+        stack += Screen.Home
+    }
+
+    private companion object {
+        /** "Who's watching?" was decided for this start of the app. */
+        var askedAtStart = false
+    }
 }
 
 /** The open window's state, for panels outside it: the Quest's sidebar. */

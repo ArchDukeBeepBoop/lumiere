@@ -365,6 +365,32 @@ class Prefs(context: Context) {
     var profilesJson: String get() = _profiles.value
         set(v) { _profiles.value = v; store.edit().putString("profiles", v).apply() }
 
+    private val _askWho = flag("askWhoIsWatching", true)
+    /** With two or more profiles on this device, "Who's watching?" opens the app. */
+    var askWhoIsWatching: Boolean get() = _askWho.value
+        set(v) { _askWho.value = v; put("askWhoIsWatching", v) }
+
+    /** What each person does here that's theirs alone: searches, titles opened, Up Next additions, Not Interested. */
+    private val perPerson = listOf("recentSearches", "recentlyOpened", "watchlist", "notInterested")
+
+    /**
+     * Another profile is watching: [from]'s searches and lists are put away
+     * under their key, and [to]'s brought back (none, the first time). [from]
+     * null leaves nothing behind, for someone signed out or removed.
+     */
+    fun switchPerson(from: String?, to: String) {
+        val writes = Profiles.swap(perPerson, { store.getString(it, null) }, from, to)
+        if (writes.isEmpty()) return
+        store.edit().apply { writes.forEach { (k, v) -> if (v == null) remove(k) else putString(k, v) } }.apply()
+        _recent.value = store.getString("recentSearches", "")!!.split('\n').filter { it.isNotBlank() }
+        _opened.value = store.getString("recentlyOpened", "")!!.split('\n').filter { it.isNotBlank() }
+        _watchlist.value = store.getString("watchlist", "")!!.split(',').filter { it.isNotBlank() }
+        _notInterested.value = store.getString("notInterested", "")!!.split(',').filter { it.isNotBlank() }
+    }
+
+    /** A removed profile's lists, put away by [switchPerson], gone from this device too. */
+    fun forgetPerson(key: String) = store.edit().apply { perPerson.forEach { remove("$it@$key") } }.apply()
+
     var wakeAddress: String
         get() = store.getString("wakeAddress", "") ?: ""
         set(v) { store.edit().putString("wakeAddress", v).apply() }
@@ -436,7 +462,18 @@ class Prefs(context: Context) {
 
     /** Tells [onChange] whenever a shared preference is set here. */
     fun watchShared(onChange: () -> Unit) {
+        stopWatchingShared()
         store.registerOnSharedPreferenceChangeListener(listener(onChange))
+    }
+
+    /**
+     * Nobody is told any more. Another profile is about to be watching: their
+     * own preferences, taken in from the server, must not be sent back to the
+     * last person's account as if they'd been changed here.
+     */
+    fun stopWatchingShared() {
+        keep?.let { store.unregisterOnSharedPreferenceChangeListener(it) }
+        keep = null
     }
 
     private var keep: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null

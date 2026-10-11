@@ -34,6 +34,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
@@ -111,6 +113,14 @@ fun TvMenuBar(tabs: List<BarTab>, top: Screen, state: AppState) {
                     state.tvMenuOpen = false
                     state.tab(Screen.Home)
                     app.lumiere.android.ui.toggleRoom(state, activity)
+                }
+            }
+            // Who's watching, at the far right as on Apple TV: their picture; pressed, "Who's watching?".
+            if (state.session != null) {
+                app.lumiere.android.ui.TvPill({ state.tvMenuOpen = false; state.askWhoIsWatching() },
+                    Modifier.focusProperties { canFocus = state.tvMenuOpen }
+                        .semantics { contentDescription = "Who’s watching? ${state.session?.userName.orEmpty()}" }) {
+                    app.lumiere.android.ui.ProfileAvatar(state.currentProfile, 28.dp)
                 }
             }
         }
