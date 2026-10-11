@@ -51,17 +51,18 @@ class Director(
     private val hold = TheaterHold()
     /** The film's screen as shown: the player's request, held through the gaps (TheaterHold). */
     private var shownRequest: Theater.Request? = null
-    private val theatreMade = lazy { Theatre() }
+    private val theatreMade = lazy { Scenery(Auditorium::colour, Auditorium::surface, { b, _, t -> Auditorium.moves(b, t) }, Auditorium::glows, Auditorium::shape,
+        Auditorium::shaded, Auditorium::sided) }
     private val theatre by theatreMade
-    private val cabinMade = lazy { Scenery(Cabin::colour, Cabin::surface, Cabin::moves) }
+    private val cabinMade = lazy { Scenery(Cabin::colour, Cabin::surface, { b, i, t -> Cabin.moves(b.kind, i, t) }, { Cabin.spill(it) == 0f }) }
     private val cabin by cabinMade
-    private val dockMade = lazy { Scenery(Dock::colour, Dock::surface, Dock::moves) }
+    private val dockMade = lazy { Scenery(Dock::colour, Dock::surface, { b, i, t -> Dock.moves(b.kind, i, t) }, { Dock.spill(it) == 0f }) }
     private val dock by dockMade
-    private val terraceMade = lazy { Scenery(Terrace::colour, Terrace::surface, Terrace::moves) }
+    private val terraceMade = lazy { Scenery(Terrace::colour, Terrace::surface, { b, i, t -> Terrace.moves(b.kind, i, t) }, { Terrace.spill(it) == 0f }) }
     private val terrace by terraceMade
-    private val moonMade = lazy { Scenery(MoonBase::colour, MoonBase::surface, MoonBase::moves) }
+    private val moonMade = lazy { Scenery(MoonBase::colour, MoonBase::surface, { b, i, t -> MoonBase.moves(b.kind, i, t) }, { MoonBase.spill(it) == 0f }) }
     private val moonBase by moonMade
-    private val stationMade = lazy { Scenery(Station::colour, Station::surface, Station::moves) }
+    private val stationMade = lazy { Scenery(Station::colour, Station::surface, { b, i, t -> Station.moves(b.kind, i, t) }, { Station.spill(it) == 0f }) }
     private val station by stationMade
 
     // What's up now, so each change is made once.
@@ -101,6 +102,7 @@ class Director(
      */
     fun animate(seconds: Float) {
         if (app.lumiere.android.Motion.reduced) return
+        if (theatreMade.isInitialized()) theatre.animate(seconds)
         if (cabinMade.isInitialized()) cabin.animate(seconds)
         if (dockMade.isInitialized()) dock.animate(seconds)
         if (terraceMade.isInitialized()) terrace.animate(seconds)
@@ -342,7 +344,9 @@ class Director(
         val middle = eye + spec.aboveEyesM
         val slope = TheaterGeometry.footSlope(spec)
         when (place) {
-            Stage.Place.CINEMA -> theatre.build(s.floor, spec.widthM, spec.heightM, middle, spec.distanceM, eye)
+            Stage.Place.CINEMA -> theatre.build(s.floor, listOf(spec.widthM, spec.heightM, middle, spec.distanceM, eye)) {
+                Auditorium.build(spec.widthM, spec.heightM, middle, spec.distanceM, eye)
+            }
             Stage.Place.CABIN -> cabin.build(s.floor, listOf(spec.widthM, spec.heightM, middle, spec.distanceM, eye, slope)) {
                 Cabin.build(spec.widthM, spec.heightM, middle, spec.distanceM, eye, slope)
             }

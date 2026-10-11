@@ -35,30 +35,42 @@ fun houseLit(base: Triple<Float, Float, Float>, spill: Float, level: Float, tint
 }
 
 /**
- * What a box is made of, beyond its colour: a [texture] (a drawable from
- * Scripts/textures.py), repeated every [across] metres along the box's long
- * side and every [up] metres up it (or, for a flat box such as a floor, its
- * short side); 0 lays it once across. The part's colour, lit by the house
- * lights and the film, is multiplied over it.
+ * What a part is made of, beyond its colour: a [texture] (a drawable from
+ * Scripts/textures.py, mostly grey), one repeat [across] metres wide and
+ * [up] metres tall, so it keeps its real scale on every face; 0 lays it
+ * once across the face that way (a picture, a row of spines). The part's colour, lit by the house lights and the film,
+ * multiplies it (ModelMeshes.light).
  */
-data class Surface(val texture: Int, val across: Float, val up: Float) {
-    /** How many times the texture repeats each way on a box [w] × [h] × [d]. */
-    fun repeats(w: Float, h: Float, d: Float): Pair<Float, Float> {
-        val long = maxOf(w, d)
-        val tall = if (h < minOf(w, d)) minOf(w, d) else h
-        fun times(extent: Float, tile: Float) = if (tile <= 0f) 1f else (extent / tile).coerceAtLeast(0.25f)
-        return times(long, across) to times(tall, up)
-    }
-}
+data class Surface(val texture: Int, val across: Float, val up: Float)
 
-/** A box's unlit material: [colour] over its [surface], if it has one. */
-fun boxMaterial(colour: Triple<Float, Float, Float>, surface: Surface?, w: Float, h: Float, d: Float): com.meta.spatial.toolkit.Material =
+/** sRGB to linear light, as the headset's shaders take a material's colour. */
+fun linear(c: Float): Float = if (c <= 0.04045f) c / 12.92f else Math.pow(((c + 0.055f) / 1.055f).toDouble(), 2.4).toFloat()
+
+/**
+ * A modelled part's unlit material, made once: its [surface]'s texture
+ * (light grey, the colour multiplied over it later), or for a plain part
+ * its colour as first lit, [first].
+ */
+fun partMaterial(first: Triple<Float, Float, Float>, surface: Surface?): com.meta.spatial.toolkit.Material =
     com.meta.spatial.toolkit.Material().apply {
-        baseColor = com.meta.spatial.core.Color4(colour.first, colour.second, colour.third, 1f)
         unlit = true
         if (surface != null) {
+            baseColor = com.meta.spatial.core.Color4(1f, 1f, 1f, 1f)
             baseTextureAndroidResourceId = surface.texture
-            val (u, v) = surface.repeats(w, h, d)
-            repeatU = u; repeatV = v
-        }
+        } else baseColor = com.meta.spatial.core.Color4(first.first, first.second, first.third, 1f)
     }
+
+/**
+ * The albedo that shows [now] on a part made with [partMaterial]: over a
+ * texture, the colour itself; on a plain part, the share of its first
+ * colour [first] that [now] is, so if the light never arrives it keeps that
+ * first colour rather than going white. Linear, each 0..1.
+ */
+fun albedo(now: Triple<Float, Float, Float>, first: Triple<Float, Float, Float>, textured: Boolean): FloatArray {
+    fun ch(n: Float, f: Float): Float = when {
+        textured -> linear(n)
+        linear(f) < 1e-5f -> 1f
+        else -> (linear(n) / linear(f)).coerceIn(0f, 1f)
+    }
+    return floatArrayOf(ch(now.first, first.first), ch(now.second, first.second), ch(now.third, first.third))
+}

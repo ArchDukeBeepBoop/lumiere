@@ -166,6 +166,9 @@ class LumiereSpace : AppSystemActivity() {
 
     override fun onSceneReady() {
         super.onSceneReady()
+        // The places' modelled parts (Modeller), made as the SDK asks for them.
+        runCatching { registerMeshCreator(ModelMeshes.BASE) { entity, uri -> ModelMeshes.create(entity, uri, this) } }
+            .onFailure { android.util.Log.e("Lumiere", "no modelled meshes", it) }
         // Heights from the floor, and the long press of the Meta button brings everything back in front.
         scene.setReferenceSpace(ReferenceSpace.LOCAL_FLOOR)
         scene.enablePassthrough(true)

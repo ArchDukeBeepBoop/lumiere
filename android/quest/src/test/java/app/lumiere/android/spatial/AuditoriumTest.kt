@@ -60,11 +60,11 @@ class AuditoriumTest {
         }
     }
 
-    private fun overlaps(p: Auditorium.Part, x0: Float, x1: Float, y0: Float, y1: Float, z0: Float, z1: Float) =
+    private fun overlaps(p: Block<Auditorium.Kind>, x0: Float, x1: Float, y0: Float, y1: Float, z0: Float, z1: Float) =
         p.x - p.w / 2 < x1 && p.x + p.w / 2 > x0 && p.bottom < y1 && p.top > y0 && p.back < z1 && p.front > z0
 
     /** Whether the segment from (ax, ay, az) to (bx, by, bz) passes through the box (slab test). */
-    private fun segmentHits(p: Auditorium.Part, ax: Float, ay: Float, az: Float, bx: Float, by: Float, bz: Float): Boolean {
+    private fun segmentHits(p: Block<Auditorium.Kind>, ax: Float, ay: Float, az: Float, bx: Float, by: Float, bz: Float): Boolean {
         var t0 = 0f; var t1 = 1f
         val a = floatArrayOf(ax, ay, az); val d = floatArrayOf(bx - ax, by - ay, bz - az)
         val lo = floatArrayOf(p.x - p.w / 2, p.bottom, p.back); val hi = floatArrayOf(p.x + p.w / 2, p.top, p.front)
