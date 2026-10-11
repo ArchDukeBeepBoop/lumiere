@@ -104,14 +104,20 @@ class Prefs(context: Context) {
     var downloadsWifiOnly: Boolean get() = _wifiOnly.value
         set(v) { _wifiOnly.value = v; put("downloadsWifiOnly", v) }
 
-    private val _recent = mutableStateOf(store.getString("recentSearches", "")!!.split('\n').filter { it.isNotBlank() })
+    private val _recent = mutableStateOf(RecentSearches.decode(store.getString("recentSearches", "")))
     /** The last searches that found something, newest first. */
     val recentSearches: List<String> get() = _recent.value
 
     fun rememberSearch(term: String) {
-        val list = (listOf(term) + _recent.value.filter { !it.equals(term, ignoreCase = true) }).take(8)
+        val list = RecentSearches.add(_recent.value, term)
         _recent.value = list
-        store.edit().putString("recentSearches", list.joinToString("\n")).apply()
+        store.edit().putString("recentSearches", RecentSearches.encode(list)).apply()
+    }
+
+    /** Search's own Clear: the searches go; the titles you opened stay. */
+    fun clearRecentSearches() {
+        _recent.value = emptyList()
+        store.edit().remove("recentSearches").apply()
     }
 
     private val _opened = mutableStateOf(store.getString("recentlyOpened", "")!!.split('\n').filter { it.isNotBlank() })
