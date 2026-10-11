@@ -18,6 +18,11 @@
     <uses-feature android:glEsVersion="0x00030001" />
     <horizonos:uses-horizonos-sdk horizonos:minSdkVersion="69" horizonos:targetSdkVersion="69" />
 
+    <!-- Search asks whether anything can listen before it shows a microphone. -->
+    <queries>
+        <intent><action android:name="android.speech.action.RECOGNIZE_SPEECH" /></intent>
+    </queries>
+
     <application
         android:name="app.lumiere.android.spatial.SpatialApp"
         android:label="Lumiere"
