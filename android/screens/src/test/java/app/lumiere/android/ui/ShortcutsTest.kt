@@ -9,7 +9,8 @@ import org.junit.Test
 class ShortcutsTest {
     @Test fun theIdsNeverChange() {
         // Saved on headsets: renaming one would quietly drop someone's pin.
-        assertEquals(listOf("tracks", "smaller", "larger", "curve", "place", "menu", "sleep", "here", "speed", "sounds", "wall"),
+        assertEquals(listOf("tracks", "smaller", "larger", "curve", "place", "menu", "sleep", "here", "speed", "sounds", "wall",
+            "picture", "posture"),
             Action.entries.map { it.id })
     }
 

@@ -37,6 +37,8 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.7.0")
     val media3 = "1.8.0"
     implementation("androidx.media3:media3-exoplayer:$media3")
+    // Brightness and contrast for a film's own picture (the Theater's Picture).
+    implementation("androidx.media3:media3-effect:$media3")
     implementation("androidx.media3:media3-ui:$media3")
     implementation("androidx.media3:media3-datasource-okhttp:$media3")
     implementation("androidx.media3:media3-session:$media3")

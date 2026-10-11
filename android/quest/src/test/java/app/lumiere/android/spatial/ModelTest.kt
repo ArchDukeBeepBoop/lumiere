@@ -21,11 +21,11 @@ class ModelTest {
 
     @After fun open() { FrontCurtain.closed = 0f }
 
-    private fun halls() = listOf(1920 to 1080, 1920 to 804).flatMap { (w, h) ->
+    private fun halls() = listOf(false, true).flatMap { fill -> listOf(1920 to 1080, 1920 to 804).flatMap { (w, h) ->
         (0 until Stage.SCREEN_SIZES).map { size ->
-            val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), Stage.Place.CINEMA, size, curved = false)
+            val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), Stage.Place.CINEMA, size, curved = false, scopeFill = fill)
             spec to Auditorium.build(spec.widthM, spec.heightM, eyes + spec.aboveEyesM, spec.distanceM, eyes)
-        }
+        } }
     }
 
     @Test fun everyCinemaPartIsMadeWithinItsBounds() {

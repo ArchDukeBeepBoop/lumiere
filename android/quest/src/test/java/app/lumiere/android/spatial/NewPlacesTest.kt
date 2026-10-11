@@ -20,9 +20,9 @@ class NewPlacesTest {
     private val eyes = listOf(0.9f, 1.2f, 1.7f)
 
     private fun specs(place: Stage.Place) = films.flatMap { (w, h) ->
-        listOf(false, true).flatMap { curved ->
+        listOf(false to false, true to false, false to true, true to true).flatMap { (curved, fill) ->
             (0 until Stage.SCREEN_SIZES).map { size ->
-                TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), place, size, curved)
+                TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), place, size, curved, fill)
             }
         }
     }

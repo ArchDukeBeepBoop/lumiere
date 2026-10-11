@@ -15,9 +15,9 @@ class DockTest {
 
     /** The lakeside's screen for every size, flat and curved, 16:9 and 2.39:1 and the squarest, from a sofa, a chair and standing. */
     private fun views() = listOf(1920 to 1080, 1920 to 804, 1080 to 1080).flatMap { (w, h) ->
-        listOf(false, true).flatMap { curved ->
+        listOf(false to false, true to false, false to true, true to true).flatMap { (curved, fill) ->
             (0 until Stage.SCREEN_SIZES).flatMap { size ->
-                val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), Stage.Place.LAKE, size, curved)
+                val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), Stage.Place.LAKE, size, curved, fill)
                 listOf(0.9f, 1.2f, 1.7f).map { eyes -> Triple(spec, eyes, Dock.build(eyes, TheaterGeometry.footSlope(spec))) }
             }
         }

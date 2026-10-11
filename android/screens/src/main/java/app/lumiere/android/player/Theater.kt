@@ -53,7 +53,17 @@ object Theater {
         val server: Server, val itemId: String, val trickplay: () -> Trickplay?,
         /** Leave the film, as Back would. */
         val exit: () -> Unit,
+        /** Its subtitle streams and file, for a second language; and whose picture it keeps (a show's, for all its episodes). */
+        val streams: List<app.lumiere.android.api.MediaStream> = emptyList(),
+        val mediaSourceId: String? = null,
+        val pictureKey: String = itemId,
     )
+
+    /** A second language under the first (SecondSubtitles), while a film plays. */
+    var second by mutableStateOf<SecondSubtitles.Track?>(null)
+
+    /** Picture controls work on an SDR film; an HDR one is shown as it came. Null until the film's picture is known. */
+    var pictureAdjustable by mutableStateOf<Boolean?>(null)
 
     var controls by mutableStateOf<Controls?>(null)
     var cues by mutableStateOf<List<Cue>>(emptyList())
@@ -176,10 +186,32 @@ fun rememberTheater(
             Theater.screenRight = Theater.averageOf(x0 + t.width - third, y0, third, t.height, step = 4) { x, y -> bitmap.getPixel(x, y) }
         }
     }
+    // The title's own picture (brightness, contrast), on an SDR film; a show keeps one for all its episodes.
+    val pictureKey = item.seriesId ?: item.id
+    var effected by remember(player) { mutableStateOf(false) }
+    LaunchedEffect(pictureKey, app.lumiere.android.Stage.pictureChanges, size) {
+        val transfer = player.videoFormat?.colorInfo?.colorTransfer
+        val hdr = transfer == androidx.media3.common.C.COLOR_TRANSFER_ST2084 || transfer == androidx.media3.common.C.COLOR_TRANSFER_HLG
+        Theater.pictureAdjustable = if (player.videoFormat == null) null else !hdr
+        val p = app.lumiere.android.Stage.pictureFor(pictureKey)
+        runCatching {
+            when {
+                hdr || p.plain -> if (effected) { player.setVideoEffects(emptyList()); effected = false }
+                else -> {
+                    player.setVideoEffects(listOf(
+                        androidx.media3.effect.Brightness(p.brightness * 0.05f),
+                        androidx.media3.effect.Contrast(p.contrast * 0.08f),
+                    ))
+                    effected = true
+                }
+            }
+        }.onFailure { Theater.pictureAdjustable = false }
+    }
     val title = if (item.isEpisode) item.seriesName ?: item.name else item.name
     val detail = item.takeIf { it.isEpisode }?.let { listOfNotNull(it.episodeLabel, it.name).joinToString(" · ") }
     DisposableEffect(player, item.id) {
-        Theater.controls = Theater.Controls(player, clock, title, detail, server, item.id, trickplay, exit)
+        Theater.controls = Theater.Controls(player, clock, title, detail, server, item.id, trickplay, exit,
+            item.streams.filter { it.type == "Subtitle" }, item.mediaSourceId, pictureKey)
         Theater.poke()
         onDispose {
             Theater.controls = null
@@ -189,6 +221,8 @@ fun rememberTheater(
             Theater.screenColour = null
             Theater.screenLeft = null
             Theater.screenRight = null
+            Theater.second = null
+            Theater.pictureAdjustable = null
             Theater.next = null
         }
     }

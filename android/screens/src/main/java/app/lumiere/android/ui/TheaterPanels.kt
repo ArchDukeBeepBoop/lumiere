@@ -23,6 +23,10 @@ import androidx.compose.material.icons.outlined.PushPin as PushPinOutline
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.Brightness6
+import androidx.compose.material.icons.filled.AirlineSeatReclineNormal
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.media3.common.C
@@ -75,6 +79,7 @@ import app.lumiere.android.Stage
 import app.lumiere.android.music.clock
 import app.lumiere.android.player.Theater
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * The Theater's transport: a bar of glass that floats near your hands while
@@ -119,6 +124,8 @@ fun TheaterBar() = WithAppImages {
                 Shortcuts.Action.SLEEP -> Stage.cycleSleep()
                 Shortcuts.Action.BRING_HERE -> Stage.bringHere()
                 Shortcuts.Action.SOUNDS -> Stage.toggleAmbience()
+                Shortcuts.Action.PICTURE -> sheet = if (sheet == Sheet.PICTURE) Sheet.NONE else Sheet.PICTURE
+                Shortcuts.Action.POSTURE -> Stage.toggleFollowPosture()
                 Shortcuts.Action.WALL -> if (Stage.place == Stage.Place.ROOM) Stage.askMount()
                     else Theater.say("The screen goes on a wall in your room: choose your room first")
                 // The player may have just been let go as the film ended; the speed then simply stays.
@@ -138,6 +145,7 @@ fun TheaterBar() = WithAppImages {
             when (sheet) {
                 Sheet.TRACKS -> TrackSheet(c) { sheet = Sheet.NONE }
                 Sheet.MORE -> MoreSheet(::look, ::perform) { sheet = Sheet.NONE }
+                Sheet.PICTURE -> PictureSheet(c) { sheet = Sheet.NONE }
                 Sheet.NONE -> Unit
             }
             Column(Modifier.fillMaxWidth().height(250.dp).spatialGlass(30).padding(horizontal = 24.dp, vertical = 14.dp),
@@ -186,7 +194,7 @@ fun TheaterBar() = WithAppImages {
 }
 
 /** What opens over the bar: never two at once. */
-private enum class Sheet { NONE, TRACKS, MORE }
+private enum class Sheet { NONE, TRACKS, MORE, PICTURE }
 
 /** How a shortcut shows: its icon and name, a [caption] under the icon on the bar, a [value] beside its name under More. */
 private class Look(val icon: ImageVector, val label: String, val caption: String? = null, val value: String? = null, val chosen: Boolean = false)
@@ -215,6 +223,9 @@ private fun lookOf(a: Shortcuts.Action, speed: Float, tracksOpen: Boolean): Look
     }
     Shortcuts.Action.SOUNDS -> if (Stage.ambience) Look(Icons.Default.GraphicEq, "Sounds of the place", value = "On: heard while paused", chosen = true)
         else Look(Icons.Default.GraphicEq, "Sounds of the place", value = "Off")
+    Shortcuts.Action.PICTURE -> Look(Icons.Default.Brightness6, "Picture", value = "Brightness, contrast, wide films")
+    Shortcuts.Action.POSTURE -> if (Stage.followPosture) Look(Icons.Default.AirlineSeatReclineNormal, "Follow when you sit or stand", value = "On", chosen = true)
+        else Look(Icons.Default.AirlineSeatReclineNormal, "Follow when you sit or stand", value = "Off")
 }
 
 /**
@@ -273,22 +284,105 @@ private fun TrackSheet(c: Theater.Controls, onClose: () -> Unit) {
     val audio = remember(tick) { trackChoices(c.player, C.TRACK_TYPE_AUDIO) }
     val text = remember(tick) { trackChoices(c.player, C.TRACK_TYPE_TEXT) }
     val textOff = text.none { it.selected }
-    Row(Modifier.fillMaxWidth().heightIn(max = 290.dp).spatialGlass(30).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+    val prefs = app.lumiere.android.OpenApp.state?.settings
+    // A second language under the first: the film's other text subtitles, read from the server.
+    val readable = remember(c) { c.streams.filter { app.lumiere.android.player.SecondSubtitles.readable(it.codec) } }
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    Row(Modifier.fillMaxWidth().heightIn(max = 290.dp).spatialGlass(30).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
         TrackColumn("Audio", Modifier.weight(1f), audio.map { it.label to it.selected }) { i ->
             choose(c.player, audio[i], C.TRACK_TYPE_AUDIO); tick++
         }
         TrackColumn("Subtitles", Modifier.weight(1f), listOf("Off" to textOff) + text.map { it.label to it.selected }) { i ->
             choose(c.player, if (i == 0) null else text[i - 1], C.TRACK_TYPE_TEXT); tick++
         }
+        val second = Theater.second
+        TrackColumn("And under them", Modifier.weight(1f), listOf("Nothing" to (second == null)) +
+            readable.map { app.lumiere.android.player.SecondSubtitles.label(it.language, it.title) to (second?.index == it.index) }) { i ->
+            if (i == 0) Theater.second = null
+            else readable[i - 1].let { st ->
+                val label = app.lumiere.android.player.SecondSubtitles.label(st.language, st.title)
+                scope.launch {
+                    val cues = runCatching { app.lumiere.android.player.SecondSubtitles.parse(c.server.subtitleText(c.itemId, c.mediaSourceId, st.index)) }
+                        .getOrDefault(emptyList())
+                    if (cues.isEmpty()) Theater.say("$label can't be shown under the subtitles")
+                    else Theater.second = app.lumiere.android.player.SecondSubtitles.Track(st.index, label, cues)
+                }
+            }
+        }
+        // The captions themselves: their size (the same setting as the window's), and where they are.
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text("Captions", style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
+            if (prefs != null) Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                listOf("S", "M", "L", "XL").forEachIndexed { i, s ->
+                    GlassButton(Icons.Default.Subtitles, "Caption size $s", chosen = prefs.subtitleSize == i, caption = s, size = 44.dp) {
+                        Theater.poke(); prefs.subtitleSize = i
+                    }
+                }
+            }
+            TrackColumn("", Modifier, listOf("On the screen" to !Stage.captionsNear, "Before you" to Stage.captionsNear)) { i ->
+                if ((i == 1) != Stage.captionsNear) Stage.toggleCaptionsNear()
+            }
+        }
+        GlassButton(Icons.Default.Close, "Close", size = 52.dp, onClick = onClose)
+    }
+}
+
+/**
+ * The film's own picture: brightness and contrast in a few steps either
+ * side of as it came, kept for the film (or the whole show), and wide films
+ * on a screen as tall as a 16:9 one, so they're wider rather than shorter.
+ */
+@Composable
+private fun PictureSheet(c: Theater.Controls, onClose: () -> Unit) {
+    var p by remember(c, Stage.pictureChanges) { mutableStateOf(Stage.pictureFor(c.pictureKey)) }
+    fun set(next: Stage.Picture) { Theater.poke(); p = next; Stage.setPicture(c.pictureKey, next) }
+    val adjustable = Theater.pictureAdjustable != false
+    Row(Modifier.fillMaxWidth().spatialGlass(30).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(22.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        if (adjustable) {
+            Stepper("Brightness", p.brightness) { set(p.copy(brightness = it)) }
+            Stepper("Contrast", p.contrast) { set(p.copy(contrast = it)) }
+            if (!p.plain) TextButtonGlass("As it came") { set(Stage.Picture()) }
+        } else Text("This film is HDR: it's shown as it came", color = Palette.textSecondary, modifier = Modifier.weight(1f))
+        Spacer(Modifier.weight(1f))
+        Column {
+            Text("Wide films", style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
+            TrackColumn("", Modifier, listOf("The same width" to !Stage.scopeFill, "Wider, as in a scope cinema" to Stage.scopeFill)) { i ->
+                if ((i == 1) != Stage.scopeFill) Stage.toggleScopeFill()
+            }
+        }
         GlassButton(Icons.Default.Close, "Close", size = 52.dp, onClick = onClose)
     }
 }
 
 @Composable
+private fun Stepper(name: String, value: Int, set: (Int) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(name, style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            GlassButton(Icons.Default.Remove, "Less $name", size = 48.dp) { set((value - 1).coerceAtLeast(-Stage.PICTURE_STEPS)) }
+            Text(if (value > 0) "+$value" else "$value", style = MaterialTheme.typography.titleMedium, modifier = Modifier.width(36.dp),
+                textAlign = TextAlign.Center)
+            GlassButton(Icons.Default.Add, "More $name", size = 48.dp) { set((value + 1).coerceAtMost(Stage.PICTURE_STEPS)) }
+        }
+    }
+}
+
+@Composable
+private fun TextButtonGlass(label: String, onClick: () -> Unit) {
+    val source = remember { MutableInteractionSource() }
+    val hovered by source.collectIsHoveredAsState()
+    Text(label, style = MaterialTheme.typography.titleSmall, color = Palette.textPrimary,
+        modifier = Modifier.background(if (hovered) Color.White.copy(alpha = 0.18f) else Color.White.copy(alpha = 0.08f), RoundedCornerShape(50))
+            .hoverable(source).clickable(interactionSource = source, indication = null, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp))
+}
+
+@Composable
 private fun TrackColumn(title: String, modifier: Modifier, rows: List<Pair<String, Boolean>>, onPick: (Int) -> Unit) {
     Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
-        if (rows.isEmpty()) Text("None in this file", color = Palette.textSecondary)
+        if (title.isNotEmpty()) Text(title, style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
+        if (title.isNotEmpty() && rows.isEmpty()) Text("None in this file", color = Palette.textSecondary)
         rows.forEachIndexed { i, (label, chosen) ->
             val source = remember { MutableInteractionSource() }
             val hovered by source.collectIsHoveredAsState()
@@ -312,7 +406,20 @@ private fun TrackColumn(title: String, modifier: Modifier, rows: List<Pair<Strin
 fun TheaterCaptions() {
     LumiereTheme {
         val cues = Theater.cues
-        if (cues.isEmpty()) return@LumiereTheme
+        // The second language's line now, from the film's clock.
+        val second = Theater.second
+        var under by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(second) {
+            under = null
+            val track = second ?: return@LaunchedEffect
+            while (true) {
+                under = Theater.controls?.clock?.now()?.let { app.lumiere.android.player.SecondSubtitles.at(track.cues, (it * 1000).toLong()) }
+                delay(120)
+            }
+        }
+        if (cues.isEmpty() && under == null) return@LumiereTheme
+        // The same four sizes as the window's subtitles.
+        val size = listOf(36, 46, 56, 66)[(app.lumiere.android.OpenApp.state?.settings?.subtitleSize ?: 1).coerceIn(0, 3)]
         Box(Modifier.fillMaxSize().padding(bottom = 24.dp), contentAlignment = Alignment.BottomCenter) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 cues.forEach { cue ->
@@ -322,11 +429,19 @@ fun TheaterCaptions() {
                         bitmap != null -> Image(bitmap.asImageBitmap(), null,
                             Modifier.fillMaxWidth(if (cue.size > 0f && cue.size <= 1f) cue.size else 0.6f))
                         !text.isNullOrEmpty() -> Text(text, textAlign = TextAlign.Center,
-                            style = TextStyle(fontSize = 46.sp, color = Color.White, lineHeight = 54.sp,
+                            style = TextStyle(fontSize = size.sp, color = Color.White, lineHeight = (size * 1.18f).sp,
                                 shadow = Shadow(Color.Black, blurRadius = 6f)),
                             modifier = Modifier.background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
                                 .padding(horizontal = 18.dp, vertical = 6.dp))
                     }
+                }
+                // The second language: a little smaller, warm, under the first.
+                under?.let {
+                    Text(it, textAlign = TextAlign.Center,
+                        style = TextStyle(fontSize = (size * 0.82f).sp, color = Color(0xFFFFE7A8), lineHeight = (size * 0.98f).sp,
+                            shadow = Shadow(Color.Black, blurRadius = 6f)),
+                        modifier = Modifier.background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
+                            .padding(horizontal = 16.dp, vertical = 4.dp))
                 }
             }
         }

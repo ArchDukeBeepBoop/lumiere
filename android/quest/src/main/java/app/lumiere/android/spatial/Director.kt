@@ -51,6 +51,10 @@ class Director(
     private val marquee = MarqueeScreen()
     private val sky = Sky()
     private val hold = TheaterHold()
+    private val posture = Posture()
+    /** Captions before you: the way they face, and since when you've been looking well away from it. */
+    private var captionYaw: Vector3? = null
+    private var lookedAwaySince = 0L
     /** The film's screen as shown: the player's request, held through the gaps (TheaterHold). */
     private var shownRequest: Theater.Request? = null
     private val theatreMade = lazy { Scenery(Auditorium::colour, Auditorium::surface, { b, _, t -> Auditorium.moves(b, t) }, Auditorium::glows, Auditorium::shape,
@@ -105,6 +109,9 @@ class Director(
     private companion object {
         /** Below this, the head isn't tracked yet (or you're lying on the floor): no hall is built round it. */
         const val MIN_EYE_HEIGHT_M = 0.3f
+        /** How far you turn from captions before you, and for how long, before they come round to you. */
+        const val CAPTION_TURN_DEGREES = 28f
+        const val CAPTION_TURN_MS = 700L
         /** How long a film asked for from the handset may take to appear before the window comes to say why. */
         const val STUCK_MS = 6_000L
     }
@@ -178,7 +185,7 @@ class Director(
         if (on || !away) marquee.clear()
         if (!away) browseSeat = null
         if (on) {
-            val spec = TheaterGeometry.spec(request!!, place, Stage.screenSize, Stage.curved)
+            val spec = TheaterGeometry.spec(request!!, place, Stage.screenSize, Stage.curved, Stage.scopeFill)
             val s = seat ?: seatHere().also { seat = it }
             val hung = if (place == Stage.Place.ROOM && request.projection == Projection.FLAT) onYourWall(request, s) else null
             if (hung != null) { if (screen.follow(hung.first, s, movable = false, on = hung.second)) shownPlace = null }
@@ -187,6 +194,16 @@ class Director(
                 shownPlace = null
             }
         }
+
+        // Sat down or stood up a moment ago: the place comes to your new height, still facing the same way.
+        val sitting = if (on) seat else browseSeat
+        if (sitting != null && !sitting.tilted && Stage.followPosture) {
+            val head = scene.getViewerPose()
+            if (head.t.y > MIN_EYE_HEIGHT_M && posture.moved(head.t.y, sitting.eye.y, now)) reseat(head.t, sitting)
+        }
+
+        // Captions where you want them; before you, they turn when you've looked well away a moment.
+        if (on) seat?.let { s -> screen.captionsWanted(s); followCaptions(now) }
 
         // Where you are: passthrough, the cinema's hall, the cabin, the pontoon, or the dark; a sky.
         val tiltedSeat = (if (on) seat else browseSeat)?.tilted == true
@@ -371,6 +388,36 @@ class Director(
 
     /** Where you look, level, for the place's sounds to come from where their sources are. */
     private fun lookingAt(): Vector3 = scene.getViewerPose().forward()
+
+    /**
+     * Captions before you, kept where you look: once you've faced more than
+     * [CAPTION_TURN_DEGREES] away from them for a moment, they come round to
+     * where you face now — not with every small turn of the head.
+     */
+    private fun followCaptions(now: Long) {
+        if (!screen.captionsNear) { captionYaw = null; return }
+        val head = scene.getViewerPose()
+        val ahead = flat(head.forward())
+        val was = captionYaw ?: ahead.also { captionYaw = it }
+        val apart = Math.toDegrees(kotlin.math.acos((was.x * ahead.x + was.z * ahead.z).coerceIn(-1f, 1f).toDouble())).toFloat()
+        if (apart < CAPTION_TURN_DEGREES) { lookedAwaySince = 0L; return }
+        if (lookedAwaySince == 0L) { lookedAwaySince = now; return }
+        if (now - lookedAwaySince < CAPTION_TURN_MS) return
+        lookedAwaySince = 0L
+        captionYaw = ahead
+        screen.turnCaptions(head.t, Quaternion.fromDirection(ahead))
+    }
+
+    /** Seated again at [eye] — sat down or stood up — facing as [was] did: the screen and the place round it follow. */
+    private fun reseat(eye: Vector3, was: TheaterScreen.Seat) {
+        val s = TheaterScreen.Seat(eye, was.facing, tilted = false)
+        if (theaterOn) {
+            seat = s
+            screen.place(s)
+            TheaterScreen.current?.let { spec -> surround(Stage.place, s, spec) }
+        } else if (Stage.place != Stage.Place.ROOM) browseSeat = s
+        shownPlace = null
+    }
 
     /** A film starts: you're seated where you are, the window steps aside (after it, the handset comes back). */
     private fun enterTheater() {

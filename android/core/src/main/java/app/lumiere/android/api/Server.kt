@@ -169,6 +169,10 @@ class Server(val baseUrl: String, private val deviceId: String, var token: Strin
         return url("Videos/$itemId/${mediaSourceId ?: itemId}/Subtitles/$index/Stream.$ext").toString()
     }
 
+    /** Subtitle stream [index] of a film as WebVTT text, whatever it's stored as (for a second language). */
+    suspend fun subtitleText(itemId: String, mediaSourceId: String?, index: Int): String =
+        get("Videos/$itemId/${mediaSourceId ?: itemId}/Subtitles/$index/Stream.vtt")
+
     suspend fun report(path: String, itemId: String, positionTicks: Long, sessionId: String, paused: Boolean) {
         runCatching {
             post(

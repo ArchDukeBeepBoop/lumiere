@@ -81,6 +81,9 @@ object Stage {
         screenSize = if (p.getInt("sizes", 1) < 2) DEFAULT_SIZE else p.getInt("screenSize", DEFAULT_SIZE).coerceIn(0, SCREEN_SIZES - 1)
         curved = p.getBoolean("screenCurved", false)
         ambience = p.getBoolean("ambience", true)
+        followPosture = p.getBoolean("followPosture", true)
+        scopeFill = p.getBoolean("scopeFill", false)
+        captionsNear = p.getBoolean("captionsNear", false)
         mount = p.getString("mountWall", null)?.let { Mount(it, p.getFloat("mountX", 0f), p.getFloat("mountY", 1.2f), p.getFloat("mountDistance", 3f)) }
         app.lumiere.android.ui.Shortcuts.load(p)
     }
@@ -103,6 +106,41 @@ object Stage {
     fun smaller() { screenSize = (screenSize - 1).coerceAtLeast(0); save() }
     fun toggleCurve() { curved = !curved; save() }
     fun toggleAmbience() { ambience = !ambience; save() }
+
+    /** Sit down or stand up and, a moment later, the place (the hall, the screen) comes to your new height. */
+    var followPosture by mutableStateOf(true)
+        private set
+    fun toggleFollowPosture() { followPosture = !followPosture; prefs?.edit()?.putBoolean("followPosture", followPosture)?.apply() }
+
+    /**
+     * A wide film (2.39:1) on a screen of the same height as a 16:9 one, so
+     * it's wider rather than shorter, as an IMAX or a scope cinema shows it;
+     * off, every film keeps the screen's width.
+     */
+    var scopeFill by mutableStateOf(false)
+        private set
+    fun toggleScopeFill() { scopeFill = !scopeFill; prefs?.edit()?.putBoolean("scopeFill", scopeFill)?.apply() }
+
+    /** Captions before you, low in your view and turning with you, rather than at the screen's foot. */
+    var captionsNear by mutableStateOf(false)
+        private set
+    fun toggleCaptionsNear() { captionsNear = !captionsNear; prefs?.edit()?.putBoolean("captionsNear", captionsNear)?.apply() }
+
+    /**
+     * A title's own picture: brightness and contrast in steps either side of
+     * as it came (0, 0), kept for the film, or for the whole show.
+     */
+    data class Picture(val brightness: Int = 0, val contrast: Int = 0) { val plain get() = brightness == 0 && contrast == 0 }
+    fun pictureFor(key: String): Picture = prefs?.getString("picture.$key", null)?.split(',')
+        ?.mapNotNull { it.toIntOrNull() }?.takeIf { it.size == 2 }?.let { Picture(it[0], it[1]) } ?: Picture()
+    fun setPicture(key: String, p: Picture) {
+        prefs?.edit()?.apply { if (p.plain) remove("picture.$key") else putString("picture.$key", "${p.brightness},${p.contrast}") }?.apply()
+        pictureChanges++
+    }
+    /** Counts up each time a picture is changed, for the player to apply it. */
+    var pictureChanges by mutableIntStateOf(0)
+        private set
+    const val PICTURE_STEPS = 4
     /** Room, cinema, cabin, lakeside, above the clouds, the Moon, the space station, the dark, space, round again. */
     fun nextPlace() { place = Place.entries[(place.ordinal + 1) % Place.entries.size]; save() }
     /** Straight to [p] (the handset's places). */

@@ -23,9 +23,9 @@ class CabinTest {
      * sofa's eyes, a chair's, and standing: as the Director builds it.
      */
     private fun rooms() = listOf(1920 to 804, 1920 to 1080, 1440 to 1080, 1080 to 1080).flatMap { (w, h) ->
-        listOf(false, true).flatMap { curved ->
+        listOf(false to false, true to false, false to true, true to true).flatMap { (curved, fill) ->
             (0 until Stage.SCREEN_SIZES).flatMap { size ->
-                val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), Stage.Place.CABIN, size, curved)
+                val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), Stage.Place.CABIN, size, curved, fill)
                 listOf(0.9f, 1.2f, 1.7f).map { eyes ->
                     Room(spec, eyes, Cabin.build(spec.widthM, spec.heightM, eyes + spec.aboveEyesM, spec.distanceM, eyes, TheaterGeometry.footSlope(spec)))
                 }

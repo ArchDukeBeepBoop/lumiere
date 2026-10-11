@@ -93,4 +93,22 @@ class TheaterGeometryTest {
         assertTrue("inside the screen's lower half", up - h / 2 >= -s.heightM / 2 && up < 0f)
         assertTrue("just in front", ahead in 0.01f..0.1f)
     }
+
+    @Test fun wideFilmsFillTheWallWhenAsked() {
+        val scope = Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 804)
+        val tv = Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 1080)
+        for (place in listOf(Stage.Place.CINEMA, Stage.Place.LAKE, Stage.Place.ROOM)) {
+            val plain = TheaterGeometry.spec(scope, place, 2, false)
+            val filled = TheaterGeometry.spec(scope, place, 2, false, scopeFill = true)
+            val sixteen = TheaterGeometry.spec(tv, place, 2, false)
+            // As tall as a 16:9 film's screen, and so wider than the plain one.
+            assertEquals(sixteen.heightM, filled.heightM, 1e-3f)
+            assertTrue(filled.widthM > plain.widthM * 1.3f)
+            // A 16:9 film is the same either way.
+            assertEquals(sixteen, TheaterGeometry.spec(tv, place, 2, false, scopeFill = true))
+        }
+        // A curve never wraps past 130 degrees.
+        val curved = TheaterGeometry.spec(scope, Stage.Place.LAKE, Stage.SCREEN_SIZES - 1, true, scopeFill = true)
+        assertTrue(Math.toDegrees((curved.widthM / curved.radiusM!!).toDouble()) <= 130.01)
+    }
 }

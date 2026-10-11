@@ -12,12 +12,12 @@ class AuditoriumTest {
     private val eyes = 1.2f
 
     /** The hall for each size, for a 16:9 film and a 2.39:1 one, as the Theater builds it. */
-    private fun halls() = listOf(1920 to 1080, 1920 to 804).flatMap { (w, h) ->
+    private fun halls() = listOf(false, true).flatMap { fill -> listOf(1920 to 1080, 1920 to 804).flatMap { (w, h) ->
         (0 until Stage.SCREEN_SIZES).map { size ->
-            val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), Stage.Place.CINEMA, size, curved = false)
+            val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, w, h), Stage.Place.CINEMA, size, curved = false, scopeFill = fill)
             val middle = eyes + spec.aboveEyesM
             Triple(spec, middle, Auditorium.build(spec.widthM, spec.heightM, middle, spec.distanceM, eyes))
-        }
+        } }
     }
 
     @Test fun nothingStandsWhereYouAre() {

@@ -92,8 +92,8 @@ object TheaterGeometry {
         val pixelWidth: Int, val pixelHeight: Int,
     )
 
-    /** The screen for [request], [place], [size] and [curved]. */
-    fun spec(request: Theater.Request, place: Stage.Place, size: Int, curved: Boolean): Spec {
+    /** The screen for [request], [place], [size] and [curved]; [scopeFill]: a wide film as tall as a 16:9 one, so wider (Stage.scopeFill). */
+    fun spec(request: Theater.Request, place: Stage.Place, size: Int, curved: Boolean, scopeFill: Boolean = false): Spec {
         val (pw, ph) = pictureSize(request)
         if (request.projection != Projection.FLAT)
             return Spec(request.projection, request.eyes, 0f, 0f, null, SPHERE_RADIUS_M, 0f, pw, ph)
@@ -101,8 +101,13 @@ object TheaterGeometry {
         val d = distance(place, degrees)
         val radians = Math.toRadians(degrees.toDouble()).toFloat()
         // Curved, the arc spans the angle; flat, the chord does.
-        val width = if (curved) d * radians else 2 * d * tan(radians / 2)
+        var width = if (curved) d * radians else 2 * d * tan(radians / 2)
         val aspect = eyeAspect(request.eyes, request.width, request.height).coerceIn(1.2f, 2.8f)
+        // A scope cinema's way: the height a 16:9 film would have, the width from that — but a curve never wraps past 130°, where its ends would come round beside you.
+        if (scopeFill && aspect > WIDE) {
+            width = width / WIDE * aspect
+            if (curved) width = width.coerceAtMost(d * Math.toRadians(MAX_ARC_DEGREES.toDouble()).toFloat())
+        }
         return Spec(request.projection, request.eyes, width, width / aspect, if (curved) d else null,
             d, aboveEyes(place), pw, ph)
     }
@@ -115,6 +120,10 @@ object TheaterGeometry {
         val (pw, ph) = pictureSize(request)
         return Spec(request.projection, request.eyes, widthM, widthM / aspectOf(request), null, distanceM, 0f, pw, ph)
     }
+
+    /** A 16:9 picture's shape, which a wide film's screen keeps the height of when filling (scopeFill). */
+    const val WIDE = 16f / 9f
+    private const val MAX_ARC_DEGREES = 130f
 
     /** A sphere this far out: far enough that its curve and your small movements don't show. */
     const val SPHERE_RADIUS_M = 50f
@@ -145,6 +154,8 @@ object TheaterGeometry {
         return floatArrayOf(w, h, -spec.heightM / 2 + h / 2 + spec.heightM * 0.03f, 0.04f)
     }
 
-    /** For 180° and 360°: captions this far in front of you. */
+    /** For 180° and 360°, and wherever you want them before you: captions this far in front of you, this big. */
     const val SPHERE_CAPTIONS_DISTANCE_M = 2.5f
+    const val NEAR_CAPTIONS_W = 2.0f
+    const val NEAR_CAPTIONS_H = 0.5f
 }

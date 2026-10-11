@@ -52,11 +52,39 @@ class TheaterScreen {
         val screen = Entity.createPanelEntity(R.id.lumiere_screen, Transform(on ?: screenPose(spec, seat)),
             Grabbable(enabled = movable && spec.projection == Projection.FLAT, type = GrabbableType.FACE))
         entity = screen
-        // A flat screen's captions ride on it, wherever it's carried; a sphere's stay before you.
-        captions = if (spec.projection == Projection.FLAT)
+        makeCaptions(spec, screen, seat)
+        return true
+    }
+
+    /**
+     * A flat screen's captions ride on it, wherever it's carried, unless you
+     * want them before you; a sphere's are always before you, low in your
+     * view, turning as you do (turnCaptions).
+     */
+    private fun makeCaptions(spec: TheaterGeometry.Spec, screen: Entity, seat: Seat) {
+        captionsNear = spec.projection != Projection.FLAT || app.lumiere.android.Stage.captionsNear
+        captions = if (!captionsNear)
             Entity.createPanelEntity(R.id.lumiere_captions, Transform(captionsOnScreen(spec)), TransformParent(screen))
         else Entity.createPanelEntity(R.id.lumiere_captions, Transform(sphereCaptions(seat)))
-        return true
+    }
+
+    /** Whether the captions are before you (not on the screen). */
+    var captionsNear = false
+        private set
+
+    /** The captions where you now want them (on the screen, or before you), made again if they've moved. */
+    fun captionsWanted(seat: Seat) {
+        val spec = made ?: return
+        val screen = entity ?: return
+        val near = spec.projection != Projection.FLAT || app.lumiere.android.Stage.captionsNear
+        if (near == captionsNear && captions != null) return
+        captions?.let { runCatching { it.destroy() } }
+        makeCaptions(spec, screen, seat)
+    }
+
+    /** Captions before you turned to where you now face, from [eye]. */
+    fun turnCaptions(eye: Vector3, facing: com.meta.spatial.core.Quaternion) {
+        if (captionsNear) captions?.setComponent(Transform(sphereCaptions(Seat(eye, facing, tilted = false))))
     }
 
     private var madeMovable = false
@@ -68,7 +96,7 @@ class TheaterScreen {
         val spec = made ?: return
         if (pinned != null) return
         entity?.setComponent(Transform(screenPose(spec, seat)))
-        if (spec.projection != Projection.FLAT) captions?.setComponent(Transform(sphereCaptions(seat)))
+        if (captionsNear) captions?.setComponent(Transform(sphereCaptions(seat)))
     }
 
     /** The film is over: the screen goes, and the player takes its picture back to the window. */
@@ -120,7 +148,9 @@ class TheaterScreen {
 
         /** The captions' panel: the screen's scale, laid out 1920 dp across whatever its size. */
         fun captionSettings(spec: TheaterGeometry.Spec?): UIPanelSettings {
-            val (w, h) = spec?.let { TheaterGeometry.captions(it).let { c -> c[0] to c[1] } } ?: (2f to 0.5f)
+            val near = spec == null || spec.projection != Projection.FLAT || app.lumiere.android.Stage.captionsNear
+            val (w, h) = if (near) TheaterGeometry.NEAR_CAPTIONS_W to TheaterGeometry.NEAR_CAPTIONS_H
+                else TheaterGeometry.captions(spec!!).let { c -> c[0] to c[1] }
             return UIPanelSettings(
                 shape = QuadShapeOptions(width = w, height = h),
                 display = DpDisplayOptions(width = CAPTIONS_DP, height = CAPTIONS_DP * h / w, dpi = 160),
