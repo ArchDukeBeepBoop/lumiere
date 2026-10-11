@@ -175,7 +175,9 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                     // My List changes the moment it's pressed; if the Mac refuses, it goes back and says so.
                     onFavourite = { _ -> scope.launch { runCatching { state.changeMyList(current) }.onFailure {
                         if (it !is kotlinx.coroutines.CancellationException) listNote = "Couldn't change My List: ${it.message ?: "the Mac didn't answer"}" } } },
-                    onPlayed = { p -> scope.launch { server.setPlayed(current.id, p); item = current.copy(played = p) } }, note = listNote)
+                    // Finished here: a show taken off Up Next comes back with its next episode.
+                    onPlayed = { p -> scope.launch { runCatching { server.setPlayed(current.id, p) }.onSuccess {
+                        item = current.copy(played = p); if (p) state.settings.upNextDismissed(userId).restore(current.seriesId) } } }, note = listNote)
             }
             if (seasons.isNotEmpty()) {
                 item {
