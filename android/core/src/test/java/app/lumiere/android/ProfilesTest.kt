@@ -48,7 +48,7 @@ class ProfilesTest {
     }
 
     @Test fun theOneSessionOfAnOlderVersionBecomesTheFirstProfile() {
-        assertEquals(listOf(anna), Profiles.migrate(emptyList(), anna.session))
+        assertEquals(listOf(Profile(anna.session)), Profiles.migrate(emptyList(), anna.session))
         assertEquals(listOf(Profile(cleo.session), anna, ben), Profiles.migrate(listOf(anna, ben), cleo.session))
     }
 
