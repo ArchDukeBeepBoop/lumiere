@@ -34,6 +34,38 @@ class TheaterGeometryTest {
         assertTrue("your room's smallest is still a big TV: ${room.widthM}", room.widthM in 2.5f..4f)
     }
 
+    @Test fun theCabinIsAWallScreenAndASizeIsYourSeat() {
+        val seats = (0 until Stage.SCREEN_SIZES).map { TheaterGeometry.spec(tv, Stage.Place.CABIN, it, false) }
+        seats.forEach {
+            assertEquals("one wall screen", TheaterGeometry.CABIN_SCREEN_WIDTH_M, it.widthM, 1e-3f)
+            assertEquals("its middle a little above your eyes", 0.2f, it.aboveEyesM, 0f)
+        }
+        assertTrue("larger sits nearer", seats.zipWithNext().all { (a, b) -> b.distanceM < a.distanceM })
+        assertTrue("the nearest seat still has room before the screen: ${seats.last().distanceM}", seats.last().distanceM > 1.7f)
+        assertTrue("the farthest is still in a room: ${seats.first().distanceM}", seats.first().distanceM < 5.5f)
+        assertTrue("its screen stays on its wall", TheaterGeometry.fixedScreen(Stage.Place.CABIN))
+    }
+
+    @Test fun theLakesScreenFloatsOverTheWaterAndGrows() {
+        val sizes = (0 until Stage.SCREEN_SIZES).map { TheaterGeometry.spec(tv, Stage.Place.LAKE, it, false) }
+        sizes.forEach {
+            assertEquals("over the water", 14f, it.distanceM, 0f)
+            assertEquals("well above your eyes", 0.9f, it.aboveEyesM, 0f)
+        }
+        assertTrue("each size larger", sizes.zipWithNext().all { (a, b) -> b.widthM > a.widthM })
+        assertTrue("yours to carry, as in the dark and space", !TheaterGeometry.fixedScreen(Stage.Place.LAKE))
+        assertEquals(listOf(Stage.Place.CINEMA, Stage.Place.CABIN), Stage.Place.entries.filter { TheaterGeometry.fixedScreen(it) })
+    }
+
+    @Test fun theLineToTheScreensFootIsSteeperForACurve() {
+        val flat = TheaterGeometry.spec(tv, Stage.Place.LAKE, 2, false)
+        assertEquals((flat.heightM / 2 - flat.aboveEyesM) / flat.distanceM, TheaterGeometry.footSlope(flat), 1e-5f)
+        val curved = TheaterGeometry.spec(tv, Stage.Place.LAKE, 2, true)
+        assertTrue("the curve's ends come nearer", TheaterGeometry.footSlope(curved) > (curved.heightM / 2 - curved.aboveEyesM) / curved.distanceM)
+        val sphere = TheaterGeometry.spec(Theater.Request(Projection.SPHERE, StereoLayout.MONO, 0, 0), Stage.Place.LAKE, 2, false)
+        assertEquals(0f, TheaterGeometry.footSlope(sphere), 0f)
+    }
+
     @Test fun theScreenTakesTheFilmsShape() {
         val s = TheaterGeometry.spec(wide, Stage.Place.CINEMA, 2, false)
         assertEquals(1920f / 804f, s.widthM / s.heightM, 0.01f)
