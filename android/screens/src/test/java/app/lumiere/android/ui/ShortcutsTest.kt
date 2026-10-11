@@ -10,7 +10,7 @@ class ShortcutsTest {
     @Test fun theIdsNeverChange() {
         // Saved on headsets: renaming one would quietly drop someone's pin.
         assertEquals(listOf("tracks", "smaller", "larger", "curve", "place", "menu", "sleep", "here", "speed", "sounds", "wall",
-            "picture", "posture"),
+            "picture", "posture", "handmenu"),
             Action.entries.map { it.id })
     }
 

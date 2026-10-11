@@ -16,7 +16,7 @@ object Shortcuts {
     enum class Action(val id: String) {
         TRACKS("tracks"), SMALLER("smaller"), LARGER("larger"), CURVE("curve"), PLACE("place"),
         PLAYER_MENU("menu"), SLEEP("sleep"), BRING_HERE("here"), SPEED("speed"), SOUNDS("sounds"), WALL("wall"),
-        PICTURE("picture"), POSTURE("posture");
+        PICTURE("picture"), POSTURE("posture"), HAND_MENU("handmenu");
 
         companion object { fun of(id: String): Action? = entries.firstOrNull { it.id == id } }
     }

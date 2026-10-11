@@ -84,6 +84,7 @@ object Stage {
         followPosture = p.getBoolean("followPosture", true)
         scopeFill = p.getBoolean("scopeFill", false)
         captionsNear = p.getBoolean("captionsNear", false)
+        handMenu = p.getBoolean("handMenu", true)
         mount = p.getString("mountWall", null)?.let { Mount(it, p.getFloat("mountX", 0f), p.getFloat("mountY", 1.2f), p.getFloat("mountDistance", 3f)) }
         app.lumiere.android.ui.Shortcuts.load(p)
     }
@@ -120,6 +121,11 @@ object Stage {
     var scopeFill by mutableStateOf(false)
         private set
     fun toggleScopeFill() { scopeFill = !scopeFill; prefs?.edit()?.putBoolean("scopeFill", scopeFill)?.apply() }
+
+    /** The hand menu: raise a hand and look at it (HandMenu). */
+    var handMenu by mutableStateOf(true)
+        private set
+    fun toggleHandMenu() { handMenu = !handMenu; prefs?.edit()?.putBoolean("handMenu", handMenu)?.apply() }
 
     /** Captions before you, low in your view and turning with you, rather than at the screen's foot. */
     var captionsNear by mutableStateOf(false)

@@ -109,6 +109,11 @@ object Window {
     val HANDSET_HEIGHT_M = HANDSET_WIDTH_M * HANDSET_HEIGHT_DP / HANDSET_WIDTH_DP
     const val HANDSET_DISTANCE_M = 0.78f
     const val HANDSET_BELOW_EYES_M = 0.34f
+    /** The hand menu: a row of buttons by a raised hand, 0.36 m across, laid out 720 × 140 dp. */
+    const val HAND_MENU_WIDTH_DP = 720
+    const val HAND_MENU_HEIGHT_DP = 140
+    const val HAND_MENU_WIDTH_M = 0.36f
+    val HAND_MENU_HEIGHT_M = HAND_MENU_WIDTH_M * HAND_MENU_HEIGHT_DP / HAND_MENU_WIDTH_DP
     /** "More": the window comes this far before you, over the Theater, for its tracks and info. */
     const val ASKED_WINDOW_DISTANCE_M = 1.25f
 }

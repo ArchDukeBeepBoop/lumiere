@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.zIndex
@@ -76,6 +77,13 @@ fun Modifier.focusCard(onFocused: () -> Unit, onClick: () -> Unit, onMenu: (() -
         if (focused && tv && !app.lumiere.android.Motion.reduced && !app.lumiere.android.Device.lowMemory) { shine.snapTo(-0.4f); shine.animateTo(1.4f, androidx.compose.animation.core.tween(700)) }
     }
     val density = androidx.compose.ui.platform.LocalDensity.current
+    // Where a hand's or a controller's pointer rests on the card, −1..1 each way (the Quest): the card
+    // tips toward it, its picture shifts inside the frame as a deeper layer would, and a light follows it.
+    val deep = tv && !app.lumiere.android.Motion.reduced && !app.lumiere.android.Device.lowMemory
+    var pointer by remember { mutableStateOf<androidx.compose.ui.geometry.Offset?>(null) }
+    val px by animateFloatAsState(pointer?.x ?: 0f, androidx.compose.animation.core.tween(140), label = "px")
+    val py by animateFloatAsState(pointer?.y ?: 0f, androidx.compose.animation.core.tween(140), label = "py")
+    val hovered by animateFloatAsState(if (pointer != null) 1f else 0f, androidx.compose.animation.core.tween(180), label = "hovered")
     val base = this
         .zIndex(if (focused) 1f else 0f)
         .then(if (!tv) Modifier.scale(1f + 0.06f * lift) else Modifier.graphicsLayer {
@@ -83,18 +91,42 @@ fun Modifier.focusCard(onFocused: () -> Unit, onClick: () -> Unit, onMenu: (() -
             val s = 1f + 0.1f * lift
             scaleX = s; scaleY = s
             // The tilt only where there is power to spare; the projector keeps the lift alone.
-            if (!app.lumiere.android.Motion.reduced && !app.lumiere.android.Device.lowMemory) {
-                rotationY = FocusDirection.dx * 5f * lift
-                rotationX = -FocusDirection.dy * 4f * lift
+            if (deep) {
+                rotationY = FocusDirection.dx * 5f * lift * (1f - hovered) + px * 9f * hovered
+                rotationX = -FocusDirection.dy * 4f * lift * (1f - hovered) - py * 7f * hovered
             }
             cameraDistance = 14f * density.density
             shadowElevation = with(density) { 22.dp.toPx() } * lift
             shape = cardShape; clip = false
         })
         .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
+        .then(if (deep) Modifier.pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    val e = awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                    val at = e.changes.firstOrNull()?.position ?: continue
+                    pointer = if (e.type == androidx.compose.ui.input.pointer.PointerEventType.Exit) null
+                        else androidx.compose.ui.geometry.Offset((at.x / size.width * 2 - 1).coerceIn(-1f, 1f), (at.y / size.height * 2 - 1).coerceIn(-1f, 1f))
+                }
+            }
+        } else Modifier)
         .clip(cardShape)
         .then(if (tv) Modifier.drawWithContent {
-            drawContent()
+            if (hovered > 0.01f) {
+                // The picture a little larger than its frame, moving against the tilt: a layer behind the glass.
+                val k = 1f + 0.06f * hovered
+                val dx = -px * size.width * 0.022f * hovered
+                val dy = -py * size.height * 0.022f * hovered
+                drawContext.transform.scale(k, k, center)
+                drawContext.transform.translate(dx, dy)
+                drawContent()
+                drawContext.transform.translate(-dx, -dy)
+                drawContext.transform.scale(1f / k, 1f / k, center)
+                val light = androidx.compose.ui.geometry.Offset((px + 1) / 2 * size.width, (py + 1) / 2 * size.height)
+                drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(
+                    listOf(Color.White.copy(alpha = 0.18f * hovered), Color.Transparent), center = light, radius = size.maxDimension * 0.75f),
+                    radius = size.maxDimension * 0.75f, center = light)
+            } else drawContent()
             if (focused && shine.value in -0.4f..1.4f) {
                 val x = size.width * shine.value
                 drawRect(androidx.compose.ui.graphics.Brush.linearGradient(

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Brightness6
+import androidx.compose.material.icons.filled.PanTool
 import androidx.compose.material.icons.filled.AirlineSeatReclineNormal
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Add
@@ -126,6 +127,7 @@ fun TheaterBar() = WithAppImages {
                 Shortcuts.Action.SOUNDS -> Stage.toggleAmbience()
                 Shortcuts.Action.PICTURE -> sheet = if (sheet == Sheet.PICTURE) Sheet.NONE else Sheet.PICTURE
                 Shortcuts.Action.POSTURE -> Stage.toggleFollowPosture()
+                Shortcuts.Action.HAND_MENU -> Stage.toggleHandMenu()
                 Shortcuts.Action.WALL -> if (Stage.place == Stage.Place.ROOM) Stage.askMount()
                     else Theater.say("The screen goes on a wall in your room: choose your room first")
                 // The player may have just been let go as the film ended; the speed then simply stays.
@@ -224,6 +226,8 @@ private fun lookOf(a: Shortcuts.Action, speed: Float, tracksOpen: Boolean): Look
     Shortcuts.Action.SOUNDS -> if (Stage.ambience) Look(Icons.Default.GraphicEq, "Sounds of the place", value = "On: heard while paused", chosen = true)
         else Look(Icons.Default.GraphicEq, "Sounds of the place", value = "Off")
     Shortcuts.Action.PICTURE -> Look(Icons.Default.Brightness6, "Picture", value = "Brightness, contrast, wide films")
+    Shortcuts.Action.HAND_MENU -> if (Stage.handMenu) Look(Icons.Default.PanTool, "Hand menu", value = "Raise a hand and look at it", chosen = true)
+        else Look(Icons.Default.PanTool, "Hand menu", value = "Off")
     Shortcuts.Action.POSTURE -> if (Stage.followPosture) Look(Icons.Default.AirlineSeatReclineNormal, "Follow when you sit or stand", value = "On", chosen = true)
         else Look(Icons.Default.AirlineSeatReclineNormal, "Follow when you sit or stand", value = "Off")
 }

@@ -43,6 +43,8 @@ class Director(
     private val walls: RoomWalls? = null,
     /** Away from your room, the small pane near your hands that chooses what plays (Handset); none on a plain start. */
     private val handset: Entity? = null,
+    /** The row of buttons by a raised hand (HandMenu); none on a plain start. */
+    private val handMenu: Entity? = null,
 ) {
     private var seenMountAsks = Stage.mountAsks
     /** The room is read for a mount made before at most once a start, and only if already allowed. */
@@ -52,6 +54,8 @@ class Director(
     private val sky = Sky()
     private val hold = TheaterHold()
     private val posture = Posture()
+    private val handRaise = HandRaise()
+    private var handMenuShown = false
     /** Captions before you: the way they face, and since when you've been looking well away from it. */
     private var captionYaw: Vector3? = null
     private var lookedAwaySince = 0L
@@ -202,6 +206,9 @@ class Director(
             if (head.t.y > MIN_EYE_HEIGHT_M && posture.moved(head.t.y, sitting.eye.y, now)) reseat(head.t, sitting)
         }
 
+        // The hand menu: a hand raised and looked at calls it; lowered, it goes.
+        val handBusy = watchHand(now)
+
         // Captions where you want them; before you, they turn when you've looked well away a moment.
         if (on) seat?.let { s -> screen.captionsWanted(s); followCaptions(now) }
 
@@ -341,7 +348,7 @@ class Director(
         FrontCurtain.target = if (place != Stage.Place.CINEMA || app.lumiere.android.Motion.reduced) 0f
             else FrontCurtain.targetFor(waiting, on, now - endedAt)
         if (place != Stage.Place.CINEMA) FrontCurtain.closed = 0f
-        return brightness != target || left != wantLeft || right != wantRight || FrontCurtain.closed != FrontCurtain.target
+        return brightness != target || left != wantLeft || right != wantRight || FrontCurtain.closed != FrontCurtain.target || handBusy
     }
 
     /**
@@ -407,6 +414,51 @@ class Director(
         captionYaw = ahead
         screen.turnCaptions(head.t, Quaternion.fromDirection(ahead))
     }
+
+    /**
+     * The hand menu: the hand (not a controller) nearest the middle of your
+     * view, raised and held, calls it by that hand, facing you; it stays put
+     * there while you use it with the other. True while a hand is up or the
+     * menu shows, so the looks come quicker.
+     */
+    private fun watchHand(now: Long): Boolean {
+        val menu = handMenu ?: return false
+        if (!Stage.handMenu) { if (handMenuShown) showHandMenu(menu, null); return false }
+        val head = scene.getViewerPose()
+        val gaze = head.forward().normalize()
+        val eye = floatArrayOf(head.t.x, head.t.y, head.t.z)
+        val look = floatArrayOf(gaze.x, gaze.y, gaze.z)
+        val hand = trackedHands().minByOrNull { h ->
+            val d = (h - head.t).normalize()
+            -(d.x * gaze.x + d.y * gaze.y + d.z * gaze.z)
+        }
+        val wasShown = handRaise.shown
+        val show = handRaise.update(eye, look, hand?.let { floatArrayOf(it.x, it.y, it.z) }, now, app.lumiere.android.ui.HandMenu.touchedAt)
+        if (show != handMenuShown) showHandMenu(menu, if (show && !wasShown) hand else null)
+        return show || (hand != null && handRaise.raised(eye, look, floatArrayOf(hand.x, hand.y, hand.z)))
+    }
+
+    private fun showHandMenu(menu: Entity, by: Vector3?) {
+        handMenuShown = by != null
+        if (by != null) {
+            // Just above the hand (so it doesn't cover the buttons) and a touch toward you, facing your eyes.
+            val head = scene.getViewerPose()
+            val at = by + Vector3(0f, 0.11f, 0f) + (head.t - by).normalize() * 0.03f
+            menu.setComponent(Transform(Pose(at, Quaternion.fromDirection((at - head.t).normalize()))))
+        } else menu.setComponent(Transform(Window.parked()))
+        menu.setComponent(Visible(by != null))
+    }
+
+    /** Where the tracked hands are now — hands, not controllers — from the SDK's body; none if it can't say. */
+    private fun trackedHands(): List<Vector3> = runCatching {
+        val body = com.meta.spatial.core.Query.where { has(com.meta.spatial.toolkit.AvatarBody.id) }.eval().firstOrNull()
+            ?.getComponent<com.meta.spatial.toolkit.AvatarBody>() ?: return emptyList()
+        listOf(body.leftHand, body.rightHand).mapNotNull { h ->
+            val c = runCatching { h.getComponent<com.meta.spatial.toolkit.Controller>() }.getOrNull() ?: return@mapNotNull null
+            if (c.type != com.meta.spatial.toolkit.ControllerType.HAND || !c.isActive) null
+            else h.getComponent<Transform>().transform.t
+        }
+    }.getOrDefault(emptyList())
 
     /** Seated again at [eye] — sat down or stood up — facing as [was] did: the screen and the place round it follow. */
     private fun reseat(eye: Vector3, was: TheaterScreen.Seat) {

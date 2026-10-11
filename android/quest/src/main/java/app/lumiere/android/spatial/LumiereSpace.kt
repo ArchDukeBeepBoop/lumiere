@@ -143,6 +143,18 @@ class LumiereSpace : AppSystemActivity() {
                 )
             },
         ),
+        // The hand menu: a row of buttons by a raised hand (HandRaise).
+        ComposeViewPanelRegistration(
+            R.id.lumiere_handmenu,
+            composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.HandMenu.Panel() } } },
+            settingsCreator = {
+                UIPanelSettings(
+                    shape = QuadShapeOptions(width = Window.HAND_MENU_WIDTH_M, height = Window.HAND_MENU_HEIGHT_M),
+                    display = DpDisplayOptions(width = Window.HAND_MENU_WIDTH_DP.toFloat(), height = Window.HAND_MENU_HEIGHT_DP.toFloat()),
+                    style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
+                )
+            },
+        ),
         // The poster wall: your library curved round you (PosterWall).
         ComposeViewPanelRegistration(
             R.id.lumiere_wall,
@@ -253,8 +265,9 @@ class LumiereSpace : AppSystemActivity() {
             R.id.lumiere_handset, Transform(Window.parked()),
             Grabbable(enabled = true, type = GrabbableType.FACE), com.meta.spatial.toolkit.Visible(false),
         )
+        val handMenu = Entity.createPanelEntity(R.id.lumiere_handmenu, Transform(Window.parked()), com.meta.spatial.toolkit.Visible(false))
         roomWalls = mruk?.let { RoomWalls(this, it) }
-        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset).also { director = it }.start(scope) }
+        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset, handMenu).also { director = it }.start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "director unavailable", it) }
         // The place's own sounds, while the app is in front (onResume and onPause start and stop them).
         ambience.start()
