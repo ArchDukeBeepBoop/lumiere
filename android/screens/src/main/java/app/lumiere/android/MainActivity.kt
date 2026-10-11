@@ -216,7 +216,8 @@ class MainActivity : ComponentActivity() {
             android.view.KeyEvent.KEYCODE_DPAD_UP -> { app.lumiere.android.ui.FocusDirection.dx = 0f; app.lumiere.android.ui.FocusDirection.dy = -1f }
             android.view.KeyEvent.KEYCODE_DPAD_DOWN -> { app.lumiere.android.ui.FocusDirection.dx = 0f; app.lumiere.android.ui.FocusDirection.dy = 1f }
         }
-        if (state.session != null && state.top !is Screen.Player) {
+        // Not while "Who's watching?" is up: no Play on a card behind it, no Home, no undo of someone else's change.
+        if (state.session != null && !state.choosing && state.top !is Screen.Player) {
             // Holding Back: Home, from anywhere.
             if (event.keyCode == android.view.KeyEvent.KEYCODE_BACK && event.action == android.view.KeyEvent.ACTION_DOWN &&
                 event.repeatCount == 3) {
@@ -440,7 +441,8 @@ private fun App(state: AppState, onExit: () -> Unit) {
       CompositionLocalProvider(app.lumiere.android.ui.LocalCardMenu provides
           if (LocalFormFactor.current.isTv) ({ item: app.lumiere.android.api.Item -> state.actionsFor = item }) else null,
           androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides calm) {
-        Shell(state) { screen ->
+        // "Who's watching?" in place of every screen, so nothing of the last person's shows behind it.
+        if (state.choosing) app.lumiere.android.ui.WhoIsWatching(state) else Shell(state) { screen ->
             when (screen) {
                 Screen.Home -> HomeScreen(state, refresh + state.homeRefresh)
                 is Screen.Library -> LibraryScreen(state, screen.view)

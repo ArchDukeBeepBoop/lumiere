@@ -51,7 +51,8 @@ fun SpatialSidebar(activity: android.app.Activity) {
     LumiereTheme {
         val state = OpenApp.state
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            if (state != null && state.session != null) Rail(state, activity)
+            // Not behind "Who's watching?": nobody's tabs until someone is chosen.
+            if (state != null && state.session != null && !state.choosing) Rail(state, activity)
         }
     }
 }
@@ -71,6 +72,9 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
             if (state.roomOpen) "Leave the private room" else "Private room", chosen = state.roomOpen) {
             toggleRoom(state, activity)
         }
+        // Who's watching: their picture; pressed, "Who's watching?". Never while a film plays.
+        if (state.top !is app.lumiere.android.Screen.Player && !app.lumiere.android.player.Theater.active)
+            ProfileGlassButton(state.currentProfile) { state.askWhoIsWatching() }
         // The spatial buttons, only while the headset's director runs; a plain start (after
         // starts that failed) has none, and they would do nothing there.
         if (!Stage.directed) return@Column

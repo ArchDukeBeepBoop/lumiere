@@ -9,6 +9,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -87,7 +88,7 @@ class CacheSync(private val cache: LibraryCache) {
 
     /** The libraries kept here: video ones. Music is read live, as on the Mac. */
     private suspend fun videoLibraries(server: Server, userId: String): Map<String, String> {
-        val body = server.get("UserViews", mapOf("userId" to userId))
+        val body = server.fetch("UserViews", mapOf("userId" to userId))
         cache.setMeta("views", body)
         val array = JSONObject(body).optJSONArray("Items") ?: JSONArray()
         return (0 until array.length()).map { array.getJSONObject(it) }
@@ -99,7 +100,7 @@ class CacheSync(private val cache: LibraryCache) {
         cache.clearLibrary(libraryId)
         var start = 0
         while (true) {
-            val body = JSONObject(server.get("Items", mapOf(
+            val body = JSONObject(server.fetch("Items", mapOf(
                 "userId" to userId, "ParentId" to libraryId, "Recursive" to "true",
                 "SortBy" to "SortName", "StartIndex" to "$start", "Limit" to "400", "Fields" to Server.FIELDS,
             )))
@@ -114,7 +115,7 @@ class CacheSync(private val cache: LibraryCache) {
         val changed = page.optJSONArray("Changed")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
         val removed = page.optJSONArray("Removed")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
         for (chunk in changed.chunked(100)) {
-            val body = JSONObject(server.get("Items", mapOf(
+            val body = JSONObject(server.fetch("Items", mapOf(
                 "userId" to userId, "Ids" to chunk.joinToString(","), "Fields" to Server.FIELDS,
             )))
             val items = body.optJSONArray("Items") ?: JSONArray()
@@ -127,8 +128,16 @@ class CacheSync(private val cache: LibraryCache) {
         if (removed.isNotEmpty()) cache.remove(removed)
     }
 
+    /**
+     * A read whose answer is written to the copy. Forgotten while it was asked
+     * (another profile chosen, a sign-out): the answer is dropped, so nothing of
+     * the last person's library lands in the next one's copy.
+     */
+    private suspend fun Server.fetch(path: String, query: Map<String, String?>): String =
+        get(path, query).also { kotlin.coroutines.coroutineContext.ensureActive() }
+
     private suspend fun changes(server: Server, since: Long, wait: Int): JSONObject =
-        JSONObject(server.get("Lumiere/Changes", mapOf(
+        JSONObject(server.fetch("Lumiere/Changes", mapOf(
             "since" to "$since", "limit" to "500", "wait" to if (wait > 0) "$wait" else null,
         )))
 }
