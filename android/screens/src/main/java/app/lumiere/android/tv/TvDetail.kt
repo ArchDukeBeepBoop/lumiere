@@ -129,7 +129,8 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
 
     // A title the Mac no longer has, or can't reach: said plainly, with a way on.
     if (item == null && missing) return MissingTitle(state)
-    val current = item ?: return Box(Modifier.fillMaxSize().background(Palette.canvas))
+    // On its way: the page in outline, where its name, story and buttons will be.
+    val current = item ?: return app.lumiere.android.ui.TvDetailSkeleton()
     val list = rememberLazyListState()
     var topFocused by remember { mutableStateOf(true) }
     val topFirst = remember { FocusRequester() }

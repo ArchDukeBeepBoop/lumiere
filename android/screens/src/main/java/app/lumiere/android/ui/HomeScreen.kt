@@ -66,6 +66,8 @@ fun HomeScreen(state: AppState, refreshKey: Int) {
     var rows by remember { mutableStateOf<HomeRows?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var attempt by remember { mutableStateOf(0) }
+    // Nothing saved to draw at once: the first load, which a TV shows in outline.
+    var unsaved by remember { mutableStateOf(false) }
 
     LaunchedEffect(refreshKey, state.roomOpen, attempt) {
         // The saved Home first, drawn at once, then the live one over it.
@@ -81,7 +83,7 @@ fun HomeScreen(state: AppState, refreshKey: Int) {
                         .also { if (state.views.isEmpty()) state.views = all }
                 }
             }
-        }.onSuccess { if (rows == null) rows = it }
+        }.onSuccess { if (rows == null) rows = it }.onFailure { unsaved = true }
         // The Mac pauses for a minute or two while it re-imports Jellyfin, so
         // a failure is retried quietly for a while before Home says it's offline.
         var tries = 0
@@ -134,8 +136,10 @@ fun HomeScreen(state: AppState, refreshKey: Int) {
     Box(Modifier.fillMaxSize().background(Palette.canvas)) {
         val current = rows
         when {
-            // On a TV, a quiet name on the dark while the first Home arrives, not grey blocks.
-            // The app's icon, where the launch window put it, until Home is ready.
+            // On a TV the first Home ever comes in outline, the rows' own shapes with a soft
+            // light passing; with a saved Home on its way, the app's icon stays where the
+            // launch window put it for the moment that takes.
+            current == null && error == null && form.isTv && unsaved -> TvHomeLoading()
             current == null && error == null && form.isTv -> androidx.compose.foundation.Image(
                 androidx.compose.ui.res.painterResource(app.lumiere.android.screens.R.drawable.boot_icon), "Lumiere",
                 modifier = Modifier.align(Alignment.Center).size(144.dp))

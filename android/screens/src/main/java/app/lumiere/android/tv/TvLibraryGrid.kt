@@ -108,6 +108,11 @@ internal fun TvLibraryGrid(state: AppState, view: Item, q: LibraryQuery, onScrol
     }
     LaunchedEffect(view.id, q.key) { gen++; items.clear(); done = false; busy = false; more(gen); grid.scrollToItem(0) }
 
+    // While a page is on its way its posters stand in outline at the grid's end, all
+    // lit by one passing light; the light goes with them, so nothing ticks once loaded.
+    val columns = state.settings.libraryColumns
+    val loading = !done && (busy || items.isEmpty())
+    val sheen = if (loading) app.lumiere.android.ui.rememberSheen() else null
     Box(Modifier.fillMaxSize()) {
         // Plain grey behind the grid, as Apple TV's library: the posters carry the colour.
         if (items.isEmpty() && done) Text("Nothing here with these choices.", style = MaterialTheme.typography.bodyMedium,
@@ -167,6 +172,9 @@ internal fun TvLibraryGrid(state: AppState, view: Item, q: LibraryQuery, onScrol
                 ItemCard(item, server, CardShape.Poster, onFocus = { focused = it }, fill = true,
                     badge = if (state.is3D(item)) "3D" else null) { state.push(Screen.Detail(item.id)) }
             }
+            // Three rows on the first page; the next page finishes the last row and adds one.
+            if (sheen != null) items(if (items.isEmpty()) columns * 3 else (columns - items.size % columns) % columns + columns,
+                key = { "skeleton$it" }) { app.lumiere.android.ui.SkeletonGridPoster(sheen) }
         }
     }
 }

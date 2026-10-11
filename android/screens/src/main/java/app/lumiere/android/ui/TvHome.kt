@@ -117,6 +117,22 @@ private data class TvSizes(val poster: androidx.compose.ui.unit.Dp, val wide: an
 private val LocalTvSizes = androidx.compose.runtime.compositionLocalOf { TvSizes(150.dp, 300.dp, 260.dp, 360.dp) }
 private val GAP = 32.dp
 
+/** The card widths for a screen [width] across, between Home's gutters. */
+private fun tvSizes(width: androidx.compose.ui.unit.Dp): TvSizes {
+    val across = width - (GUTTER * 2).dp
+    return TvSizes(poster = (across - GAP * 5) / 6, wide = (across - GAP * 3) / 4, library = (across - GAP * 4) / 5, large = (across - GAP * 2) / 3)
+}
+
+/**
+ * Home's first load on a TV, with nothing saved to draw yet: the spotlight
+ * and rows in outline at the sizes Home will give them (TvHomeSkeleton).
+ */
+@Composable
+internal fun TvHomeLoading() = BoxWithConstraints(Modifier.fillMaxSize()) {
+    val sizes = tvSizes(maxWidth)
+    TvHomeSkeleton(maxHeight * 0.68f, GUTTER.dp, GAP, sizes.wide, sizes.library, sizes.poster)
+}
+
 /**
  * Home on a TV, laid out as the Mac's: a spotlight across the top with Play
  * and More Info, moving through new titles on its own; then Continue Watching
@@ -301,9 +317,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
         if (!state.settings.tvTopBar) Row(Modifier.align(Alignment.TopEnd).padding(18.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)) { TvClock(state); RoomButton(state) }
         val spec = remember { pivot(0.08f) { heroRef[0] } }
-        val across = maxWidth - (GUTTER * 2).dp
-        val sizes = TvSizes(poster = (across - GAP * 5) / 6, wide = (across - GAP * 3) / 4, library = (across - GAP * 4) / 5,
-            large = (across - GAP * 2) / 3)
+        val sizes = tvSizes(maxWidth)
         CompositionLocalProvider(LocalBringIntoViewSpec provides spec, LocalTvSizes provides sizes) {
             LazyColumn(Modifier.fillMaxSize().onPreviewKeyEvent { e ->
                 // Up from the spotlight: the tabs come down from the top.
