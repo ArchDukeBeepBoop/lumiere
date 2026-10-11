@@ -261,6 +261,7 @@ class AppState(context: Context) {
             // Nothing of theirs (searches, lists) is left for whoever signs in next.
             leaving?.let { settings.switchPerson(null, it) }
             settings.stopWatchingShared()
+            choosing = false
             session = null
             server = null
             return
@@ -307,15 +308,17 @@ class AppState(context: Context) {
     init {
         // Older versions kept one session: it is the first profile now, saved as one.
         if (Profiles.encode(profiles) != settings.profilesJson) settings.profilesJson = Profiles.encode(profiles)
-        // Someone signed out with others still here: the first of them behind "Who's watching?".
+        val start = Profiles.start(profiles.size, session != null, settings.askWhoIsWatching)
+        // Someone signed out with others still here: the first of them behind "Who's watching?", always asked.
         if (session == null) profiles.firstOrNull()?.let { p ->
             session = p.session
             server = Server(p.session.serverUrl, deviceId, p.session.token)
+            choosing = true
         }
         // Asked once per start of the app, not again when the window is made afresh (the Quest's panel).
         if (!askedAtStart) {
             askedAtStart = true
-            choosing = Profiles.start(profiles.size, session != null, settings.askWhoIsWatching) == Profiles.Start.Choose
+            if (start == Profiles.Start.Choose) choosing = true
         }
     }
 
@@ -339,6 +342,8 @@ class AppState(context: Context) {
      */
     fun askWhoIsWatching() {
         while (top is Screen.Player && pop()) Unit
+        // The private room shuts, as leaving the app shuts it, and nothing of it waits behind for Back.
+        if (roomOpen) { closeRoom(); stack.clear(); stack += Screen.Home }
         tvMenuOpen = false; quickToggles = false; actionsFor = null; confirmExit = false; undo = null
         // Play on the remote must not start the last card, behind the picker.
         focusedItem = null; upNextTop = null
@@ -346,6 +351,7 @@ class AppState(context: Context) {
         saverPool = emptyList()
         app.lumiere.android.ui.PosterWall.open = false
         app.lumiere.android.ui.Marquee.item = null
+        app.lumiere.android.ui.Idle.leftOff = null
         choosingCanCancel = true
         choosing = true
     }
@@ -403,6 +409,7 @@ class AppState(context: Context) {
         pinFor = null; pinChooseFor = null; pinOpen = false; leftAt = null
         app.lumiere.android.ui.Marquee.item = null
         app.lumiere.android.ui.PosterWall.open = false
+        app.lumiere.android.ui.Idle.leftOff = null
         // Another server: which of its libraries are private isn't known until it says.
         if (was.serverUrl != next.serverUrl) { _macPrivate = null; prefs.edit().remove("macPrivate").apply() }
         settings.switchPerson(if (keepTrail) Profiles.key(was) else null, Profiles.key(next))

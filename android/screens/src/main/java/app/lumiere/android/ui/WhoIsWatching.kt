@@ -122,8 +122,11 @@ fun WhoIsWatching(state: AppState) {
             else -> state.confirmExit = true
         }
     }
-    // The remote lands on whoever watched last, or on Keep while a removal is asked; again once one is gone.
-    LaunchedEffect(editing, removing, profiles.size) {
+    // The remote lands on whoever watched last, or on Keep while a removal is asked; again once one is
+    // gone, and once something over the faces closes (Leave Lumiere?, what stopped the app last time).
+    val covered = state.confirmExit || state.crashReport != null
+    LaunchedEffect(editing, removing, profiles.size, covered) {
+        if (covered) return@LaunchedEffect
         delay(60)
         runCatching { (if (removing != null) keep else first).requestFocus() }
     }
