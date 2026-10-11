@@ -58,6 +58,8 @@ class Director(
     private var transportShown = false
     private var seenAsks = Stage.bringHereAsks
     private var tilted = false
+    /** Whether the window was last brought before you for away from your room (low) or for it; null at the start. */
+    private var windowAway: Boolean? = null
 
     // Light: the room's passthrough, or the cinema's hall.
     private var brightness = CinemaLight.LIT
@@ -151,6 +153,17 @@ class Director(
             else -> WindowMode.HOME
         }
         if (mode != windowMode) setWindow(mode)
+        // Browsing, the window comes before you as the place asks: low away from your room, so the big
+        // screen shows above it; as a Quest window in it. Only as you go between the two (and once at the
+        // start, away), so wherever you carry it otherwise, it stays.
+        if (mode == WindowMode.HOME && windowAway != away) {
+            val head = scene.getViewerPose()
+            if (head.t.y > MIN_EYE_HEIGHT_M) {
+                val first = windowAway == null
+                windowAway = away
+                if (!first || away) { windowInFront(); dockSidebar() }
+            }
+        }
 
         // The tab bar: there while browsing; the transport has the Theater's controls.
         val showSidebar = !on && !waiting
@@ -285,8 +298,7 @@ class Director(
             return
         }
         val ahead = head.removePitchAndRoll()
-        val at = head.t + flat(ahead.forward()) * Window.DISTANCE_M
-        window.setComponent(Transform(Pose(Vector3(at.x, head.t.y - 0.1f, at.z), ahead.q)))
+        window.setComponent(Transform(WindowPlacement.pose(head.t, flat(ahead.forward()), ahead.q, Stage.place != Stage.Place.ROOM)))
     }
 
     /** The tab bar docked beside the window's left edge; from there it's yours to move. */

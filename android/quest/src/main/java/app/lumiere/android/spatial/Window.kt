@@ -21,6 +21,16 @@ object Window {
     const val DISTANCE_M = 1.4f
     /** Height of its middle above the floor: eye level of someone seated, a little under it standing. */
     const val HEIGHT_ABOVE_FLOOR_M = 1.3f
+    /** How far under your eyes its middle comes when it's brought before you in your room. */
+    const val BELOW_EYES_M = 0.1f
+
+    /**
+     * Away from your room, under the big screen: nearer, and its middle well
+     * below your eyes (about 23° down, tipped back to face you), so its top
+     * edge sits a few degrees under your eye line and the screen shows above.
+     */
+    const val AWAY_DISTANCE_M = 1.3f
+    const val AWAY_BELOW_EYES_M = 0.55f
 
     /**
      * The sidebar: a narrow column of glass beside the window's left edge,

@@ -77,6 +77,7 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import androidx.compose.material.icons.filled.Lock
 
 internal data class TvRows(val shelves: List<Pair<String, List<Item>>>, val libraries: List<Item>)
 
@@ -611,24 +612,54 @@ private fun NowPlayingBanner(state: AppState, track: Item) {
 
 
 /**
- * The private room with nothing to show: no library is marked private yet
- * (on the Mac, or here in Settings › Libraries), or the Mac hasn't said
- * which are. Says so, with the way out.
+ * The private room with nothing to show: no library is private yet, the
+ * Mac's private libraries aren't this account's, or the Mac hasn't said
+ * which are. Says which, and lets you choose them here and now: each of
+ * your libraries is a pill, and choosing one moves it into the room (on the
+ * server, so the Mac and your other devices follow). The way to it used to
+ * be Settings › Libraries & Folders, three screens deep.
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun EmptyRoom(state: AppState) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var note by remember { mutableStateOf<String?>(null) }
+    val libraries = state.views.filter { it.collectionType != "boxsets" && it.collectionType != "playlists" }
+    val first = remember { FocusRequester() }
+    LaunchedEffect(libraries.isNotEmpty()) { if (libraries.isNotEmpty()) { delay(80); runCatching { first.requestFocus() } } }
     Box(Modifier.fillMaxSize().background(Palette.canvas), contentAlignment = Alignment.Center) {
-        Column(Modifier.width(560.dp), horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(Modifier.width(820.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Text("The Private Room is empty", style = MaterialTheme.typography.headlineSmall)
+            val elsewhere = state.privateLibraries.size
             Text(
-                if (!state.privacyKnown) "Lumiere is still asking the Mac which libraries are private. Give it a moment, or check the Mac is on."
-                else "No library is marked private yet. On the Mac, choose them in Lumiere's Settings › Privacy; " +
-                    "or here in Settings › Libraries. Their titles then appear only in this room.",
+                when {
+                    !state.privacyKnown -> "Lumiere couldn't hear from the Mac which libraries are private. Choose them here; the Mac and your other devices follow."
+                    // Private libraries are set, but none is among this account's own.
+                    elsewhere > 0 -> "The Mac keeps $elsewhere ${if (elsewhere == 1) "library" else "libraries"} private, but none is shared with " +
+                        "${state.session?.userName ?: "this account"}. Share ${if (elsewhere == 1) "it" else "them"} with this account on the Mac, or choose from your libraries here."
+                    else -> "Nothing is private yet. Choose the libraries that belong in here: their titles then show only in this room, on every device that follows the Mac."
+                },
                 style = MaterialTheme.typography.bodyLarge, color = Palette.textSecondary,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            if (libraries.isNotEmpty()) androidx.compose.foundation.layout.FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                libraries.forEachIndexed { i, library ->
+                    app.lumiere.android.ui.TvPill({
+                        scope.launch {
+                            val saved = app.lumiere.android.ui.setPrivate(state, library.id, true)
+                            note = if (saved) null else "The Mac didn't take that, so this device keeps the choice itself (Settings › Private Room)."
+                        }
+                    }, if (i == 0) Modifier.focusRequester(first) else Modifier) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Default.Lock, null, Modifier.size(18.dp))
+                        Text(library.name, Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+            note?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Palette.textSecondary) }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                LButton(onClick = { state.push(Screen.Settings) }) { Text("Settings") }
+                LButton(primary = false, onClick = { state.push(Screen.Settings) }) { Text("Settings") }
                 LButton(primary = false, onClick = { state.closeRoom() }) { Text("Leave the Room") }
             }
         }
