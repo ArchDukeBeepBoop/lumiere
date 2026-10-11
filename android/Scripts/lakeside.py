@@ -85,11 +85,6 @@ def bump(lon, centre, width):
     return np.exp(-(wrap(lon - centre) / width) ** 2)
 
 
-def summit(lon, centre, width):
-    """A massif's rise: steep near its summit, with long tails, so its crests stand at different heights."""
-    return 1 / (1 + (wrap(lon - centre) / width) ** 2)
-
-
 def ramp(el, stops):
     """Colour stops by elevation, eased: interpolated in sqrt(elevation) and smoothed, so no kinks."""
     u = np.linspace(0, 1, 2048)
@@ -265,44 +260,129 @@ def stars(out):
 
 # --- The land ------------------------------------------------------------------------------
 
-def octave(g, k):
-    """One octave of periodic noise, cycles k to 2k round the horizon, sampled 4x across."""
-    return fractal(g, int(k), int(2 * k) - 1, 0.0, W * SS)
+# Massifs round the lake: where (longitude, km off), how high their uplift (m), how long and wide (km),
+# and how far their crest is turned from square-on to you (degrees).
+MASSIFS = [
+    (80, 14, 1900, 7.0, 3.6, 18),       # the great one, left of the pass the sun went down behind
+    (141, 17, 2000, 6.0, 3.0, -28),     # its partner across the pass
+    (36, 15, 1200, 9.0, 3.0, 8),
+    (226, 20, 1150, 8.0, 3.0, 20),
+    (262, 22, 1500, 14.0, 3.2, 0),      # a long range opposite, in the Earth's shadow
+    (304, 19, 1550, 7.0, 3.0, 12),
+    (336, 17, 1100, 6.0, 2.6, -10),
+    (188, 15, 380, 12.0, 2.6, 0),       # low far hills behind the screen
+]
+STEP = 1.004                            # each sample along a ray is this much further than the last
+RAY_KM = 0.8 * STEP ** np.arange(1030)  # 0.8 to 49 km
+R_EFF = 6.371e6 * 7 / 6                 # the Earth's radius as light bends over it (m)
 
 
-def skyline(g, dist_km, relief_m, k0, env, sharp=1.35, warp=3.0):
-    """A range's skyline in degrees: ridged multifractal noise (sharp crests, soft valleys), scaled by env, at a distance."""
-    x = (LON_SS + warp * fractal(g, 2, 12, 2.5, W * SS)) % 360
-    total, weight, norm = np.zeros(W * SS, np.float32), np.ones(W * SS, np.float32), 0.0
-    for o in range(7):
-        n = np.interp(x, LON_SS, octave(g, k0 * 2 ** o), period=360)
-        s = np.clip(1 - np.abs(n) / 2.4, 0, 1) ** sharp * weight
-        weight = np.clip(s * 1.8, 0.4, 1)                     # crests get the most detail, valleys some
-        total += s * 0.5 ** o
-        norm += 0.5 ** o
-    # Broad shoulders under the crests, so summits stand at different heights.
-    smooth = 0.5 + 0.2 * fractal(g, max(k0 // 2, 1), 40 * k0, 2.3, W * SS)
-    h = relief_m * env * (0.64 * total / norm + 0.36 * smooth) ** 1.3
-    drop = (dist_km * 1000) ** 2 / (2 * 6.371e6)                          # the Earth curves away
-    return np.degrees(np.arctan2(h - drop, dist_km * 1000))
+def ridged(noises, x, y, foot, octaves, gain=0.5, feed=1.6):
+    """Ridged multifractal (Musgrave): sharp crests where the noise crosses zero, detail mostly on the crests,
+    soft valleys; about 0..1. Octaves finer than a pixel's footprint fade to their mean."""
+    total = np.zeros(np.shape(x), np.float32)
+    weight = np.ones(np.shape(x), np.float32)
+    f, a, norm = 1.0, 1.0, 0.0
+    for o in range(octaves):
+        c, s = np.cos(0.9 * o + 0.3), np.sin(0.9 * o + 0.3)
+        n = noises[o % len(noises)](f * (c * x - s * y) + 31.7 * o, f * (s * x + c * y) - 12.3 * o)
+        sig = (1 - np.abs(n)) ** 2 * weight
+        weight = np.clip(sig * feed, 0, 1)
+        att = np.clip(1.6 - 2.4 * f * foot, 0, 1)
+        total += a * (att * sig + (1 - att) * 0.3)
+        norm += a
+        f, a = f * 2.03, a * gain
+    return total / norm
 
 
-def ranges():
-    """The skylines, far to near, each with its distance (km) for the haze."""
-    g = rng(1)
-    lon = LON_SS
-    notch = 1 - 0.85 * bump(lon, GLOW_LON, 8) - 0.1 * bump(lon, GLOW_LON, 20)
-    calm = 1 - 0.55 * bump(lon, SCREEN_LON, 26)
-    far_env = (0.28 + 1.1 * summit(lon, GLOW_LON - 33, 6) + 0.5 * summit(lon, GLOW_LON + 30, 5)
-               + 0.85 * summit(lon, 328, 7) + 0.3 * bump(lon, 262, 24) + 0.3 * summit(lon, 22, 6)
-               + 0.08 * fractal(g, 1, 6, 1.0, W * SS)) * notch * calm
-    far2_env = (0.34 + 0.30 * bump(lon, GLOW_LON + 52, 16) + 0.30 * bump(lon, 236, 22) + 0.28 * bump(lon, 300, 16)
-                + 0.24 * bump(lon, 40, 22) + 0.1 * fractal(g, 1, 6, 1.0, W * SS)) * notch * calm
-    mid_env = np.clip(0.2 + 0.75 * bump(lon, 214, 26) + 0.7 * bump(lon, 288, 20) + 0.6 * bump(lon, 52, 22)
-                      + 0.45 * bump(lon, GLOW_LON - 52, 12) + 0.25 * fractal(g, 1, 5, 1.0, W * SS), 0, None) \
-        * (1 - 0.9 * bump(lon, GLOW_LON, 18)) * (1 - 0.6 * bump(lon, SCREEN_LON, 18))
-    return [(skyline(g, 24, 4200, 9, far_env), 24), (skyline(g, 15, 1500, 12, far2_env), 15),
-            (skyline(g, 6.5, 420, 12, mid_env, 1.4), 6.5)]
+def heights(lon, km, noises):
+    """The land's height (m above the lake) along rays at longitudes lon (C,) and distances km (S,), as (C, S):
+    each massif a dome round its crest line, foothills ringing the shore and a far range beyond, all carved by
+    ridged noise in the plane, so the skyline you see is the highest of many ridges at many distances."""
+    lr = np.radians(lon)[:, None]
+    d = km[None, :].astype(np.float32)
+    px, pz = d * np.cos(lr).astype(np.float32), d * np.sin(lr).astype(np.float32)
+    lift = np.zeros(px.shape, np.float32)
+    for m_lon, m_km, rise, length, width, turn in MASSIFS:
+        ml, axis = np.radians(m_lon), np.radians(m_lon + 90 + turn)
+        ox, oz = px - m_km * np.cos(ml), pz - m_km * np.sin(ml)
+        u = (ox * np.cos(axis) + oz * np.sin(axis)) / length
+        v = (-ox * np.sin(axis) + oz * np.cos(axis)) / width
+        r2 = u * u + v * v
+        lift += rise * (0.55 * np.exp(-r2) + 0.45 * np.exp(-1.8 * np.sqrt(r2)))   # broad, round one summit
+    col = lon[:, None]
+    shore = 2.6 + 1.6 * (0.5 + 0.5 * np.sin(np.radians(3 * col) + 1.3)) + 7 * bump(col, SCREEN_LON, 32)
+    pass_ = 1 - 0.75 * bump(col, GLOW_LON, 11)                                 # where the sun went down
+    calm = 1 - 0.7 * bump(col, SCREEN_LON, 34)
+    # Foothills on the far shore, in broken lines, so the ranges behind come down to the water between them.
+    broken = np.clip(0.45 + 1.1 * noises[2](px / 6 + 1.3, pz / 6 - 4.1), 0, 1.3)
+    lift += 260 * np.exp(-((d - shore - 2.0) / 1.6) ** 2) * broken * pass_ * calm
+    far = np.clip(0.55 + 0.8 * noises[3](px / 16 - 2.2, pz / 16 + 0.7), 0.15, 1.2)       # the far range, hazy
+    lift += 1800 * far * np.exp(-((d - 36) / 8) ** 2) * (1 - 0.55 * bump(col, GLOW_LON, 9)) * (1 - 0.45 * bump(col, SCREEN_LON, 30))
+    # Warp the plane a little, so ridges wander instead of following the noise's lattice.
+    wx = px + 1.6 * noises[0](px / 9 + 3.7, pz / 9 - 1.1)
+    wz = pz + 1.6 * noises[1](px / 9 - 5.2, pz / 9 + 2.9)
+    foot = d * PXR / SS                                                       # a column's width there (km)
+    carve = ridged(noises, wx / 6.0, wz / 6.0, foot / 6.0, 10)
+    bare = lift * (0.25 + 1.15 * carve)
+    # Spruce on the lower slopes: a canopy of crowns about 15 m high, gone above the tree line and wherever
+    # it would be finer than a pixel.
+    crowns = sum(a * np.clip(1.6 - 2.4 * f * foot, 0, 1) * (0.5 + 0.5 * noises[o](px * f + 9.1 * o, pz * f - 4.4 * o)) ** 2
+                 for o, (f, a) in enumerate([(40, 1.0), (97, 0.5)]))
+    trees = 14 * crowns * smoothstep(1000, 600, bare) * smoothstep(0, 0.4, d - shore)
+    land = smoothstep(0, 0.7, d - shore)
+    return ((bare + trees) * land).astype(np.float32)
+
+
+def relief(upper, band):
+    """The mountains over the sky in the band of rows above the horizon: per column (4x across), a ray marched
+    out over the land, front to back, and each sub-row (4x down) shows the nearest land that rises into it,
+    lit by the afterglow and the sky and hazed by the air between. Returns the band and its land coverage."""
+    noises = [Perlin(rng(1)) for _ in range(4)]
+    cols = W * SS
+    h = np.empty((cols, RAY_KM.size), np.float32)
+    for c0 in range(0, cols, 1024):
+        h[c0:c0 + 1024] = heights(LON_SS[c0:c0 + 1024], RAY_KM, noises)
+    drop = (RAY_KM * 1000) ** 2 / (2 * R_EFF)
+    ang = np.degrees(np.arctan2(h - EYE_M - drop[None, :], RAY_KM[None, :] * 1000)).astype(np.float32)
+    top = np.maximum.accumulate(ang, axis=1)
+    # The slopes, along the ray and across it, for the light.
+    dr = np.gradient(h, RAY_KM * 1000, axis=1)
+    dt = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) / (2 * RAY_KM[None, :] * 1000 * np.radians(PX / SS))
+    el = (HALF - np.arange(HALF - band, HALF)[:, None] - (np.arange(SS)[None, :] + 0.5) / SS).ravel() * PX
+    horizon = np.repeat(upper[HALF - 6:HALF - 2].mean(0), SS, 0)          # the sky just above the horizon
+    blue = lin((58, 68, 108))
+    shade = lin((10, 12, 21))                                               # sky light on dark rock and forest
+    warm = lin((150, 84, 70))                                               # the afterglow, on faces that see it
+    land = np.zeros((band, W, 3), np.float32)
+    cover = np.zeros((band, W), np.float32)
+    S = RAY_KM.size
+    for c0 in range(0, cols, 1024):
+        n = min(1024, cols - c0)
+        key = (top[c0:c0 + n].astype(np.float64) + 1000.0 * np.arange(n)[:, None]).ravel()
+        q = (el[None, :] + 1000.0 * np.arange(n)[:, None]).ravel()
+        idx = (np.searchsorted(key, q).reshape(n, -1) - S * np.arange(n)[:, None])
+        hit = idx < S
+        i = np.minimum(idx, S - 1)
+        r = np.arange(c0, c0 + n)[:, None]
+        km, hh = RAY_KM[i], h[r, i]
+        gr, gt = dr[r, i], dt[r, i]
+        norm = 1 / np.sqrt(1 + gr * gr + gt * gt)
+        rel = np.radians(GLOW_LON - LON_SS[c0:c0 + n])[:, None]
+        sees = np.clip((-gr * np.cos(rel) - gt * np.sin(rel) + 0.15) * norm, 0, 1)   # facing the glow
+        sky_lit = 0.55 + 0.45 * norm                                                 # open to the sky
+        surface = shade * sky_lit[..., None] + warm * (0.09 * sees ** 1.5)[..., None]
+        haze = 1 - np.exp(-km / 24.0)
+        # The air between you and them lies in the Earth's shadow now: lit by the sky, so bluer and
+        # dimmer than the glow above, warming only a little toward it.
+        air = blue * (0.55 + 0.1 * haze)[..., None] + horizon[c0:c0 + n, None] * (0.36 - 0.1 * haze)[..., None]
+        mist = 0.55 * np.exp(-hh / 140)                                     # a 140 m mist on the water
+        fog = (haze + (1 - haze) * mist)[..., None]
+        colour = (surface + fog * (air - surface)) * hit[..., None]
+        k = n // SS
+        land[:, c0 // SS:c0 // SS + k] = colour.reshape(k, SS, band, SS, 3).mean((1, 3)).transpose(1, 0, 2)
+        cover[:, c0 // SS:c0 // SS + k] = hit.reshape(k, SS, band, SS).mean((1, 3)).T
+    return land, cover
 
 
 def shore_trees():
@@ -354,22 +434,10 @@ def landscape(upper):
     """The ranges, the treeline and the mist over the water at their feet, laid over the sky."""
     out = upper.copy()
     horizon = upper[HALF - 6:HALF - 2].mean(0)                # the sky just above the horizon, per column
-    blue = lin((58, 68, 108))
-    toward = bump(LON, GLOW_LON, 70)[:, None]
-    dark = lin((12, 14, 23)) * toward + lin((20, 20, 33)) * (1 - toward)  # faces lit a little by the glow opposite
-    band = int(12 / PX)
+    band = int(14 / PX)
     el = (HALF - np.arange(HALF - band, HALF) - 0.5)[:, None] * PX
-    region = out[HALF - band:]
-    for sky_line, km in ranges():
-        cov = np.clip((sky_line.reshape(W, SS)[None] - el[..., None]) / PX + 0.5, 0, 1).mean(-1)
-        haze = 1 - np.exp(-km / 24.0)
-        # The air between you and them lies in the Earth's shadow now: lit by the sky, so bluer and
-        # dimmer than the glow above, warming only a little toward it.
-        air = blue * (0.55 + 0.1 * haze) + horizon * (0.36 - 0.1 * haze)
-        mist = 0.55 * np.exp(-el / np.degrees(np.arctan(0.14 / km)))  # a 140 m mist on the water
-        fog = haze + (1 - haze) * mist
-        colour = dark[None] + fog[..., None] * (air[None] - dark[None])
-        region = region * (1 - cov[..., None]) + colour * cov[..., None]
+    land, cover = relief(upper, band)
+    region = out[HALF - band:] * (1 - cover[..., None]) + land
     trees = shore_trees()
     tb = trees.shape[0]
     green = lin((7, 9, 14)) + 0.05 * (horizon - lin((7, 9, 14)))
