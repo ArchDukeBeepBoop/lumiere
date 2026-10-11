@@ -303,6 +303,8 @@ See the reply of 2026-10-11; recorded here so the list survives.
 12. Depth in the browse window: posters with parallax layers, as Apple TV's cards tilt.
 13. Comfort: recentre automatically when you sit or stand, a seated or standing height calibration, a "lie back" mode that tilts the whole place.
 14. Watch together with friends' avatars in the same place (larger; later).
+15. (Owner, 2026-10-11) A small, handy controller away from your room: a compact panel and tab bar near your hands for choosing what plays on the place's big screen, instead of shrinking the home window — shrinking it leaves it small and the tab bar misaligned when you go back to your room (the tab bar docks by the window's default width, Docking.beside, not its size now).
+16. (Owner, 2026-10-11) Realistic detail in every place, the cinema above all: real shapes (seats with backs, arms and cup holders, a proscenium, stepped aisles with lights, acoustic panels, speakers, the projection booth's window and beam, exit signs), not plain boxes.
 
 ## 18. Batch 1 of the proposals (2026-10-11)
 **The screen on your wall.** In your room, "Screen on the wall before you" (under More on the transport, pinnable) reads your Space Setup through Meta's Mixed Reality Utility Kit (`meta-spatial-sdk-mruk`, the `com.oculus.permission.USE_SCENE` permission asked for only then; with no Space Setup the headset offers to run it). The wall your gaze meets takes the screen: flush, 3 cm proud, square and upright, your size from where you stood but never past the wall's edges, its middle at least a TV's height (WallMount, tested). The wall's own id, where on it and your distance are saved (Stage.mount), so every film in your room plays there until you take it off; a wall Space Setup no longer has, or a refused permission, leaves the screen floating as before. MRUK is left out of a plain start (StartGuard.peek), so a failure there can't stop the app.
@@ -315,3 +317,12 @@ See the reply of 2026-10-11; recorded here so the list survives.
 | The space station | The Earth from 400 km, its limb, night side and city lights (`Scripts/orbit.py`) | An observation module round a 4 m wall screen: hull panels, windows down both sides, one in the floor and a skylight, handrails, light strips, lockers and the hatch, blinking panel lights, a grow box, a laptop on its arm, things drifting free | Fans, a hum, a soft chime |
 
 Tests: WallMountTest; NewPlacesTest (no part of any new place hides the screen at any size, film shape or eye height; every box has a size; tall things beside you or behind; each has a sky and a sound).
+
+## 19. Batch 2 of the proposals, in three parts (2026-10-11)
+Each part ends in its own APK. Proposals 15 and 16 come from the owner's own use, so they lead.
+- **2a, the controls and the cinema:** the compact controller away from your room (15) and the tab bar docked by the window's real size; the cinema made real (16): modelled seats, proscenium, stepped aisles, acoustic walls, booth and beam; its ritual (4): curtains that open as the film starts and close at its end, house lights at the cinema's own slower pace; choosing your seat (8); light from the picture's left and right halves on the matching walls (5).
+- **2b, comfort and picture:** the hand menu (7); recentring when you sit or stand, and lying back (13); picture controls and wider scope films (11); captions you can size and set nearer (9); posters with depth in the browse window (12).
+- **2c, more places:** a drive-in, an Art Deco picture palace, a rooftop over a city at night, a winter cabin with falling snow, under the sea (2); skies that change with the time of day and the weather (3); your library's posters on the walls (6); film sound placed round you (10).
+- Watch together (14) stays for later.
+
+The APK is over 30 MB now (the Spatial SDK's runtime alone is 18.6 MB compressed, MRUK added 2.9 MB), so it's sent in two parts to join before SideQuest.
