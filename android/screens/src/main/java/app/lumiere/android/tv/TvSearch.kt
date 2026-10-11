@@ -56,6 +56,8 @@ import app.lumiere.android.ui.Palette
 import app.lumiere.android.ui.focusCard
 import app.lumiere.android.ui.imageFor
 import app.lumiere.android.ui.open
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Search
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 
