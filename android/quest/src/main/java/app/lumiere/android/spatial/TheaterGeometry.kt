@@ -38,7 +38,7 @@ object TheaterGeometry {
         Stage.Place.ROOM -> 3.0f
         Stage.Place.CINEMA -> CINEMA_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
         Stage.Place.CABIN -> CABIN_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
-        Stage.Place.LAKE -> 12f
+        Stage.Place.LAKE -> 14f
         Stage.Place.VOID -> 10f
         Stage.Place.SPACE -> 12f
     }

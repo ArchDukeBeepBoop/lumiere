@@ -83,7 +83,7 @@ object Cabin {
 
         // The floor: your own level throughout, or a dais you sit on and the great room a step down,
         // its edge well before your sightline to the screen's foot reaches your floor.
-        val low = 0f
+        val low = min(0f, screenBottom - UNDER_SCREEN)
         val base = low - 0.1f
         val edge = if (low == 0f) front else min(0.7f, 0.7f * eyeY / footSlope.coerceAtLeast(1e-3f))
         if (edge >= front) parts += Block.between(Kind.FLOOR, -half, half, base, 0f, rear, front)
@@ -193,7 +193,7 @@ object Cabin {
 
     /** How much of the film's light a kind catches: what faces the screen most (the back wall, the sofa) most. */
     fun spill(kind: Kind): Float = when (kind) {
-        Kind.BACK_WALL -> 0.01f
+        Kind.BACK_WALL -> 0.6f
         Kind.SOFA -> 0.55f
         Kind.FLOOR, Kind.STEP, Kind.RUG -> 0.45f
         Kind.WALL -> 0.35f

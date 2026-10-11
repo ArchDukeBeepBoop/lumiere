@@ -41,7 +41,7 @@ object Dock {
      */
     fun build(eyeY: Float, footSlope: Float = 0f): List<Block<Kind>> {
         val parts = mutableListOf<Block<Kind>>()
-        val ahead = if (true) AHEAD
+        val ahead = if (footSlope <= 0f) AHEAD
             else ((eyeY - BOLLARD_HEIGHT - CLEARANCE) / footSlope).coerceIn(MIN_AHEAD, AHEAD)
         // Planks across the deck, about 60 cm each, every third a shade more worn; the gaps show the water.
         val length = ahead + BEHIND

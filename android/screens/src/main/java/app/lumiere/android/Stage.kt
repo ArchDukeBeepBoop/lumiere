@@ -21,11 +21,11 @@ object Stage {
      * order the place button comes round to them; saved by name, so the order is free to change.
      */
     enum class Place(val label: String) {
-        ROOM("your room"), CINEMA("the cinema"), LAKE("the lakeside"), CABIN("the cabin"), VOID("the dark"), SPACE("space")
+        ROOM("your room"), CINEMA("the cinema"), CABIN("the cabin"), LAKE("the lakeside"), VOID("the dark"), SPACE("space")
     }
 
     /** A saved place by its name; a missing or unknown one (from another version) is the cinema, where everyone starts. */
-    fun placeNamed(name: String?): Place = Place.entries.getOrNull(name?.length ?: 0) ?: Place.CINEMA
+    fun placeNamed(name: String?): Place = Place.entries.firstOrNull { it.name == name } ?: Place.CINEMA
 
     var place by mutableStateOf(Place.CINEMA)
         private set
