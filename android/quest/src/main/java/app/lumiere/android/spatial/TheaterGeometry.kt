@@ -9,12 +9,14 @@ import kotlin.math.tan
 
 /**
  * The Theater's screen as numbers. Five sizes, each a share of your view
- * (40° to 92° across) rather than metres, so a size feels the same in any
- * place; each place sets how far away the screen is, so the cinema's is a
- * true cinema screen many metres off and your room's a big TV. The screen
- * takes the film's own shape (2.39:1 is wide and low, 16:9 taller), and in
- * the cinema you sit high in a raked hall, so even the largest screen's
- * middle is near your eye line. Pure, so it's tested without a headset.
+ * (55° to 115° across) rather than metres, so a size feels the same in any
+ * place. The cinema's and the cabin's screens are walls of a set width, and
+ * a size is how near you sit; elsewhere the screen stands at the place's
+ * distance and grows: your room's a big TV, the lakeside's an outdoor
+ * screen floating over the water. The screen takes the film's own shape
+ * (2.39:1 is wide and low, 16:9 taller), and in the cinema you sit high in
+ * a raked hall, so even the largest screen's middle is near your eye line.
+ * Pure, so it's tested without a headset.
  */
 object TheaterGeometry {
     /** How much of your view each size fills, across: from a big screen to an IMAX wall that wraps your view. */
@@ -24,25 +26,51 @@ object TheaterGeometry {
 
     /** The cinema's screen: one IMAX wall, 24 m across; a size is how near you sit to it. */
     const val CINEMA_SCREEN_WIDTH_M = 24f
+    /** The cabin's screen: a home cinema's wall screen, 5.5 m across; a size is how near the sofa is (5.3 m to 1.75 m). */
+    const val CABIN_SCREEN_WIDTH_M = 5.5f
 
     /**
-     * How far the screen stands, by place and size: in the cinema the screen
-     * keeps its size and you take a nearer or further seat; elsewhere it
-     * stands at the place's distance and grows.
+     * How far the screen stands, by place and size: in the cinema and the
+     * cabin the screen keeps its size and you take a nearer or further seat;
+     * elsewhere it stands at the place's distance and grows.
      */
     fun distance(place: Stage.Place, degrees: Float): Float = when (place) {
         Stage.Place.ROOM -> 3.0f
         Stage.Place.CINEMA -> CINEMA_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
+        Stage.Place.CABIN -> CABIN_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
+        Stage.Place.LAKE -> 14f
         Stage.Place.VOID -> 10f
         Stage.Place.SPACE -> 12f
     }
 
-    /** How far above your eyes the screen's middle sits, by place: in your room a touch below, as a TV. */
+    /**
+     * How far above your eyes the screen's middle sits, by place: in your
+     * room a touch below, as a TV; at the lakeside well up, over the water
+     * and clear of the pontoon you sit on.
+     */
     fun aboveEyes(place: Stage.Place): Float = when (place) {
         Stage.Place.ROOM -> -0.05f
         Stage.Place.CINEMA -> 0.3f
+        Stage.Place.CABIN -> 0.2f
+        Stage.Place.LAKE -> 0.9f
         Stage.Place.VOID -> 0.1f
         Stage.Place.SPACE -> 0.2f
+    }
+
+    /** Whether the screen is part of the place (the cinema's wall, the cabin's), so it stays put; elsewhere it's yours to carry. */
+    fun fixedScreen(place: Stage.Place): Boolean = place == Stage.Place.CINEMA || place == Stage.Place.CABIN
+
+    /**
+     * How steeply you look down to the screen's foot, in metres down for each
+     * metre ahead: the line that anything on the floor before you must stay
+     * under. A curved screen's ends come nearer than its middle, so its line
+     * is steeper. 0 for a screen whose foot is above your eyes, and for spheres.
+     */
+    fun footSlope(spec: Spec): Float {
+        if (spec.projection != Projection.FLAT || spec.distanceM <= 0f) return 0f
+        val nearest = if (spec.radiusM == null) spec.distanceM
+            else spec.distanceM * kotlin.math.cos((spec.widthM / 2 / spec.distanceM).coerceAtMost(1.4f))
+        return ((spec.heightM / 2 - spec.aboveEyesM) / nearest).coerceAtLeast(0f)
     }
 
     /**

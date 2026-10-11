@@ -8,15 +8,24 @@ import androidx.compose.runtime.setValue
 
 /**
  * Where you are on a Quest, and how films are watched, as the tab bar and
- * the Theater's transport set it: where (your room, a cinema, or a black
- * void — browsing as well as watching), how big
+ * the Theater's transport set it: where (your room, a cinema, a cabin, a
+ * lakeside, a black void or space — browsing as well as watching), how big
  * the screen is (five sizes by how much of your view it fills), and whether
  * it curves round you. Remembered between visits. The headset's own module
  * builds it.
  */
 object Stage {
-    /** Where a film plays: your room, dimmed; a cinema round you; or black, for the deepest contrast. */
-    enum class Place(val label: String) { ROOM("your room"), CINEMA("the cinema"), VOID("the dark"), SPACE("space") }
+    /**
+     * Where a film plays: your room, dimmed; a cinema round you; a timber cabin's wall; a
+     * pontoon on a lake at dusk; black, for the deepest contrast; or among the stars. In the
+     * order the place button comes round to them; saved by name, so the order is free to change.
+     */
+    enum class Place(val label: String) {
+        ROOM("your room"), CINEMA("the cinema"), CABIN("the cabin"), LAKE("the lakeside"), VOID("the dark"), SPACE("space")
+    }
+
+    /** A saved place by its name; a missing or unknown one (from another version) is the cinema, where everyone starts. */
+    fun placeNamed(name: String?): Place = Place.entries.firstOrNull { it.name == name } ?: Place.CINEMA
 
     var place by mutableStateOf(Place.CINEMA)
         private set
@@ -63,7 +72,7 @@ object Stage {
 
     fun load(context: Context) {
         val p = context.getSharedPreferences("stage", Context.MODE_PRIVATE).also { prefs = it }
-        place = runCatching { Place.valueOf(p.getString("watchIn", Place.CINEMA.name)!!) }.getOrDefault(Place.CINEMA)
+        place = placeNamed(p.getString("watchIn", null))
         // Sizes were made larger (to 55°–115°); an older saved choice starts afresh at the default.
         screenSize = if (p.getInt("sizes", 1) < 2) DEFAULT_SIZE else p.getInt("screenSize", DEFAULT_SIZE).coerceIn(0, SCREEN_SIZES - 1)
         curved = p.getBoolean("screenCurved", false)
@@ -77,7 +86,7 @@ object Stage {
     fun larger() { screenSize = (screenSize + 1).coerceAtMost(SCREEN_SIZES - 1); save() }
     fun smaller() { screenSize = (screenSize - 1).coerceAtLeast(0); save() }
     fun toggleCurve() { curved = !curved; save() }
-    /** Room, cinema, the dark, space, round again. */
+    /** Room, cinema, cabin, lakeside, the dark, space, round again. */
     fun nextPlace() { place = Place.entries[(place.ordinal + 1) % Place.entries.size]; save() }
     fun bringHere() { bringHereAsks++ }
 }

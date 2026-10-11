@@ -23,6 +23,8 @@ import androidx.compose.material.icons.filled.Theaters
 import androidx.compose.material.icons.filled.Weekend
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Cabin
+import androidx.compose.material.icons.filled.Landscape
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -93,17 +95,22 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
 private fun RailButton(icon: ImageVector, label: String, chosen: Boolean, caption: String? = null, onClick: () -> Unit) =
     GlassButton(icon, label, chosen, caption, onClick = onClick)
 
-/** Each place's icon: a sofa for your room, a film strip for the cinema, a moon for the dark. */
+/** Each place's icon: a sofa for your room, a film strip for the cinema, a cabin, hills for the lakeside, a moon for the dark. */
 fun placeIcon(place: Stage.Place): ImageVector = when (place) {
     Stage.Place.ROOM -> Icons.Default.Weekend
     Stage.Place.CINEMA -> Icons.Default.Theaters
+    Stage.Place.CABIN -> Icons.Default.Cabin
+    Stage.Place.LAKE -> Icons.Default.Landscape
     Stage.Place.VOID -> Icons.Default.DarkMode
     Stage.Place.SPACE -> Icons.Default.AutoAwesome
 }
 
+/** Each place in a word short enough for a 48 dp button ("Lakeside" wouldn't fit under its icon). */
 fun placeCaption(place: Stage.Place): String = when (place) {
     Stage.Place.ROOM -> "Room"
     Stage.Place.CINEMA -> "Cinema"
+    Stage.Place.CABIN -> "Cabin"
+    Stage.Place.LAKE -> "Lake"
     Stage.Place.VOID -> "Dark"
     Stage.Place.SPACE -> "Space"
 }

@@ -28,7 +28,8 @@ import kotlinx.coroutines.launch
  * second (more while something moves). Browsing, the window and tab bar are
  * yours to carry and resize, in your room. Watching, the film moves to the
  * Theater — its own screen, in the place you chose (your room dimmed, a
- * stadium cinema, the dark) — with the transport near your hands and the
+ * stadium cinema, a timber cabin, a pontoon on a lake at dusk, the dark,
+ * space) — with the transport near your hands and the
  * window out of the way until you ask for it. Holding the Meta button brings
  * it all back in front of you.
  */
@@ -45,6 +46,10 @@ class Director(
     private var shownRequest: Theater.Request? = null
     private val theatreMade = lazy { Theatre() }
     private val theatre by theatreMade
+    private val cabinMade = lazy { Scenery(Cabin::colour) }
+    private val cabin by cabinMade
+    private val dockMade = lazy { Scenery(Dock::colour) }
+    private val dock by dockMade
 
     // What's up now, so each change is made once.
     private var theaterOn = false
@@ -61,7 +66,7 @@ class Director(
     /** Whether the window was last brought before you for away from your room (low) or for it; null at the start. */
     private var windowAway: Boolean? = null
 
-    // Light: the room's passthrough, or the cinema's hall.
+    // Light: the room's passthrough, or the place round you (the cinema's hall, the cabin, the pontoon).
     private var brightness = CinemaLight.LIT
     private var shownBrightness = -1f
     private var shownTint: Triple<Float, Float, Float>? = null
@@ -117,8 +122,7 @@ class Director(
             val s = browseSeat ?: seatHere().takeIf { it.eye.y > MIN_EYE_HEIGHT_M }?.also { browseSeat = it }
             if (s != null) {
                 val spec = browseSpec(place)
-                if (place == Stage.Place.CINEMA && !s.tilted)
-                    theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM, s.eye.y)
+                surround(place, s, spec)
                 marquee.follow(spec, s)
             }
         }
@@ -127,21 +131,25 @@ class Director(
         if (on) {
             val spec = TheaterGeometry.spec(request!!, place, Stage.screenSize, Stage.curved)
             val s = seat ?: seatHere().also { seat = it }
-            if (screen.follow(spec, s, movable = place != Stage.Place.CINEMA)) {
-                if (place == Stage.Place.CINEMA && !sphere && !s.tilted)
-                    theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM, s.eye.y)
+            if (screen.follow(spec, s, movable = !TheaterGeometry.fixedScreen(place))) {
+                surround(place, s, spec)
                 shownPlace = null
             }
         }
 
-        // Where you are: passthrough, the cinema's hall, or the dark.
+        // Where you are: passthrough, the cinema's hall, the cabin, the pontoon, or the dark; a sky.
         val tiltedSeat = (if (on) seat else browseSeat)?.tilted == true
-        val hall = place == Stage.Place.CINEMA && !sphere && !tiltedSeat
-        if (shownPlace != place to hall) {
-            shownPlace = place to hall
+        val seated = !sphere && !tiltedSeat
+        val hall = place == Stage.Place.CINEMA && seated
+        val inCabin = place == Stage.Place.CABIN && seated
+        val onDock = place == Stage.Place.LAKE && seated
+        if (shownPlace != place to seated) {
+            shownPlace = place to seated
             scene.enablePassthrough(place == Stage.Place.ROOM && !sphere)
             if (theatreMade.isInitialized() || hall) theatre.show(hall)
-            sky.show(place == Stage.Place.SPACE && !sphere)
+            if (cabinMade.isInitialized() || inCabin) cabin.show(inCabin)
+            if (dockMade.isInitialized() || onDock) dock.show(onDock)
+            sky.show(if (sphere) null else Sky.pictureFor(place))
             shownBrightness = -1f; shownTint = null
         }
 
@@ -206,6 +214,8 @@ class Director(
         val tint = (Theater.screenColour ?: Ambient.colour)?.let { Triple(it.red, it.green, it.blue) }
         when {
             hall -> theatre.light(brightness, tint)
+            inCabin -> cabin.light(brightness, tint)
+            onDock -> dock.light(brightness, tint)
             place == Stage.Place.ROOM && !sphere -> lightRoom(brightness, tint)
         }
         return brightness != target
@@ -228,6 +238,27 @@ class Director(
 
     /** Where you sit while browsing away from your room; null in it, so going back out seats you afresh. */
     private var browseSeat: TheaterScreen.Seat? = null
+
+    /**
+     * The place's own surroundings round [s] for the screen [spec]: the
+     * cinema's hall, the cabin, the lakeside's pontoon; each made again only
+     * when the seat or the screen changes. None for a tilted seat (you're
+     * lying back, looking up) or a 180° or 360° film.
+     */
+    private fun surround(place: Stage.Place, s: TheaterScreen.Seat, spec: TheaterGeometry.Spec) {
+        if (s.tilted || spec.projection != Projection.FLAT) return
+        val eye = s.eye.y
+        val middle = eye + spec.aboveEyesM
+        val slope = TheaterGeometry.footSlope(spec)
+        when (place) {
+            Stage.Place.CINEMA -> theatre.build(s.floor, spec.widthM, spec.heightM, middle, spec.distanceM, eye)
+            Stage.Place.CABIN -> cabin.build(s.floor, listOf(spec.widthM, spec.heightM, middle, spec.distanceM, eye, slope)) {
+                Cabin.build(spec.widthM, spec.heightM, middle, spec.distanceM, eye, slope)
+            }
+            Stage.Place.LAKE -> dock.build(s.floor, listOf(eye, slope)) { Dock.build(eye, slope) }
+            Stage.Place.ROOM, Stage.Place.VOID, Stage.Place.SPACE -> {}
+        }
+    }
 
     /** The big screen while no film plays: the chosen size and curve, a 16:9 picture. */
     private fun browseSpec(place: Stage.Place) = TheaterGeometry.spec(
@@ -271,14 +302,11 @@ class Director(
         if (theaterOn) {
             val s = seatHere().also { seat = it }
             screen.place(s)
-            TheaterScreen.current?.let { spec ->
-                if (Stage.place == Stage.Place.CINEMA && spec.projection == Projection.FLAT && !s.tilted)
-                    theatre.build(s.floor, spec.widthM, spec.heightM, s.eye.y + spec.aboveEyesM, spec.distanceM, s.eye.y)
-            }
+            TheaterScreen.current?.let { spec -> surround(Stage.place, s, spec) }
             if (windowMode == WindowMode.ASKED) setWindow(WindowMode.ASKED)
             if (transportShown) placeTransport()
         } else {
-            // Away from your room the hall and the big screen come round you where you are now.
+            // Away from your room the hall (the cabin, the pontoon) and the big screen come round you where you are now.
             if (Stage.place != Stage.Place.ROOM) browseSeat = seatHere()
             windowInFront()
             if (windowMode != WindowMode.HOME) windowHome = window.getComponent<Transform>().transform
