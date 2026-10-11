@@ -14,6 +14,11 @@ suspend fun Server.extras(userId: String, id: String) = runCatching {
     parseItems(get("Users/$userId/Items/$id/SpecialFeatures"))
 }.getOrDefault(emptyList())
 
+/** A title's own trailer files, which the banner plays before anything of the film; none when the server has none. */
+suspend fun Server.localTrailers(userId: String, id: String) = runCatching {
+    parseTrailers(get("Users/$userId/Items/$id/LocalTrailers"))
+}.getOrDefault(emptyList())
+
 suspend fun Server.genres(userId: String, parentId: String): List<String> = runCatching {
     parseItems(get("Genres", mapOf("userId" to userId, "ParentId" to parentId))).map { it.name }
 }.getOrDefault(emptyList())

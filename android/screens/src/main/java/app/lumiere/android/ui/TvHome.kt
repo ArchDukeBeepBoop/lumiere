@@ -115,6 +115,22 @@ private data class TvSizes(val poster: androidx.compose.ui.unit.Dp, val wide: an
 private val LocalTvSizes = androidx.compose.runtime.compositionLocalOf { TvSizes(150.dp, 300.dp, 260.dp, 360.dp) }
 private val GAP = 32.dp
 
+/** The card widths for a screen [width] across, between Home's gutters. */
+private fun tvSizes(width: androidx.compose.ui.unit.Dp): TvSizes {
+    val across = width - (GUTTER * 2).dp
+    return TvSizes(poster = (across - GAP * 5) / 6, wide = (across - GAP * 3) / 4, library = (across - GAP * 4) / 5, large = (across - GAP * 2) / 3)
+}
+
+/**
+ * Home's first load on a TV, with nothing saved to draw yet: the spotlight
+ * and rows in outline at the sizes Home will give them (TvHomeSkeleton).
+ */
+@Composable
+internal fun TvHomeLoading() = BoxWithConstraints(Modifier.fillMaxSize()) {
+    val sizes = tvSizes(maxWidth)
+    TvHomeSkeleton(maxHeight * 0.68f, GUTTER.dp, GAP, sizes.wide, sizes.library, sizes.poster)
+}
+
 /**
  * Home on a TV, laid out as the Mac's: a spotlight across the top with Play
  * and More Info, moving through new titles on its own; then Continue Watching
@@ -219,12 +235,15 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
     val restored = remember { state.homeScroll.first > 0 }
     var heroFocused by remember { mutableStateOf(!restored) }
     var bannerHeld by remember { mutableStateOf(false) }
+    // While the banner's trailer plays its page holds, as Apple's does; on a Quest, pointing at it counts as being on it.
+    var previewPlaying by remember { mutableStateOf(false) }
+    var heroPointed by remember { mutableStateOf(false) }
     // Read by the scroll spec outside composition, so a plain holder.
     val heroRef = remember { booleanArrayOf(!restored) }
     var focused by remember { mutableStateOf<Item?>(null) }
     LaunchedEffect(pages, heroFocused) {
         // Turning by itself, except while the remote rests on More Info — the title is being read.
-        while (heroFocused && pages.size > 1) { delay(9_000); if (!bannerHeld) page = (page + 1) % pages.size }
+        while (heroFocused && pages.size > 1) { delay(9_000); if (!bannerHeld && !previewPlaying) page = (page + 1) % pages.size }
     }
     val hero = pages.getOrNull(page)
     // The picture settles a moment after the selection, so sweeping a row
@@ -272,7 +291,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
         // A soft dark band under the menu bar, so its tabs read on any picture.
         Box(Modifier.fillMaxWidth().height(120.dp).graphicsLayer { alpha = heroArt }
             .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent))))
-        BannerPreview(state, hero, heroFocused && !state.tvMenuOpen)
+        BannerPreview(state, hero, (heroFocused || heroPointed) && !state.tvMenuOpen) { previewPlaying = it }
         // Below the spotlight the rows sit on the app's own ground, as every
         // other screen does; the picture stays only as a faint wash behind them.
         val wash by androidx.compose.animation.core.animateFloatAsState(if (heroFocused) 0f else 0.82f,
@@ -290,9 +309,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
         if (!state.settings.tvTopBar) Row(Modifier.align(Alignment.TopEnd).padding(18.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)) { TvClock(state); RoomButton(state) }
         val spec = remember { pivot(0.08f) { heroRef[0] } }
-        val across = maxWidth - (GUTTER * 2).dp
-        val sizes = TvSizes(poster = (across - GAP * 5) / 6, wide = (across - GAP * 3) / 4, library = (across - GAP * 4) / 5,
-            large = (across - GAP * 2) / 3)
+        val sizes = tvSizes(maxWidth)
         CompositionLocalProvider(LocalBringIntoViewSpec provides spec, LocalTvSizes provides sizes) {
             LazyColumn(Modifier.fillMaxSize().onPreviewKeyEvent { e ->
                 // Up from the spotlight: the tabs come down from the top.
@@ -311,7 +328,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                 if (nowPlaying != null && app.lumiere.android.music.Music.isPlaying) item(key = "nowplaying") { NowPlayingBanner(state, nowPlaying) }
                 item(key = "hero") {
                     Hero(state, hero, pages.size, page, { d -> if (pages.isNotEmpty()) page = (page + d + pages.size) % pages.size }, Modifier.height(screenH * 0.68f)
-                        .onFocusChanged { heroFocused = it.hasFocus; heroRef[0] = it.hasFocus }, heroPlay) { bannerHeld = it }
+                        .onFocusChanged { heroFocused = it.hasFocus; heroRef[0] = it.hasFocus }, heroPlay, onPointed = { heroPointed = it }) { bannerHeld = it }
                 }
                 var index = 0
                 fun shelf(key: String, block: @Composable () -> Unit) {
@@ -419,7 +436,8 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
 
 /** The spotlight: the title's logo or name, its facts and story, Play and More Info, and the page dots. */
 @Composable
-private fun Hero(state: AppState, item: Item?, pages: Int, page: Int, onPage: (Int) -> Unit, modifier: Modifier, play: FocusRequester, onHold: (Boolean) -> Unit = {}) {
+private fun Hero(state: AppState, item: Item?, pages: Int, page: Int, onPage: (Int) -> Unit, modifier: Modifier, play: FocusRequester,
+                 onPointed: (Boolean) -> Unit = {}, onHold: (Boolean) -> Unit = {}) {
     var onPlay by remember { mutableStateOf(false) }
     var onInfo by remember { mutableStateOf(false) }
     val server = state.server ?: return
@@ -431,6 +449,8 @@ private fun Hero(state: AppState, item: Item?, pages: Int, page: Int, onPage: (I
     val pointer = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
     val pointedAt by pointer.collectIsHoveredAsState()
     LaunchedEffect(pointedAt, onInfo) { onHold(pointedAt || onInfo) }
+    LaunchedEffect(pointedAt) { onPointed(pointedAt) }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { onPointed(false) } }
     Box(modifier.fillMaxWidth().then(if (app.lumiere.android.AppBuild.quest) Modifier.hoverable(pointer) else Modifier)) {
         if (item == null) return@Box
         // In the private room the banner says so, in the room's own colour, so the two never feel alike.

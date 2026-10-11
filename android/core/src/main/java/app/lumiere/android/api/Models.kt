@@ -205,6 +205,23 @@ fun parseSegments(body: String): List<Segment> =
         )
     }
 
+/**
+ * A title's trailers as /LocalTrailers answers: a bare array (an `Items`
+ * envelope read too), in the server's order. A trailer that is only a web
+ * address — YouTube, mostly — is left out: ExoPlayer can't play it, and the
+ * banner would sit waiting on a picture that never comes.
+ */
+fun parseTrailers(body: String): List<Item> {
+    val trimmed = body.trimStart()
+    val array = if (trimmed.startsWith("[")) JSONArray(trimmed) else JSONObject(trimmed).optJSONArray("Items")
+    return array.objects().filterNot { o ->
+        val source = o.optJSONArray("MediaSources").objects().firstOrNull()
+        val where = source?.str("Path") ?: o.str("Path") ?: ""
+        o.str("LocationType") == "Remote" || source?.str("Protocol")?.equals("Http", true) == true ||
+            Regex("""^\s*(https?|plugin)://""", RegexOption.IGNORE_CASE).containsMatchIn(where)
+    }.map(::parseItem)
+}
+
 /** A film in 3D, by the markers its file name or title carries (3D, SBS, OU). */
 val Item.is3D: Boolean get() = Regex("""(?i)(\b3d\b|\bh?sbs\b|\bh?ou\b|half[- ]?sbs)""").containsMatchIn(name)
 
