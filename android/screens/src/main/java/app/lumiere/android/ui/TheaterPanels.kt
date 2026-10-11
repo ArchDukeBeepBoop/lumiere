@@ -111,8 +111,8 @@ fun TheaterBar() = WithAppImages {
             Theater.poke()
             when (a) {
                 Shortcuts.Action.TRACKS -> sheet = if (sheet == Sheet.TRACKS) Sheet.NONE else Sheet.TRACKS
-                Shortcuts.Action.SMALLER -> Stage.smaller()
-                Shortcuts.Action.LARGER -> Stage.larger()
+                Shortcuts.Action.SMALLER -> { Stage.smaller(); if (Stage.place == Stage.Place.CINEMA) Theater.say("Your seat: ${Stage.seatName().lowercase()}") }
+                Shortcuts.Action.LARGER -> { Stage.larger(); if (Stage.place == Stage.Place.CINEMA) Theater.say("Your seat: ${Stage.seatName().lowercase()}") }
                 Shortcuts.Action.CURVE -> Stage.toggleCurve()
                 Shortcuts.Action.PLACE -> Stage.nextPlace()
                 Shortcuts.Action.PLAYER_MENU -> Theater.windowAsked = !Theater.windowAsked
@@ -193,8 +193,11 @@ private class Look(val icon: ImageVector, val label: String, val caption: String
 
 private fun lookOf(a: Shortcuts.Action, speed: Float, tracksOpen: Boolean): Look = when (a) {
     Shortcuts.Action.TRACKS -> Look(Icons.Default.Subtitles, "Audio & Subtitles", chosen = tracksOpen)
-    Shortcuts.Action.SMALLER -> Look(Icons.Default.ZoomOut, "Smaller screen")
-    Shortcuts.Action.LARGER -> Look(Icons.Default.ZoomIn, "Larger screen")
+    // In the cinema the screen is a wall of a set size, and a size is the row you sit in.
+    Shortcuts.Action.SMALLER -> if (Stage.place == Stage.Place.CINEMA) Look(Icons.Default.ZoomOut, "Sit further back", value = Stage.seatName())
+        else Look(Icons.Default.ZoomOut, "Smaller screen")
+    Shortcuts.Action.LARGER -> if (Stage.place == Stage.Place.CINEMA) Look(Icons.Default.ZoomIn, "Sit nearer the screen", value = Stage.seatName())
+        else Look(Icons.Default.ZoomIn, "Larger screen")
     Shortcuts.Action.CURVE -> if (Stage.curved) Look(Icons.Default.Crop169, "Flatten the screen", value = "Curved now")
         else Look(Icons.Default.Panorama, "Curve the screen", value = "Flat now")
     Shortcuts.Action.PLACE -> placeCaption(Stage.place).let { Look(placeIcon(Stage.place), "Watch in ${Stage.place.label}", caption = it, value = "$it: tap for the next") }

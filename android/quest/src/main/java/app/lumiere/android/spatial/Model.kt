@@ -104,11 +104,19 @@ class Modeller<K>(
     private val shaded: (K) -> Boolean = { true },
     /** Whether a kind takes the light of the side of the picture it's on (what's on the walls). */
     private val sided: (K) -> Boolean = { true },
+    /**
+     * Five ways of facing, telling the faces turned to the screen from those
+     * turned to you (the seats before you dark against the picture); or
+     * three — up, sideways, down — for a place of few parts, where each way
+     * is another mesh to draw.
+     */
+    private val fivefold: Boolean = true,
 ) {
-    /** One mesh's worth: a kind of part, on one side of you, facing one way. */
-    data class Piece<K>(val kind: K, val side: Side, val facing: Facing)
+    /** One mesh's worth: a kind of part, on one side of you, facing one way (in [chunk]s, if there's a great deal of it). */
+    data class Piece<K>(val kind: K, val side: Side, val facing: Facing, val chunk: Int = 0)
 
     val meshes = LinkedHashMap<Piece<K>, MeshData>()
+    private val chunks = HashMap<Piece<K>, Int>()
 
     private var kind: K? = null
     private var side = Side.MIDDLE
@@ -164,8 +172,17 @@ class Modeller<K>(
         val count = corners.size / 3
         if (count < 3) return
         val nw = mul(r, outward).let { normalise(it) }
-        val facing = if (shaded(k)) Facing.of(nw[0], nw[1], nw[2]) else Facing.SIDEWAYS
-        val mesh = meshes.getOrPut(Piece(k, side, facing)) { MeshData() }
+        val facing = if (!shaded(k)) Facing.SIDEWAYS else Facing.of(nw[0], nw[1], nw[2]).let {
+            if (fivefold || it == Facing.UP || it == Facing.DOWN) it else Facing.SIDEWAYS
+        }
+        // A mesh stays well within what sixteen-bit indices can reach; past that, another of the same.
+        val base: Piece<K> = Piece(k, side, facing)
+        var piece: Piece<K> = base.copy(chunk = chunks[base] ?: 0)
+        if ((meshes[piece]?.vertices ?: 0) + count > MAX_VERTICES) {
+            piece = piece.copy(chunk = piece.chunk + 1)
+            chunks[base] = piece.chunk
+        }
+        val mesh = meshes.getOrPut(piece) { MeshData() }
         val first = mesh.vertices
         // The texture runs across the face as you'd read it standing before it, top up: along
         // its right-hand edge and down it; on a floor or a ceiling, across and ahead.
@@ -300,6 +317,8 @@ class Modeller<K>(
     }
 
     companion object {
+        /** The most vertices in one mesh. */
+        const val MAX_VERTICES = 60_000
         const val UP_FACE = 1
         const val DOWN_FACE = 2
         const val LEFT_FACE = 4      // +X

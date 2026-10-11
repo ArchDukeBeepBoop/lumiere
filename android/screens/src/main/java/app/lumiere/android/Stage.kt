@@ -91,11 +91,31 @@ object Stage {
     }
 
     fun larger() { screenSize = (screenSize + 1).coerceAtMost(SCREEN_SIZES - 1); save() }
+    /** Straight to size [size] (the handset's seats and sizes). */
+    fun sizeTo(size: Int) { screenSize = size.coerceIn(0, SCREEN_SIZES - 1); save() }
+
+    /** In the cinema a size is a seat: its five rows, from the back to the front. */
+    val SEATS = listOf("The back row", "Rear stalls", "The middle of the hall", "Front stalls", "The front row")
+    /** Elsewhere, how big the screen is. */
+    val SIZES = listOf("Smallest", "Small", "Medium", "Large", "Largest")
+    /** Your seat in the cinema now. */
+    fun seatName(): String = SEATS[screenSize.coerceIn(0, SEATS.lastIndex)]
     fun smaller() { screenSize = (screenSize - 1).coerceAtLeast(0); save() }
     fun toggleCurve() { curved = !curved; save() }
     fun toggleAmbience() { ambience = !ambience; save() }
     /** Room, cinema, cabin, lakeside, above the clouds, the Moon, the space station, the dark, space, round again. */
     fun nextPlace() { place = Place.entries[(place.ordinal + 1) % Place.entries.size]; save() }
+    /** Straight to [p] (the handset's places). */
+    fun goTo(p: Place) { place = p; save() }
+
+    /**
+     * Away from your room the handset — a small panel near your hands —
+     * chooses what plays on the place's big screen, and the whole window
+     * stays as it is for your room. True while you've asked for the whole
+     * window there instead (search, settings, everything else); a film
+     * starting, or another place, puts it back to the handset.
+     */
+    var wholeWindow by mutableStateOf(false)
     fun bringHere() { bringHereAsks++ }
 
     /**

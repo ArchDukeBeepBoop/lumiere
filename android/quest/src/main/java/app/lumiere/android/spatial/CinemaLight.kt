@@ -12,6 +12,16 @@ object CinemaLight {
     const val LIT = 1f
     /** How much of the film's colour reaches the room at most, while it's dark. */
     const val SPILL = 0.07f
+    /** The cinema's pace: going down for a film over about four seconds, coming up over two. */
+    const val HALL_DOWN = 25f
+    const val HALL_UP = 12f
+
+    /** A step from colour [now] toward [target], a little each tick, so the film's light glides rather than jumps. */
+    fun easeTint(now: Triple<Float, Float, Float>?, target: Triple<Float, Float, Float>?): Triple<Float, Float, Float>? {
+        if (target == null || now == null) return target
+        fun step(a: Float, b: Float) = (a + (b - a) * 0.12f).let { if (kotlin.math.abs(b - it) < 0.004f) b else it }
+        return Triple(step(now.first, target.first), step(now.second, target.second), step(now.third, target.third))
+    }
 
     fun target(inPlayer: Boolean, playing: Boolean): Float = when {
         inPlayer && playing -> PLAYING
@@ -19,9 +29,13 @@ object CinemaLight {
         else -> LIT
     }
 
-    /** A step from [now] toward [target], a sixth of the way each tick: about a second and a half to settle. */
-    fun ease(now: Float, target: Float): Float {
-        val next = now + (target - now) / 6f
+    /**
+     * A step from [now] toward [target], [slowness] steps' worth each tick: a
+     * sixth of the way (about a second and a half to settle), or slower for a
+     * cinema's house lights, which go down at their own unhurried pace.
+     */
+    fun ease(now: Float, target: Float, slowness: Float = 6f): Float {
+        val next = now + (target - now) / slowness
         return if (kotlin.math.abs(target - next) < 0.005f) target else next
     }
 

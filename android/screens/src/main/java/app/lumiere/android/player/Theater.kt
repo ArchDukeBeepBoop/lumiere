@@ -64,6 +64,9 @@ object Theater {
      * preview frames; the poster's colour is used then.
      */
     var screenColour by mutableStateOf<androidx.compose.ui.graphics.Color?>(null)
+    /** The picture's left and right thirds, for the walls on your left and right (as a TV's ambilight). */
+    var screenLeft by mutableStateOf<androidx.compose.ui.graphics.Color?>(null)
+    var screenRight by mutableStateOf<androidx.compose.ui.graphics.Color?>(null)
 
     /** Which preview sheet, and which tile on it (column, row), shows the film at [seconds]. */
     fun tileAt(t: Trickplay, seconds: Double): Triple<Int, Int, Int> {
@@ -154,12 +157,12 @@ fun rememberTheater(
             if (taken) { player.clearVideoSurface(surface); view.player = null; view.player = player }
         }
     }
-    // The scene's light, from the film's own preview frames, every two seconds.
+    // The scene's light, from the film's own preview frames, every second: the whole, and its left and right thirds.
     @Suppress("DEPRECATION") val images = coil.compose.LocalImageLoader.current
     val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(item.id) {
         while (true) {
-            kotlinx.coroutines.delay(2_000)
+            kotlinx.coroutines.delay(1_000)
             val t = trickplay() ?: continue
             val (sheet, col, row) = Theater.tileAt(t, clock.now())
             val request = coil.request.ImageRequest.Builder(context).data(server.trickplaySheet(item.id, t.width, sheet))
@@ -168,6 +171,9 @@ fun rememberTheater(
             val x0 = col * t.width; val y0 = row * t.height
             if (x0 + t.width > bitmap.width || y0 + t.height > bitmap.height) continue
             Theater.screenColour = Theater.averageOf(x0, y0, t.width, t.height) { x, y -> bitmap.getPixel(x, y) }
+            val third = (t.width / 3).coerceAtLeast(1)
+            Theater.screenLeft = Theater.averageOf(x0, y0, third, t.height, step = 4) { x, y -> bitmap.getPixel(x, y) }
+            Theater.screenRight = Theater.averageOf(x0 + t.width - third, y0, third, t.height, step = 4) { x, y -> bitmap.getPixel(x, y) }
         }
     }
     val title = if (item.isEpisode) item.seriesName ?: item.name else item.name
@@ -181,6 +187,8 @@ fun rememberTheater(
             Theater.cues = emptyList()
             Theater.windowAsked = false
             Theater.screenColour = null
+            Theater.screenLeft = null
+            Theater.screenRight = null
             Theater.next = null
         }
     }

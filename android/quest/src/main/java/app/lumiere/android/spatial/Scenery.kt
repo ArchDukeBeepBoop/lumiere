@@ -37,6 +37,8 @@ class Scenery<K>(
     private val shaded: (K) -> Boolean = { !glows(it) },
     /** Whether a kind takes the light of its own side of the picture; by default all. */
     private val sided: (K) -> Boolean = { true },
+    /** Five ways of facing (the cinema), or three (Modeller). */
+    private val fivefold: Boolean = false,
 ) {
     /** One mesh on the headset: what it is, its address, and the colour it was made in. */
     private class Shown<K>(val piece: Modeller.Piece<K>, val entity: Entity, val uri: Uri, val first: Triple<Float, Float, Float>)
@@ -63,7 +65,7 @@ class Scenery<K>(
         clear()
         builtFor = wanted
         this.seat = seat
-        val modeller = Modeller(::tileOf, shaded, sided)
+        val modeller = Modeller(::tileOf, shaded, sided, fivefold)
         val moving = mutableListOf<Mover<K>>()
         blocks().forEachIndexed { i, b ->
             if (moves(b, i, 0f) != null) {

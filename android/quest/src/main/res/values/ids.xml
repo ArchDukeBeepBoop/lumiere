@@ -6,6 +6,7 @@
     <item name="lumiere_screen" type="id" />
     <item name="lumiere_captions" type="id" />
     <item name="lumiere_transport" type="id" />
+    <item name="lumiere_handset" type="id" />
     <item name="lumiere_wall" type="id" />
     <item name="lumiere_marquee" type="id" />
 </resources>

@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Cabin
 import androidx.compose.material.icons.filled.Landscape
+import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -89,6 +90,9 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
         // itself resizes from its corners and moves by its bar, as Quest windows do.
         RailButton(placeIcon(Stage.place), "You're in ${Stage.place.label}: change", chosen = false,
             caption = placeCaption(Stage.place)) { Stage.nextPlace() }
+        // Away from your room, back to the handset near your hands (the whole window stays for your room).
+        if (Stage.place != Stage.Place.ROOM && Handset.enabled && Stage.wholeWindow)
+            RailButton(Icons.Default.SettingsRemote, "Back to the handset", chosen = false, caption = "Handset") { Stage.wholeWindow = false }
         if (PosterWall.enabled) RailButton(Icons.Default.ViewModule, "Poster wall", chosen = PosterWall.open) { PosterWall.open = !PosterWall.open }
         RailButton(Icons.Default.CenterFocusStrong, "Bring everything here", chosen = false) { Stage.bringHere() }
         // The place's own sounds (the fire, the lake at night): on or off.

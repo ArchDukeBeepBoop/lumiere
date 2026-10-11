@@ -64,10 +64,16 @@ object ModelMeshes {
         if (mesh == null || mesh.indexCount == 0) return SceneMesh.box(-0.001f, -0.001f, -0.001f, 0.001f, 0.001f, 0.001f, material)
         m.material = material
         m.albedo?.let { apply(material, it) }
-        return SceneMesh.meshWithMaterials(
-            mesh.positions(), mesh.normals(), mesh.uvs(), IntArray(mesh.vertices) { -1 }, mesh.indices(),
-            intArrayOf(0, mesh.indexCount), arrayOf(material), false,
-        )
+        // Made as the SDK makes its own 3D text: one material over every index.
+        return runCatching {
+            SceneMesh.meshWithMaterials(
+                mesh.positions(), mesh.normals(), mesh.uvs(), IntArray(mesh.vertices) { -1 }, mesh.indices(),
+                intArrayOf(0, mesh.indexCount), arrayOf(material), false,
+            )
+        }.getOrElse {
+            android.util.Log.e("Lumiere", "a modelled mesh couldn't be made", it)
+            SceneMesh.box(-0.001f, -0.001f, -0.001f, 0.001f, 0.001f, 0.001f, material)
+        }
     }
 
     private fun apply(material: SceneMaterial, albedo: FloatArray) {

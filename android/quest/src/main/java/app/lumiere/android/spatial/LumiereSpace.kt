@@ -74,6 +74,8 @@ class LumiereSpace : AppSystemActivity() {
         app.lumiere.android.player.Theater.enabled = !plain
         // Away from your room, the big screen shows the title you're on while you browse.
         app.lumiere.android.ui.Marquee.enabled = !plain
+        // And there, a handset near your hands chooses what plays on it (the window stays for your room).
+        app.lumiere.android.ui.Handset.enabled = !plain
         app.lumiere.android.Stage.load(this)
         if (!plain) systemManager.registerSystem(Remote())
     }
@@ -125,6 +127,18 @@ class LumiereSpace : AppSystemActivity() {
                 UIPanelSettings(
                     shape = QuadShapeOptions(width = Window.TRANSPORT_WIDTH_M, height = Window.TRANSPORT_HEIGHT_M),
                     display = DpDisplayOptions(width = Window.TRANSPORT_WIDTH_DP.toFloat(), height = Window.TRANSPORT_HEIGHT_DP.toFloat()),
+                    style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
+                )
+            },
+        ),
+        // The handset: away from your room, near your hands, for what plays on the big screen.
+        ComposeViewPanelRegistration(
+            R.id.lumiere_handset,
+            composeViewCreator = { _, context -> ComposeView(context).apply { setContent { app.lumiere.android.ui.Handset.Panel() } } },
+            settingsCreator = {
+                UIPanelSettings(
+                    shape = QuadShapeOptions(width = Window.HANDSET_WIDTH_M, height = Window.HANDSET_HEIGHT_M),
+                    display = DpDisplayOptions(width = Window.HANDSET_WIDTH_DP.toFloat(), height = Window.HANDSET_HEIGHT_DP.toFloat()),
                     style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
                 )
             },
@@ -234,8 +248,13 @@ class LumiereSpace : AppSystemActivity() {
             R.id.lumiere_transport, Transform(Window.parked()),
             Grabbable(enabled = true, type = GrabbableType.FACE), com.meta.spatial.toolkit.Visible(false),
         )
+        // The handset waits out of sight until you're away from your room; it can be carried too.
+        val handset = Entity.createPanelEntity(
+            R.id.lumiere_handset, Transform(Window.parked()),
+            Grabbable(enabled = true, type = GrabbableType.FACE), com.meta.spatial.toolkit.Visible(false),
+        )
         roomWalls = mruk?.let { RoomWalls(this, it) }
-        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls).also { director = it }.start(scope) }
+        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset).also { director = it }.start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "director unavailable", it) }
         // The place's own sounds, while the app is in front (onResume and onPause start and stop them).
         ambience.start()

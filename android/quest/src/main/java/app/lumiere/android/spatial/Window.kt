@@ -98,6 +98,17 @@ object Window {
     const val TRANSPORT_BELOW_EYES_M = 0.42f
     /** Over the transport, while the Theater is up, the ornament (Up Next, the scrub frames). */
     const val ORNAMENT_OVER_TRANSPORT_BELOW_EYES_M = 0.12f
+    /**
+     * The handset (away from your room): a small pane near your hands for
+     * choosing what plays on the big screen, below its line of sight and
+     * turned up to your eyes. 1000 × 600 dp laid out, 0.66 m across.
+     */
+    const val HANDSET_WIDTH_DP = 1000
+    const val HANDSET_HEIGHT_DP = 600
+    const val HANDSET_WIDTH_M = 0.66f
+    val HANDSET_HEIGHT_M = HANDSET_WIDTH_M * HANDSET_HEIGHT_DP / HANDSET_WIDTH_DP
+    const val HANDSET_DISTANCE_M = 0.78f
+    const val HANDSET_BELOW_EYES_M = 0.34f
     /** "More": the window comes this far before you, over the Theater, for its tracks and info. */
     const val ASKED_WINDOW_DISTANCE_M = 1.25f
 }

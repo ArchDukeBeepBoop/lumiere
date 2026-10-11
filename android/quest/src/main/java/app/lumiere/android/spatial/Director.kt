@@ -41,6 +41,8 @@ class Director(
     private val ambience: Ambience? = null,
     /** Your room's walls from Space Setup, for the screen on your wall; none on a plain start. */
     private val walls: RoomWalls? = null,
+    /** Away from your room, the small pane near your hands that chooses what plays (Handset); none on a plain start. */
+    private val handset: Entity? = null,
 ) {
     private var seenMountAsks = Stage.mountAsks
     /** The room is read for a mount made before at most once a start, and only if already allowed. */
@@ -52,7 +54,7 @@ class Director(
     /** The film's screen as shown: the player's request, held through the gaps (TheaterHold). */
     private var shownRequest: Theater.Request? = null
     private val theatreMade = lazy { Scenery(Auditorium::colour, Auditorium::surface, { b, _, t -> Auditorium.moves(b, t) }, Auditorium::glows, Auditorium::shape,
-        Auditorium::shaded, Auditorium::sided) }
+        Auditorium::shaded, Auditorium::sided, fivefold = true) }
     private val theatre by theatreMade
     private val cabinMade = lazy { Scenery(Cabin::colour, Cabin::surface, { b, i, t -> Cabin.moves(b.kind, i, t) }, { Cabin.spill(it) == 0f }) }
     private val cabin by cabinMade
@@ -75,6 +77,11 @@ class Director(
     private var ornamentShown = false
     private var wallShown = false
     private var transportShown = false
+    private var handsetShown = false
+    /** The place the handset last saw, so arriving somewhere new puts the whole window away again. */
+    private var handsetPlace: Stage.Place? = null
+    /** Since when a film was asked for from the handset with nothing yet to show for it (0: not waiting). */
+    private var stuckSince = 0L
     private var seenAsks = Stage.bringHereAsks
     private var tilted = false
     /** Whether the window was last brought before you for away from your room (low) or for it; null at the start. */
@@ -85,6 +92,12 @@ class Director(
     private var shownBrightness = -1f
     private var shownTint: Triple<Float, Float, Float>? = null
     private var displayRate = 0f
+    /** The film's light on the left and right walls now, gliding toward the picture's (CinemaLight.easeTint). */
+    private var tintLeft: Triple<Float, Float, Float>? = null
+    private var tintRight: Triple<Float, Float, Float>? = null
+    /** When the last film ended (for the cinema's curtain), and the last frame's time (for its motion). */
+    private var endedAt = Long.MIN_VALUE / 2
+    private var lastFrame = 0f
     private val usualRate by lazy { runCatching { scene.getConfirmedFrameRate() }.getOrDefault(0f) }
 
     private enum class WindowMode { HOME, ASKED, HIDDEN }
@@ -92,6 +105,8 @@ class Director(
     private companion object {
         /** Below this, the head isn't tracked yet (or you're lying on the floor): no hall is built round it. */
         const val MIN_EYE_HEIGHT_M = 0.3f
+        /** How long a film asked for from the handset may take to appear before the window comes to say why. */
+        const val STUCK_MS = 6_000L
     }
 
     /** The film's sound comes from here: the Theater's flat screen, the window, or (in a sphere) all round. */
@@ -101,7 +116,11 @@ class Director(
      * moves for anyone who asked for less motion.
      */
     fun animate(seconds: Float) {
-        if (app.lumiere.android.Motion.reduced) return
+        val dt = (seconds - lastFrame).coerceIn(0f, 0.1f)
+        lastFrame = seconds
+        // With less motion asked for, the cinema's curtain stays open and nothing moves.
+        if (app.lumiere.android.Motion.reduced) { FrontCurtain.closed = 0f; return }
+        FrontCurtain.step(dt)
         if (theatreMade.isInitialized()) theatre.animate(seconds)
         if (cabinMade.isInitialized()) cabin.animate(seconds)
         if (dockMade.isInitialized()) dock.animate(seconds)
@@ -198,11 +217,25 @@ class Director(
             shownBrightness = -1f; shownTint = null
         }
 
+        // Away from your room the handset chooses what plays, and the window stays as it is for your room,
+        // unless you've asked for it (search, settings, everything else). Somewhere new, the handset again.
+        if (place != handsetPlace) { handsetPlace = place; Stage.wholeWindow = false }
+        // Whatever only the window can do — signing in, choosing who's watching, a PIN, a report — has it.
+        val shown = OpenApp.state
+        val needsWindow = shown == null || shown.session == null || shown.choosing || shown.pinFor != null || shown.pinChooseFor != null ||
+            shown.crashReport != null
+        val compact = away && handset != null && !Stage.wholeWindow && !needsWindow
+        // A film asked for from the handset that never comes (an error, a sign-in): the window, to say why.
+        if (compact && inPlayer && Theater.controls == null) {
+            if (stuckSince == 0L) stuckSince = now else if (now - stuckSince > STUCK_MS) Stage.wholeWindow = true
+        } else stuckSince = 0L
+
         // The window: home while browsing; out of the way in the Theater unless asked for; aside for the wall.
         val wallWanted = PosterWall.open && !on
         val mode = when {
             on && Theater.windowAsked -> WindowMode.ASKED
             on || wallWanted || waiting -> WindowMode.HIDDEN
+            compact -> WindowMode.HIDDEN
             else -> WindowMode.HOME
         }
         if (mode != windowMode) setWindow(mode)
@@ -218,9 +251,21 @@ class Director(
             }
         }
 
-        // The tab bar: there while browsing; the transport has the Theater's controls.
-        val showSidebar = !on && !waiting
-        if (showSidebar != sidebarShown) { sidebarShown = showSidebar; show(sidebar, showSidebar) }
+        // The tab bar: there while browsing with the window; the transport has the Theater's controls,
+        // and away from your room the handset has its own.
+        val showSidebar = !on && !waiting && !compact
+        if (showSidebar != sidebarShown) {
+            sidebarShown = showSidebar
+            if (showSidebar && windowMode == WindowMode.HOME) dockSidebar()
+            show(sidebar, showSidebar)
+        }
+        // The handset: away from your room, while no film plays; before you each time it comes.
+        val showHandset = compact && !on && !waiting && !inPlayer
+        if (handset != null && showHandset != handsetShown) {
+            handsetShown = showHandset
+            if (showHandset) placeHandset() else handset.setComponent(Transform(Window.parked()))
+            handset.setComponent(Visible(showHandset))
+        }
 
         // The poster wall round you.
         if (wallWanted != wallShown) {
@@ -254,19 +299,32 @@ class Director(
         val watching = on || inPlayer
         val target = if (watching && sleepLeft < 60_000) CinemaLight.PLAYING * (sleepLeft.coerceAtLeast(0) / 60_000f)
             else CinemaLight.target(watching, playing)
-        brightness = if (app.lumiere.android.Motion.reduced) target else CinemaLight.ease(brightness, target)
-        // The colour of the picture now (from its trickplay frames), else the title's own.
-        val tint = (Theater.screenColour ?: Ambient.colour)?.let { Triple(it.red, it.green, it.blue) }
+        // The cinema's house lights at its own pace; elsewhere a second and a half.
+        val slowness = if (!hall) 6f else if (target < brightness) CinemaLight.HALL_DOWN else CinemaLight.HALL_UP
+        brightness = if (app.lumiere.android.Motion.reduced) target else CinemaLight.ease(brightness, target, slowness)
+        // The colour of the picture now (from its trickplay frames) — its left third on your left, its right on your right —
+        // else the title's own; gliding from one to the next.
+        fun rgb(c: androidx.compose.ui.graphics.Color?) = c?.let { Triple(it.red, it.green, it.blue) }
+        val whole = rgb(Theater.screenColour ?: Ambient.colour)
+        val wantLeft = rgb(Theater.screenLeft) ?: whole
+        val wantRight = rgb(Theater.screenRight) ?: whole
+        tintLeft = if (app.lumiere.android.Motion.reduced) wantLeft else CinemaLight.easeTint(tintLeft, wantLeft)
+        tintRight = if (app.lumiere.android.Motion.reduced) wantRight else CinemaLight.easeTint(tintRight, wantRight)
+        val left = tintLeft; val right = tintRight
         when {
-            hall -> theatre.light(brightness, tint)
-            inCabin -> cabin.light(brightness, tint)
-            onDock -> dock.light(brightness, tint)
-            onTerrace -> terrace.light(brightness, tint)
-            onMoon -> moonBase.light(brightness, tint)
-            aboard -> station.light(brightness, tint)
-            place == Stage.Place.ROOM && !sphere -> lightRoom(brightness, tint)
+            hall -> theatre.light(brightness, left, right)
+            inCabin -> cabin.light(brightness, left, right)
+            onDock -> dock.light(brightness, left, right)
+            onTerrace -> terrace.light(brightness, left, right)
+            onMoon -> moonBase.light(brightness, left, right)
+            aboard -> station.light(brightness, left, right)
+            place == Stage.Place.ROOM && !sphere -> lightRoom(brightness, roomTint(left, right))
         }
-        return brightness != target
+        // The cinema's front curtain: drawn as a film comes, opening as it starts, drawn a while after it ends.
+        FrontCurtain.target = if (place != Stage.Place.CINEMA || app.lumiere.android.Motion.reduced) 0f
+            else FrontCurtain.targetFor(waiting, on, now - endedAt)
+        if (place != Stage.Place.CINEMA) FrontCurtain.closed = 0f
+        return brightness != target || left != wantLeft || right != wantRight || FrontCurtain.closed != FrontCurtain.target
     }
 
     /**
@@ -314,14 +372,16 @@ class Director(
     /** Where you look, level, for the place's sounds to come from where their sources are. */
     private fun lookingAt(): Vector3 = scene.getViewerPose().forward()
 
-    /** A film starts: you're seated where you are, the window steps aside. */
+    /** A film starts: you're seated where you are, the window steps aside (after it, the handset comes back). */
     private fun enterTheater() {
         seat = seatHere()
+        Stage.wholeWindow = false
         Theater.poke()
     }
 
     /** The film ends: the screen goes, the window comes back where it was. */
     private fun leaveTheater() {
+        endedAt = Theater.clockMs()
         screen.clear()
         // Browsing goes on from the same seat: in the cinema, its hall stays round you.
         browseSeat = seat
@@ -414,6 +474,12 @@ class Director(
         }
         if (wallShown) placeWall()
         if (ornamentShown) placeOrnament()
+        if (handsetShown) placeHandset()
+    }
+
+    /** The handset near your hands, below the big screen's line of sight, turned up to your eyes. */
+    private fun placeHandset() {
+        handset?.setComponent(Transform(nearYou(Window.HANDSET_DISTANCE_M, Window.HANDSET_BELOW_EYES_M)))
     }
 
     /** The window before your eyes, facing you; looking up while lying back, where you look. */
@@ -429,9 +495,26 @@ class Director(
         window.setComponent(Transform(WindowPlacement.pose(head.t, flat(ahead.forward()), ahead.q, Stage.place != Stage.Place.ROOM)))
     }
 
-    /** The tab bar docked beside the window's left edge; from there it's yours to move. */
+    /** The tab bar docked beside the window's left edge — as wide as the window is now — and from there it's yours to move. */
     private fun dockSidebar() {
-        sidebar.setComponent(Transform(Docking.beside(window.getComponent<Transform>().transform, Window.WIDTH_M)))
+        sidebar.setComponent(Transform(Docking.beside(window.getComponent<Transform>().transform, windowWidth())))
+    }
+
+    /**
+     * The window's width now: its corners resize it, so the default is only
+     * where it starts. Read from the SDK's own record of its size, if it has one.
+     */
+    private fun windowWidth(): Float {
+        val measured = runCatching {
+            when {
+                window.hasComponent<com.meta.spatial.isdk.IsdkPanelDimensions>() ->
+                    window.getComponent<com.meta.spatial.isdk.IsdkPanelDimensions>().dimensions.x
+                window.hasComponent<com.meta.spatial.toolkit.PanelDimensions>() ->
+                    window.getComponent<com.meta.spatial.toolkit.PanelDimensions>().dimensions.x
+                else -> null
+            }
+        }.getOrNull()
+        return measured?.takeIf { it in Window.MIN_WIDTH_M * 0.8f..Window.MAX_WIDTH_M * 1.2f } ?: Window.WIDTH_M
     }
 
     /** The wall's middle before you, its curve centred on you, a little above your eyes. */
@@ -472,6 +555,17 @@ class Director(
         if (wanted <= 0f || wanted == displayRate) return
         displayRate = wanted
         if (!scene.requestExactDisplayRate(wanted)) scene.setPreferredDisplayRate(wanted)
+    }
+
+    /**
+     * The film's colour for your room's passthrough: both halves together, in
+     * steps of a thirty-second, so the table isn't rebuilt for each small glide.
+     */
+    private fun roomTint(left: Triple<Float, Float, Float>?, right: Triple<Float, Float, Float>?): Triple<Float, Float, Float>? {
+        val l = left ?: right ?: return null
+        val r = right ?: l
+        fun q(v: Float) = kotlin.math.round(v * 32f) / 32f
+        return Triple(q((l.first + r.first) / 2), q((l.second + r.second) / 2), q((l.third + r.third) / 2))
     }
 
     /** Your room's passthrough at [level], with the film's colour spilling in as it darkens. */
