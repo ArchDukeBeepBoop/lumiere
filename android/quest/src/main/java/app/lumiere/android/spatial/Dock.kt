@@ -8,7 +8,7 @@ import kotlin.math.roundToInt
  * through, a low beam along each edge, short posts under it, an iron bollard
  * at each far corner and a lantern on a post at each corner behind you. No
  * water: the sky's lake is all round and under you, and a plane would hide
- * it. About twenty-five boxes.
+ * it. About two dozen boxes.
  *
  * The deck reaches up to five metres ahead, but stops where your sightline
  * to the screen's foot comes down to a bollard's height, so a big screen's

@@ -66,7 +66,7 @@ class Director(
     /** Whether the window was last brought before you for away from your room (low) or for it; null at the start. */
     private var windowAway: Boolean? = null
 
-    // Light: the room's passthrough, or the cinema's hall.
+    // Light: the room's passthrough, or the place round you (the cinema's hall, the cabin, the pontoon).
     private var brightness = CinemaLight.LIT
     private var shownBrightness = -1f
     private var shownTint: Triple<Float, Float, Float>? = null
