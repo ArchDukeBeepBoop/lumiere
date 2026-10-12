@@ -67,6 +67,8 @@ object Playback {
             context, type, subtitles, data, androidx.media3.extractor.DefaultExtractorsFactory(), renderers,
         )
         return built.apply {
+            // The sound to the output you chose (AudioOutputs), the headset's or your headphones.
+            AudioOutputs.attach(context, this)
             // Subtitles in the system's language when there is a choice; the
             // controller's subtitle button changes it.
             trackSelectionParameters = trackSelectionParameters.buildUpon()

@@ -22,7 +22,7 @@ object Shortcuts {
     }
 
     /** As many as the bar holds beside its own buttons, and stays easy to aim at. */
-    const val MAX_PINNED = 6
+    const val MAX_PINNED = 5
 
     /** What you start with: the buttons the bar had before you could choose. */
     val DEFAULTS = listOf(Action.TRACKS, Action.SMALLER, Action.LARGER, Action.PLACE)

@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
 import androidx.compose.material3.Icon
@@ -104,7 +105,7 @@ object Handset {
 
 private data class HandsetShelf(val title: String, val items: List<Item>, val wide: Boolean)
 
-private enum class HandsetView { SHELVES, EPISODES, PLACES }
+private enum class HandsetView { SHELVES, EPISODES, PLACES, SEARCH }
 
 /** The shelves, in Home's order, with private titles left out as Home leaves them. */
 private suspend fun loadShelves(state: AppState, server: Server, userId: String): List<HandsetShelf> = coroutineScope {
@@ -161,6 +162,7 @@ private fun Body(state: AppState, server: Server) {
         Column(Modifier.weight(1f).fillMaxHeight()) {
             when (view) {
                 HandsetView.PLACES -> Places { Stage.goTo(it); view = HandsetView.SHELVES }
+                HandsetView.SEARCH -> Search(state, server, userId, chosen) { item -> if (chosen?.id == item.id) play(item) else choose(item) }
                 HandsetView.EPISODES -> {
                     val show = chosen?.let { if (it.isSeries) it.id else it.seriesId }
                     if (show == null) view = HandsetView.SHELVES
@@ -194,9 +196,7 @@ private fun Rail(state: AppState, view: HandsetView, go: (HandsetView) -> Unit) 
         GlassButton(Icons.Default.Home, "Titles", chosen = view == HandsetView.SHELVES, size = 54.dp) { go(HandsetView.SHELVES) }
         GlassButton(placeIcon(Stage.place), "Places: you're in ${Stage.place.label}", chosen = view == HandsetView.PLACES,
             caption = placeCaption(Stage.place), size = 54.dp) { go(HandsetView.PLACES) }
-        GlassButton(Icons.Default.Search, "Search (the whole window)", size = 54.dp) {
-            state.tab(Screen.Search); Stage.wholeWindow = true
-        }
+        GlassButton(Icons.Default.Search, "Search", chosen = view == HandsetView.SEARCH, size = 54.dp) { go(HandsetView.SEARCH) }
         GlassButton(Icons.Default.OpenInFull, "Everything (the whole window)", size = 54.dp) { Stage.wholeWindow = true }
         Spacer(Modifier.weight(1f))
         GlassButton(Icons.Default.GraphicEq, if (Stage.ambience) "Sounds of the place: on" else "Sounds of the place: off",
@@ -205,6 +205,7 @@ private fun Rail(state: AppState, view: HandsetView, go: (HandsetView) -> Unit) 
             PosterWall.open = !PosterWall.open
         }
         GlassButton(Icons.Default.CenterFocusStrong, "Bring everything here", size = 48.dp) { Stage.bringHere() }
+        MusicGroup(state, size = 40.dp)
     }
 }
 
@@ -263,6 +264,40 @@ private fun Poster(item: Item, server: Server, wide: Boolean, chosen: Boolean, o
         Text(if (item.isEpisode) listOfNotNull(item.episodeLabel, item.name).joinToString(" · ") else item.name,
             color = Palette.textSecondary, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
+/**
+ * Search, here on the handset: type (the headset's keyboard comes up under
+ * the field) and the titles that match fill the shelf as you go; touch one
+ * for the big screen, again to play — the window never needs to come.
+ */
+@Composable
+private fun Search(state: AppState, server: Server, userId: String, chosen: Item?, onTap: (Item) -> Unit) {
+    var term by remember { mutableStateOf("") }
+    var results by remember { mutableStateOf<List<Item>?>(null) }
+    val focus = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    LaunchedEffect(term) {
+        if (term.trim().length < 2) { results = null; return@LaunchedEffect }
+        kotlinx.coroutines.delay(300)
+        results = state.visible(runCatching { server.search(userId, term.trim()) }.getOrDefault(emptyList()))
+            .filter { it.isPlayable || it.isSeries }
+    }
+    androidx.compose.material3.OutlinedTextField(term, { term = it }, singleLine = true,
+        placeholder = { Text("Films, shows, people…", color = Palette.textSecondary) },
+        leadingIcon = { Icon(Icons.Default.Search, null, tint = Palette.textSecondary) },
+        shape = RoundedCornerShape(50),
+        colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Palette.accent, unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
+            focusedTextColor = Palette.textPrimary, unfocusedTextColor = Palette.textPrimary, cursorColor = Palette.accent),
+        modifier = Modifier.fillMaxWidth().focusRequester(focus))
+    Spacer(Modifier.height(10.dp))
+    val list = results
+    when {
+        list == null -> Text("Type at least two letters", color = Palette.textSecondary, modifier = Modifier.padding(8.dp))
+        list.isEmpty() -> Text("Nothing matches “${term.trim()}”", color = Palette.textSecondary, modifier = Modifier.padding(8.dp))
+        else -> Posters(list, server, wide = false, chosen, onTap)
     }
 }
 

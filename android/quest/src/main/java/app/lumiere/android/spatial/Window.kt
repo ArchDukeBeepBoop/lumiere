@@ -89,7 +89,7 @@ object Window {
      * 0.82 m across; the bar is its lowest 250 dp.
      */
     const val TRANSPORT_WIDTH_DP = 1100
-    const val TRANSPORT_HEIGHT_DP = 560
+    const val TRANSPORT_HEIGHT_DP = 700
     /** The bar's own height within the panel, to keep it where it was as the panel grew above it. */
     const val TRANSPORT_BAR_DP = 250
     const val TRANSPORT_WIDTH_M = 0.82f

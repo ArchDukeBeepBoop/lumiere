@@ -12,6 +12,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
@@ -151,6 +152,7 @@ fun TheaterBar() = WithAppImages {
                 Sheet.TRACKS -> TrackSheet(c) { sheet = Sheet.NONE }
                 Sheet.MORE -> MoreSheet(::look, ::perform) { sheet = Sheet.NONE }
                 Sheet.PICTURE -> PictureSheet(c) { sheet = Sheet.NONE }
+                Sheet.OUTPUT -> OutputSheet { sheet = Sheet.NONE }
                 Sheet.NONE -> Unit
             }
             Column(Modifier.fillMaxWidth().height(250.dp).spatialGlass(30).padding(horizontal = 24.dp, vertical = 14.dp),
@@ -184,9 +186,13 @@ fun TheaterBar() = WithAppImages {
                     GlassButton(Icons.Default.Forward10, "Forward 10 seconds", size = 52.dp) { touch { c.clock.seek(c.clock.now() + 10) } }
                     Theater.next?.let { next -> GlassButton(Icons.Default.SkipNext, "Next episode", size = 52.dp) { touch(next) } }
                     Spacer(Modifier.weight(1f))
-                    // Your pins, at most six: with the four above, More and Close it is 12 buttons in the bar's 1052 dp.
+                    // Your pins, at most five: with the four above, Sound output, More and Close it is 12 buttons in the bar's 1052 dp.
                     Shortcuts.pinned.forEach { a ->
                         key(a) { val l = look(a); GlassButton(l.icon, l.label, chosen = l.chosen, caption = l.caption, size = 52.dp) { perform(a) } }
+                    }
+                    // Where the sound goes: the headset, your Bluetooth headphones or speaker.
+                    GlassButton(Icons.Default.Bluetooth, "Sound output", chosen = sheet == Sheet.OUTPUT, size = 52.dp) {
+                        touch { sheet = if (sheet == Sheet.OUTPUT) Sheet.NONE else Sheet.OUTPUT }
                     }
                     GlassButton(Icons.Default.MoreHoriz, "More", chosen = sheet == Sheet.MORE, size = 52.dp) {
                         touch { sheet = if (sheet == Sheet.MORE) Sheet.NONE else Sheet.MORE }
@@ -199,7 +205,7 @@ fun TheaterBar() = WithAppImages {
 }
 
 /** What opens over the bar: never two at once. */
-private enum class Sheet { NONE, TRACKS, MORE, PICTURE }
+private enum class Sheet { NONE, TRACKS, MORE, PICTURE, OUTPUT }
 
 /** How a shortcut shows: its icon and name, a [caption] under the icon on the bar, a [value] beside its name under More. */
 private class Look(val icon: ImageVector, val label: String, val caption: String? = null, val value: String? = null, val chosen: Boolean = false)
@@ -299,7 +305,7 @@ private fun TrackSheet(c: Theater.Controls, onClose: () -> Unit) {
     // A second language under the first: the film's other text subtitles, read from the server.
     val readable = remember(c) { c.streams.filter { app.lumiere.android.player.SecondSubtitles.readable(it.codec) } }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    Column(Modifier.fillMaxWidth().heightIn(max = 300.dp).spatialGlass(30).padding(horizontal = 22.dp, vertical = 16.dp),
+    Column(Modifier.fillMaxWidth().heightIn(max = 400.dp).spatialGlass(30).padding(horizontal = 22.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)) {
         SheetTitle(Icons.Default.Subtitles, "Audio & Subtitles", onClose)
         Row(Modifier.weight(1f, fill = false), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -309,6 +315,8 @@ private fun TrackSheet(c: Theater.Controls, onClose: () -> Unit) {
             ColumnRule()
             TrackColumn("Subtitles", Modifier.weight(1f), listOf("Off" to textOff) + text.map { it.label to it.selected }) { i ->
                 choose(c.player, if (i == 0) null else text[i - 1], C.TRACK_TYPE_TEXT); tick++
+                // Another track: its own timing, so Sync starts again.
+                Theater.subtitleOffsetMs = 0L; Theater.shifted = null
             }
             ColumnRule()
             val second = Theater.second
@@ -326,14 +334,85 @@ private fun TrackSheet(c: Theater.Controls, onClose: () -> Unit) {
                 }
             }
         }
-        // The captions themselves: their size (the same setting as the window's), and where they are.
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        // The captions themselves: their size and look (the same settings as the window's), how high, and where.
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Captions", style = MaterialTheme.typography.labelLarge, color = Palette.textSecondary)
-            if (prefs != null) Segmented(listOf("S", "M", "L", "XL"), prefs.subtitleSize) { Theater.poke(); prefs.subtitleSize = it }
+            if (prefs != null) {
+                Segmented(listOf("S", "M", "L", "XL"), prefs.subtitleSize) { Theater.poke(); prefs.subtitleSize = it }
+                Segmented(listOf("Outline", "Shadow", "Box"), prefs.subtitleStyle) { Theater.poke(); prefs.subtitleStyle = it }
+            }
             Spacer(Modifier.weight(1f))
             Segmented(listOf("On the screen", "Before you"), if (Stage.captionsNear) 1 else 0) { i ->
                 Theater.poke(); if ((i == 1) != Stage.captionsNear) Stage.toggleCaptionsNear()
             }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Height", style = MaterialTheme.typography.labelLarge, color = Palette.textSecondary)
+            Segmented(listOf("Usual", "Higher", "Highest"), Stage.captionLift / 2) { Theater.poke(); Stage.liftCaptions(it * 2) }
+            Spacer(Modifier.weight(1f))
+            // Sync: the subtitles earlier or later than the film says, a quarter of a second a step.
+            Text("Sync", style = MaterialTheme.typography.labelLarge, color = Palette.textSecondary)
+            GlassButton(Icons.Default.Remove, "Subtitles earlier", size = 44.dp) { sync(c, text, -250L, scope) }
+            val off = Theater.subtitleOffsetMs
+            Text(if (off == 0L) "In time" else "%+.2f s".format(off / 1000.0), style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.width(78.dp), textAlign = TextAlign.Center)
+            GlassButton(Icons.Default.Add, "Subtitles later", size = 44.dp) { sync(c, text, 250L, scope) }
+        }
+    }
+}
+
+/**
+ * Where the sound goes, in the same glass: every output the headset has
+ * now (its speakers, Bluetooth headphones or a speaker, USB), the chosen one
+ * ticked, a touch to move the sound there at once; and pairing something
+ * new in the headset's Bluetooth settings.
+ */
+@Composable
+fun OutputSheet(onClose: () -> Unit) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val outputs = remember(app.lumiere.android.player.AudioOutputs.changes) { app.lumiere.android.player.AudioOutputs.list(context) }
+    val chosen = app.lumiere.android.player.AudioOutputs.chosen
+    Column(Modifier.fillMaxWidth().heightIn(max = 300.dp).spatialGlass(30).padding(horizontal = 22.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SheetTitle(Icons.Default.Bluetooth, "Sound output", onClose)
+        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            TrackColumn("Play the sound on", Modifier.weight(1f),
+                listOf("Automatic (the headset decides)" to (chosen == null)) + outputs.map { it.name to (it.name == chosen) }) { i ->
+                app.lumiere.android.player.AudioOutputs.choose(context, if (i == 0) null else outputs[i - 1])
+            }
+            Column(Modifier.weight(0.7f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Not listed?", style = MaterialTheme.typography.labelLarge, color = Palette.textSecondary)
+                Text("Turn your headphones or speaker on and put them in pairing mode, then pair them here.",
+                    style = MaterialTheme.typography.bodyMedium, color = Palette.textSecondary)
+                TextButtonGlass("Pair a new device…") { app.lumiere.android.player.AudioOutputs.pairNew(context) }
+            }
+        }
+    }
+}
+
+/**
+ * Subtitles [by] ms later (or earlier): the chosen track read from the
+ * server as text the first time (the player's own cues can only come when
+ * the film says), then drawn at the shifted time (TheaterCaptions). Picture
+ * subtitles have no text to move, and say so.
+ */
+private fun sync(c: Theater.Controls, text: List<app.lumiere.android.player.TrackChoice>, by: Long,
+                 scope: kotlinx.coroutines.CoroutineScope) {
+    Theater.poke()
+    val next = (Theater.subtitleOffsetMs + by).coerceIn(-10_000L, 10_000L)
+    if (next == 0L) { Theater.subtitleOffsetMs = 0L; return }
+    if (Theater.shifted != null) { Theater.subtitleOffsetMs = next; return }
+    val on = text.firstOrNull { it.selected } ?: return Theater.say("Choose subtitles first")
+    val stream = c.streams.filter { app.lumiere.android.player.SecondSubtitles.readable(it.codec) }.let { s ->
+        s.firstOrNull { it.language != null && on.language != null && it.language!!.take(2).equals(on.language!!.take(2), true) } ?: s.singleOrNull()
+    } ?: return Theater.say("These subtitles are pictures: they can't be moved")
+    scope.launch {
+        val cues = runCatching { app.lumiere.android.player.SecondSubtitles.parse(c.server.subtitleText(c.itemId, c.mediaSourceId, stream.index)) }
+            .getOrDefault(emptyList())
+        if (cues.isEmpty()) Theater.say("These subtitles can't be moved")
+        else {
+            Theater.shifted = app.lumiere.android.player.SecondSubtitles.Track(stream.index, on.label, cues)
+            Theater.subtitleOffsetMs = next
         }
     }
 }
@@ -447,6 +526,16 @@ private fun TrackColumn(title: String, modifier: Modifier, rows: List<Pair<Strin
     }
 }
 
+/** One caption: its words over [ground] (a box, or nothing), with a dark outline drawn under them when [outlined]. */
+@Composable
+private fun CaptionLine(text: String, style: TextStyle, ground: Color, outlined: Boolean) {
+    Box(Modifier.background(ground, RoundedCornerShape(10.dp)).padding(horizontal = 18.dp, vertical = 6.dp)) {
+        if (outlined) Text(text, textAlign = TextAlign.Center, style = style.copy(color = Color.Black, shadow = null,
+            drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 7f, join = androidx.compose.ui.graphics.StrokeJoin.Round)))
+        Text(text, textAlign = TextAlign.Center, style = style)
+    }
+}
+
 /**
  * The Theater's captions: the film's subtitles, drawn on a clear panel over
  * the foot of its screen at the screen's own scale — text the player's
@@ -455,22 +544,34 @@ private fun TrackColumn(title: String, modifier: Modifier, rows: List<Pair<Strin
 @Composable
 fun TheaterCaptions() {
     LumiereTheme {
-        val cues = Theater.cues
-        // The second language's line now, from the film's clock.
+        // Synced, the chosen track's own lines at the shifted time stand in for the player's.
+        val shifted = Theater.shifted?.takeIf { Theater.subtitleOffsetMs != 0L }
+        val cues = if (shifted != null) emptyList() else Theater.cues
+        // The second language's line now (and the shifted first), from the film's clock.
         val second = Theater.second
         var under by remember { mutableStateOf<String?>(null) }
-        LaunchedEffect(second) {
-            under = null
-            val track = second ?: return@LaunchedEffect
+        var moved by remember { mutableStateOf<String?>(null) }
+        LaunchedEffect(second, shifted) {
+            under = null; moved = null
+            if (second == null && shifted == null) return@LaunchedEffect
             while (true) {
-                under = Theater.controls?.clock?.now()?.let { app.lumiere.android.player.SecondSubtitles.at(track.cues, (it * 1000).toLong()) }
-                delay(120)
+                val ms = Theater.controls?.clock?.now()?.let { (it * 1000).toLong() - Theater.subtitleOffsetMs }
+                under = second?.let { t -> ms?.let { app.lumiere.android.player.SecondSubtitles.at(t.cues, it) } }
+                moved = shifted?.let { t -> ms?.let { app.lumiere.android.player.SecondSubtitles.at(t.cues, it) } }
+                delay(80)
             }
         }
-        if (cues.isEmpty() && under == null) return@LumiereTheme
+        if (cues.isEmpty() && under == null && moved == null) return@LumiereTheme
         // The same four sizes as the window's subtitles.
         val size = listOf(36, 46, 56, 66)[(app.lumiere.android.OpenApp.state?.settings?.subtitleSize ?: 1).coerceIn(0, 3)]
-        Box(Modifier.fillMaxSize().padding(bottom = 24.dp), contentAlignment = Alignment.BottomCenter) {
+        // The window's own looks: an outline, a soft shadow, or a dark box.
+        val look = app.lumiere.android.OpenApp.state?.settings?.subtitleStyle ?: 0
+        val ground = if (look == 2) Color.Black.copy(alpha = 0.62f) else Color.Transparent
+        val shade = if (look == 1) Shadow(Color.Black.copy(alpha = 0.9f), androidx.compose.ui.geometry.Offset(2f, 3f), 8f)
+            else Shadow(Color.Black, blurRadius = if (look == 2) 4f else 3f)
+        fun lineStyle(sp: Float, colour: Color) = TextStyle(fontSize = sp.sp, color = colour, lineHeight = (sp * 1.18f).sp, shadow = shade,
+            drawStyle = null)
+        Box(Modifier.fillMaxSize().padding(bottom = (24 + Stage.captionLift * 36).dp), contentAlignment = Alignment.BottomCenter) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 cues.forEach { cue ->
                     val bitmap = cue.bitmap
@@ -478,21 +579,12 @@ fun TheaterCaptions() {
                     when {
                         bitmap != null -> Image(bitmap.asImageBitmap(), null,
                             Modifier.fillMaxWidth(if (cue.size > 0f && cue.size <= 1f) cue.size else 0.6f))
-                        !text.isNullOrEmpty() -> Text(text, textAlign = TextAlign.Center,
-                            style = TextStyle(fontSize = size.sp, color = Color.White, lineHeight = (size * 1.18f).sp,
-                                shadow = Shadow(Color.Black, blurRadius = 6f)),
-                            modifier = Modifier.background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
-                                .padding(horizontal = 18.dp, vertical = 6.dp))
+                        !text.isNullOrEmpty() -> CaptionLine(text, lineStyle(size.toFloat(), Color.White), ground, look == 0)
                     }
                 }
+                moved?.let { CaptionLine(it, lineStyle(size.toFloat(), Color.White), ground, look == 0) }
                 // The second language: a little smaller, warm, under the first.
-                under?.let {
-                    Text(it, textAlign = TextAlign.Center,
-                        style = TextStyle(fontSize = (size * 0.82f).sp, color = Color(0xFFFFE7A8), lineHeight = (size * 0.98f).sp,
-                            shadow = Shadow(Color.Black, blurRadius = 6f)),
-                        modifier = Modifier.background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(10.dp))
-                            .padding(horizontal = 16.dp, vertical = 4.dp))
-                }
+                under?.let { CaptionLine(it, lineStyle(size * 0.82f, Color(0xFFFFE7A8)), ground, look == 0) }
             }
         }
     }

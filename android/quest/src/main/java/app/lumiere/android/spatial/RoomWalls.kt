@@ -69,9 +69,23 @@ class RoomWalls(private val activity: android.app.Activity, private val mruk: MR
             if (!e.hasComponent<MRUKAnchor>() || !e.hasComponent<MRUKPlane>() || !e.hasComponent<Transform>()) return@mapNotNull null
             val anchor = e.getComponent<MRUKAnchor>()
             val plane = e.getComponent<MRUKPlane>()
-            WallMount.Wall(anchor.uuid.toString(), e.getComponent<Transform>().transform, plane.min.x, plane.max.x, plane.min.y, plane.max.y)
+            WallMount.Wall(anchor.uuid.toString(), worldPose(e), plane.min.x, plane.max.x, plane.min.y, plane.max.y)
         }
     }.getOrDefault(emptyList())
+
+    /** [e]'s pose in the world: its own, carried by each parent's (a wall's is its room's). */
+    private fun worldPose(e: com.meta.spatial.core.Entity): com.meta.spatial.core.Pose {
+        var pose = e.getComponent<Transform>().transform
+        var at = e
+        repeat(8) {
+            val parent = runCatching { at.getComponent<com.meta.spatial.toolkit.TransformParent>().entity }.getOrNull() ?: return pose
+            if (parent == com.meta.spatial.core.Entity.nullEntity() || !parent.hasComponent<Transform>()) return pose
+            val p = parent.getComponent<Transform>().transform
+            pose = com.meta.spatial.core.Pose(p.t + p.q * pose.t, p.q * pose.q)
+            at = parent
+        }
+        return pose
+    }
 
     /** The wall with [id], if the room has it (Space Setup can be run again and a wall lost). */
     fun wall(id: String): WallMount.Wall? = walls().firstOrNull { it.id == id }

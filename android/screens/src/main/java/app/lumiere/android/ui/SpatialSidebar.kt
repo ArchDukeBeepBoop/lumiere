@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.GraphicEq
@@ -80,6 +84,8 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
             if (state.roomOpen) "Leave the private room" else "Private room", chosen = state.roomOpen) {
             toggleRoom(state, activity)
         }
+        // Music, whenever there's a song (playing or paused): its cover opens the player; play/pause; next.
+        MusicGroup(state)
         // Who's watching: their picture; pressed, "Who's watching?". Never while a film plays.
         if (state.top !is app.lumiere.android.Screen.Player && !app.lumiere.android.player.Theater.active)
             ProfileGlassButton(state.currentProfile) { state.askWhoIsWatching() }
@@ -108,6 +114,29 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
             chosen = Stage.sleepMinutes > 0, caption = Stage.sleepMinutes.takeIf { it > 0 }?.toString()) { Stage.cycleSleep() }
 
     }
+}
+
+/** The song now, in the tab bar or the handset: its cover (to open the player), play/pause, next. Nothing without a song. */
+@Composable
+fun MusicGroup(state: AppState, size: androidx.compose.ui.unit.Dp = 48.dp) {
+    val track = app.lumiere.android.music.Music.current ?: return
+    val server = state.server ?: return
+    val playing = app.lumiere.android.music.Music.isPlaying
+    Box(Modifier.size(28.dp, 1.dp).background(Color.White.copy(alpha = 0.12f)))
+    val source = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    Box(Modifier.size(size).clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+        .clickable(interactionSource = source, indication = null) {
+            if (Stage.place != Stage.Place.ROOM) Stage.wholeWindow = true
+            state.push(app.lumiere.android.Screen.NowPlaying)
+        }) {
+        WithAppImages {
+            coil.compose.AsyncImage(server.imageUrl(track.albumId ?: track.id, "Primary", null, 160), "Now playing: ${track.name}",
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.matchParentSize())
+        }
+    }
+    GlassButton(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (playing) "Pause the music" else "Play the music",
+        chosen = playing, size = size) { app.lumiere.android.music.Music.toggle() }
+    GlassButton(Icons.Default.SkipNext, "Next song", size = size) { app.lumiere.android.music.Music.next() }
 }
 
 /** The tab bar's buttons: the Quest panels' glass button. */

@@ -181,6 +181,7 @@ object Music {
             }
         })
         player = built
+        app.lumiere.android.player.AudioOutputs.attach(context, built)
         ticker?.cancel()
         ticker = CoroutineScope(Dispatchers.Main).launch {
             while (true) {

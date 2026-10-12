@@ -21,9 +21,11 @@ import java.util.concurrent.CompletableFuture
  * through their albedo, as the modelled places' are (ModelMeshes).
  *
  * [model] is placed by its origin ([place]); an optional [curtainModel] is
- * the front curtain, raised [curtainRise] metres out of sight to open. If
- * the model hasn't loaded in [LOAD_TIMEOUT_MS] it's given up on ([failedNow])
- * and the place shows its modelled blocks instead.
+ * the front curtain, raised [curtainRise] metres out of sight to open. Only
+ * if the SDK says the model couldn't be loaded is it given up on
+ * ([failedNow]) and the place's modelled blocks shown instead: a model that
+ * is slow to say it's ready, or whose materials can't be read for dimming,
+ * stays up as it is.
  */
 class BakedPlace(
     private val model: String,
@@ -40,6 +42,10 @@ class BakedPlace(
         private set
     @Volatile private var lit: List<Lit> = emptyList()
     @Volatile private var curtainLit: List<Lit> = emptyList()
+    /** The loaded models, kept to read their materials again if they weren't ready the first time. */
+    @Volatile private var hallObject: SceneObject? = null
+    @Volatile private var curtainObject: SceneObject? = null
+    @Volatile private var broken = false
     private var hall: Entity? = null
     private var curtain: Entity? = null
     private var origin: Pose? = null
@@ -74,10 +80,13 @@ class BakedPlace(
             Visible(visible),
         ))
         runCatching { sceneObjects(e) }.getOrNull()?.whenComplete { obj, error ->
-            val found = if (error == null && obj != null) materialsOf(obj) else emptyList()
-            if (found.isEmpty()) { android.util.Log.w("Lumiere", "$path didn't load", error); return@whenComplete }
-            done(found)
-            if (path == model) state = State.READY
+            if (error != null || obj == null) {
+                android.util.Log.w("Lumiere", "$path didn't load", error)
+                if (path == model) broken = true
+                return@whenComplete
+            }
+            if (path == model) { hallObject = obj; state = State.READY } else curtainObject = obj
+            done(materialsOf(obj))
         }
         return e
     }
@@ -100,6 +109,9 @@ class BakedPlace(
 
     /** As Scenery.light: the house lights at [level], the picture's halves' light on each side. */
     fun light(level: Float, left: Triple<Float, Float, Float>?, right: Triple<Float, Float, Float>? = left) {
+        // Materials not readable when it loaded: try again (no dimming meanwhile, but the place is there).
+        if (lit.isEmpty()) hallObject?.let { o -> materialsOf(o).takeIf { it.isNotEmpty() }?.let { lit = it; lastLight = null } }
+        if (curtainLit.isEmpty()) curtainObject?.let { o -> materialsOf(o).takeIf { it.isNotEmpty() }?.let { curtainLit = it; lastLight = null } }
         val now = Triple(level, left, right)
         if (now == lastLight || (lit.isEmpty() && curtainLit.isEmpty())) return
         lastLight = now
@@ -130,9 +142,9 @@ class BakedPlace(
      * draw it). The place falls back to its modelled blocks.
      */
     fun failedNow(now: Long): Boolean {
-        if (state == State.LOADING && now - loadingSince > LOAD_TIMEOUT_MS) {
+        if (broken && state != State.FAILED) {
             state = State.FAILED
-            android.util.Log.w("Lumiere", "$model didn't load in time: the modelled hall instead")
+            android.util.Log.w("Lumiere", "$model couldn't be loaded: the modelled hall instead")
             hall?.let { runCatching { it.destroy() } }
             curtain?.let { runCatching { it.destroy() } }
             hall = null; curtain = null

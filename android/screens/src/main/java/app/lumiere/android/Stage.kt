@@ -84,8 +84,10 @@ object Stage {
         followPosture = p.getBoolean("followPosture", true)
         scopeFill = p.getBoolean("scopeFill", false)
         captionsNear = p.getBoolean("captionsNear", false)
+        captionLift = p.getInt("captionLift", 0).coerceIn(0, 4)
         handMenu = p.getBoolean("handMenu", true)
-        mount = p.getString("mountWall", null)?.let { Mount(it, p.getFloat("mountX", 0f), p.getFloat("mountY", 1.2f), p.getFloat("mountDistance", 3f)) }
+        mount = p.getString("mountWall", null)?.let { Mount(it, p.getFloat("mountX", 0f), p.getFloat("mountY", 1.2f), p.getFloat("mountDistance", 3f),
+            p.getFloat("mountZ", 0f), p.getFloat("mountYaw", 0f)) }
         app.lumiere.android.ui.Shortcuts.load(p)
     }
 
@@ -130,6 +132,11 @@ object Stage {
     /** Captions before you, low in your view and turning with you, rather than at the screen's foot. */
     var captionsNear by mutableStateOf(false)
         private set
+    /** How far up the captions sit from their usual place, in steps (0 as usual, up to 4). */
+    var captionLift by mutableIntStateOf(0)
+        private set
+    fun liftCaptions(to: Int) { captionLift = to.coerceIn(0, 4); prefs?.edit()?.putInt("captionLift", captionLift)?.apply() }
+
     fun toggleCaptionsNear() { captionsNear = !captionsNear; prefs?.edit()?.putBoolean("captionsNear", captionsNear)?.apply() }
 
     /**
@@ -167,7 +174,9 @@ object Stage {
      * it), where on it (its own x along and y up), and how far you stood,
      * which with the size sets how big it is. Null: it floats as before.
      */
-    data class Mount(val wall: String, val x: Float, val y: Float, val distance: Float)
+    data class Mount(val wall: String, val x: Float, val y: Float, val distance: Float, val z: Float = 0f, val yaw: Float = 0f)
+    /** A mount with no wall: pinned in your room where you looked ([x], [y], [z] in the room, facing [yaw]). */
+    const val PINNED = "here"
     var mount by mutableStateOf<Mount?>(null)
         private set
     /** Asked to mount the screen on the wall before you, or take it off (the Director answers). */
@@ -179,6 +188,7 @@ object Stage {
         prefs?.edit()?.apply {
             if (m == null) remove("mountWall")
             else putString("mountWall", m.wall).putFloat("mountX", m.x).putFloat("mountY", m.y).putFloat("mountDistance", m.distance)
+                .putFloat("mountZ", m.z).putFloat("mountYaw", m.yaw)
         }?.apply()
     }
 }

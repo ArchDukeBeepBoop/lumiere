@@ -120,6 +120,8 @@ class Director(
         const val CAPTION_TURN_MS = 700L
         /** How long a film asked for from the handset may take to appear before the window comes to say why. */
         const val STUCK_MS = 6_000L
+        /** A screen pinned with no wall to hang on, this far before you. */
+        const val PIN_DISTANCE_M = 2.4f
     }
 
     /** The film's sound comes from here: the Theater's flat screen, the window, or (in a sphere) all round. */
@@ -192,7 +194,13 @@ class Director(
                 marquee.follow(spec, s)
             }
         }
-        if (on || !away) marquee.clear()
+        // In your room with the screen on your wall, it's there while you browse too, showing the title you're on.
+        val onWall = if (!on && !away && Stage.mount != null) {
+            val tv = Theater.Request(Projection.FLAT, app.lumiere.android.api.StereoLayout.MONO, 1920, 1080)
+            onYourWall(tv, seatHere())
+        } else null
+        if (onWall != null) marquee.followAt(onWall.first, onWall.second)
+        else if (on || !away) marquee.clear()
         if (!away) browseSeat = null
         if (on) {
             val s = seat ?: seatHere().also { seat = it }
@@ -365,6 +373,12 @@ class Director(
      */
     private fun onYourWall(request: Theater.Request, s: TheaterScreen.Seat): Pair<TheaterGeometry.Spec, Pose>? {
         val m = Stage.mount ?: return null
+        if (m.wall == Stage.PINNED) {
+            val degrees = TheaterGeometry.SIZE_DEGREES[Stage.screenSize.coerceIn(0, TheaterGeometry.SIZE_DEGREES.lastIndex)]
+            val width = (2 * m.distance * kotlin.math.tan(Math.toRadians(degrees / 2.0)).toFloat()).coerceAtMost(3.5f)
+            val facing = Quaternion.fromDirection(Vector3(kotlin.math.sin(m.yaw), 0f, kotlin.math.cos(m.yaw)))
+            return TheaterGeometry.mounted(request, width, m.distance) to Pose(Vector3(m.x, m.y, m.z), facing)
+        }
         val w = walls ?: return null
         if (w.state != RoomWalls.State.READY) {
             if (!wallsTried && w.allowed()) { wallsTried = true; w.load { shownPlace = null } }
@@ -377,26 +391,41 @@ class Director(
         return TheaterGeometry.mounted(request, width, m.distance) to WallMount.pose(wall, x, y, s.eye)
     }
 
-    /** The screen onto the wall you face, or off it again; what happened is said over the transport. */
+    /**
+     * The screen onto the wall you face, or off it again. Space Setup's walls
+     * when it has them and your gaze meets one; otherwise (no room set up,
+     * the permission refused, no wall where you look) pinned where you're
+     * looking, upright and facing you, so the button always does something.
+     */
     private fun mountOrUnmount() {
         if (Stage.mount != null) { Stage.mounted(null); Theater.say("The screen floats again"); return }
-        val w = walls ?: return Theater.say("Your room's walls can't be read on this start")
+        val head = scene.getViewerPose()
+        val look = head.forward().normalize()
+        fun pinHere(why: String) {
+            val flat = flat(look)
+            val d = PIN_DISTANCE_M
+            val at = head.t + flat * d
+            val y = (head.t.y + look.y * d).coerceIn(1.0f, head.t.y + 0.6f)
+            Stage.mounted(Stage.Mount(Stage.PINNED, at.x, y, d, at.z, kotlin.math.atan2(flat.x, flat.z)))
+            Theater.say("Pinned where you're looking$why: films in your room play there now")
+        }
+        val w = walls ?: return pinHere("")
         Theater.say("Reading your room's walls…")
         w.load { state ->
             when (state) {
                 RoomWalls.State.READY -> {
-                    val head = scene.getViewerPose()
-                    val hit = WallMount.facing(w.walls(), head.t, head.forward().normalize())
-                    if (hit == null) Theater.say("Look at a wall of your room, then choose this again")
+                    val now = scene.getViewerPose()
+                    val hit = WallMount.facing(w.walls(), now.t, now.forward().normalize())
+                    if (hit == null) pinHere(" (no wall of your Space Setup there)")
                     else {
                         val (wall, at) = hit
-                        Stage.mounted(Stage.Mount(wall.id, at.first, at.second, WallMount.distance(wall, head.t)))
+                        Stage.mounted(Stage.Mount(wall.id, at.first, at.second, WallMount.distance(wall, now.t)))
                         Theater.say("On your wall: films in your room play here now")
                     }
                 }
-                RoomWalls.State.NO_PERMISSION -> Theater.say("To use your walls, allow Lumiere spatial data (Settings › Privacy)")
-                RoomWalls.State.NO_ROOM -> Theater.say("Set up your space first: Settings › Physical space › Space setup")
-                else -> Theater.say("Your room's walls couldn't be read just now: try again in a moment")
+                RoomWalls.State.NO_PERMISSION -> pinHere(" (allow spatial data for real walls)")
+                RoomWalls.State.NO_ROOM -> pinHere(" (run Space Setup for real walls)")
+                else -> pinHere("")
             }
         }
     }

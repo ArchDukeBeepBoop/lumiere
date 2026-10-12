@@ -35,7 +35,20 @@ class MarqueeScreen {
         }
     }
 
+    /** The big screen at a fixed [pose] (on your wall): made for [spec], moved if the pose changes. */
+    private var pinnedAt: Pose? = null
+    fun followAt(spec: TheaterGeometry.Spec, pose: Pose) {
+        if (spec != made || entity == null) {
+            clear()
+            made = spec
+            current = spec
+            entity = Entity.createPanelEntity(R.id.lumiere_marquee, Transform(pose))
+        } else if (pose != pinnedAt) entity?.setComponent(Transform(pose))
+        pinnedAt = pose
+    }
+
     fun clear() {
+        pinnedAt = null
         entity?.let { runCatching { it.destroy() } }
         entity = null; made = null; seat = null
     }

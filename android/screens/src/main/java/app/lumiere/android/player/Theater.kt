@@ -62,6 +62,11 @@ object Theater {
     /** A second language under the first (SecondSubtitles), while a film plays. */
     var second by mutableStateOf<SecondSubtitles.Track?>(null)
 
+    /** Subtitles moved later (+) or earlier (-) than the film says, in ms: Sync in Audio & Subtitles. */
+    var subtitleOffsetMs by androidx.compose.runtime.mutableLongStateOf(0L)
+    /** The chosen subtitles read from the server, to draw at a shifted time while Sync is set; null otherwise. */
+    var shifted by mutableStateOf<SecondSubtitles.Track?>(null)
+
     /** Picture controls work on an SDR film; an HDR one is shown as it came. Null until the film's picture is known. */
     var pictureAdjustable by mutableStateOf<Boolean?>(null)
 
@@ -222,6 +227,8 @@ fun rememberTheater(
             Theater.screenLeft = null
             Theater.screenRight = null
             Theater.second = null
+            Theater.subtitleOffsetMs = 0L
+            Theater.shifted = null
             Theater.pictureAdjustable = null
             Theater.next = null
         }

@@ -2,6 +2,9 @@
 
 package app.lumiere.android.ui
 
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.graphicsLayer
 import app.lumiere.android.api.isNew
@@ -333,7 +336,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                 } else false
             }, state = list, contentPadding = PaddingValues(bottom = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (nowPlaying != null && app.lumiere.android.music.Music.isPlaying) item(key = "nowplaying") { NowPlayingBanner(state, nowPlaying) }
+                if (nowPlaying != null) item(key = "nowplaying") { NowPlayingBanner(state, nowPlaying) }
                 item(key = "hero") {
                     Hero(state, hero, pages.size, page, { d -> if (pages.isNotEmpty()) page = (page + d + pages.size) % pages.size }, Modifier.height(screenH * 0.68f)
                         .onFocusChanged { heroFocused = it.hasFocus; heroRef[0] = it.hasFocus }, heroPlay) { bannerHeld = it }
@@ -636,7 +639,7 @@ private fun PictureCard(name: String, picture: Item?, state: AppState, onFocus: 
 }
 
 
-/** "Now Playing" above the spotlight while music plays: the cover, the song, a press to open it. */
+/** "Now Playing" above the spotlight while there's music (playing or paused): the cover to open it, the song, play/pause and next. */
 @Composable
 private fun NowPlayingBanner(state: AppState, track: Item) {
     val server = state.server ?: return
@@ -647,9 +650,16 @@ private fun NowPlayingBanner(state: AppState, track: Item) {
                 modifier = Modifier.matchParentSize())
         }
         Column {
-            Text("Now Playing", style = MaterialTheme.typography.labelMedium, color = Palette.accent)
+            Text(if (app.lumiere.android.music.Music.isPlaying) "Now Playing" else "Paused", style = MaterialTheme.typography.labelMedium, color = Palette.accent)
             Text(track.name, style = MaterialTheme.typography.titleMedium, maxLines = 1)
             Text(track.artists.joinToString(", ").ifEmpty { track.albumArtist ?: "" }, style = MaterialTheme.typography.labelMedium, maxLines = 1)
+        }
+        TvPill({ app.lumiere.android.music.Music.toggle() }) {
+            androidx.compose.material3.Icon(if (app.lumiere.android.music.Music.isPlaying) androidx.compose.material.icons.Icons.Default.Pause
+                else androidx.compose.material.icons.Icons.Default.PlayArrow, if (app.lumiere.android.music.Music.isPlaying) "Pause" else "Play")
+        }
+        TvPill({ app.lumiere.android.music.Music.next() }) {
+            androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Default.SkipNext, "Next song")
         }
     }
 }
