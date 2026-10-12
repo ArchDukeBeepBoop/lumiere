@@ -106,6 +106,8 @@ object StartGuard {
     /** Count this start; true when it should leave the extras out. */
     fun begin(context: Context): Boolean {
         val prefs = prefs(context)
+        // An early end that wasn't a crash (closed, reinstalled, swiped away) isn't a failed start.
+        if (!lastEndedInCrash(context)) prefs.edit().putInt("unsettled", 0).commit()
         val unsettled = prefs.getInt("unsettled", 0)
         // commit, not apply: a crash a moment later must not lose the count.
         prefs.edit().putInt("unsettled", unsettled + 1).commit()
@@ -116,6 +118,20 @@ object StartGuard {
     fun peek(context: Context): Boolean = plain(prefs(context).getInt("unsettled", 0))
 
     fun settled(context: Context) { prefs(context).edit().putInt("unsettled", 0).apply() }
+
+    /**
+     * Whether Android says the last run crashed or stopped responding. With no
+     * record (older Android, or none yet), assume it might have, as before.
+     */
+    fun lastEndedInCrash(context: Context): Boolean {
+        if (Build.VERSION.SDK_INT < 30) return true
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val recent = runCatching { am.getHistoricalProcessExitReasons(context.packageName, 0, 3) }.getOrNull().orEmpty()
+        val newest = recent.firstOrNull() ?: return true
+        // A native crash can be recorded beside a "killed by signal" a moment apart: either counts.
+        return recent.filter { newest.timestamp - it.timestamp < 3_000 }.any { it.reason in setOf(android.app.ApplicationExitInfo.REASON_CRASH, android.app.ApplicationExitInfo.REASON_CRASH_NATIVE,
+            android.app.ApplicationExitInfo.REASON_ANR, android.app.ApplicationExitInfo.REASON_INITIALIZATION_FAILURE) }
+    }
 
     /** Whether a start after [unsettled] failed ones should be a plain one. */
     fun plain(unsettled: Int) = unsettled >= TRIPS
