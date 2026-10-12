@@ -195,9 +195,8 @@ internal fun toggleRoom(state: AppState, activity: android.app.Activity) {
         when {
             state.roomOpen -> state.closeRoom()
             !state.settings.roomRequiresUnlock -> state.openRoom()
-            // A Quest has no fingerprint or face to ask for: the app's own PIN, chosen the first time.
-            app.lumiere.android.AppBuild.quest ->
-                if (state.settings.hasPin) state.guarded { state.openRoom() } else state.pinChooseFor = { state.openRoom() }
+            // On the Quest it opens straight away: no PIN (asked for; the headset is yours).
+            app.lumiere.android.AppBuild.quest -> state.openRoom()
             // A device with no screen lock of its own — the projector — asks
             // for the app's PIN instead, when one is set.
             state.settings.hasPin &&
