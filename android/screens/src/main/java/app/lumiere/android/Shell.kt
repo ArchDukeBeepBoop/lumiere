@@ -119,7 +119,8 @@ fun Shell(state: AppState, content: @Composable (Screen) -> Unit) {
                 ) { (screen, _) -> content(screen) }
                 // On a TV the menu bar's Now Playing pill stands in for the bar along the bottom.
                 if (!fullScreen && !form.isTv) app.lumiere.android.music.MiniPlayer(state)
-                if (form.isTv && !fullScreen && state.settings.tvTopBar) {
+                // Not on the Quest: its sidebar has the tabs, and the bar's pill only crowded a narrowed window.
+                if (form.isTv && !fullScreen && state.settings.tvTopBar && !app.lumiere.android.AppBuild.quest) {
                     androidx.compose.animation.AnimatedVisibility(state.tvMenuOpen || (top == Screen.Home && state.tvAtTop),
                         enter = androidx.compose.animation.slideInVertically { -it } + fadeIn(tween(150)),
                         exit = androidx.compose.animation.slideOutVertically { -it } + fadeOut(tween(120))) {

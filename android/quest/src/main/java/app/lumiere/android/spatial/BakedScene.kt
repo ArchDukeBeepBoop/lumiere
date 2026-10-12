@@ -27,6 +27,9 @@ class BakedScene(
 
     fun show(on: Boolean) { room.show(on); withYou?.show(on) }
 
+    /** Its models unloaded (BakedPlace.release); made again when next placed. */
+    fun release() { room.release(); withYou?.release() }
+
     fun light(level: Float, left: Triple<Float, Float, Float>?, right: Triple<Float, Float, Float>?) {
         room.light(level, left, right)
         withYou?.light(level, left, right)

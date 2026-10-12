@@ -107,7 +107,7 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
         RailButton(placeIcon(Stage.place), "You're in ${Stage.place.label}: change", chosen = false,
             caption = placeCaption(Stage.place)) { Stage.nextPlace() }
         // Away from your room, back to the handset near your hands (the whole window stays for your room).
-        if (Stage.place != Stage.Place.ROOM && Handset.enabled && Stage.wholeWindow)
+        if ((Stage.place != Stage.Place.ROOM || Stage.mount != null) && Handset.enabled && Stage.wholeWindow)
             RailButton(Icons.Default.SettingsRemote, "Back to the handset", chosen = false, caption = "Handset") { Stage.wholeWindow = false }
         // In your room, the big screen onto the wall you're facing (or off it again): films play there from then on.
         if (Stage.place == Stage.Place.ROOM)

@@ -232,6 +232,14 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                 .filter { it.backdropTag != null && !it.isEpisode }.shuffled().take(6)
         }.orEmpty().ifEmpty { rows.shelves.flatMap { it.second }.filter { it.backdropTag != null }.take(6) }
     }
+    // Nothing with a backdrop (home videos, the private room's libraries): no spotlight at all,
+    // rather than an empty band two-thirds of the screen tall pushing every row out of sight.
+    val noSpotlight = spotlight.isEmpty() && rows.shelves.none { (t, l) -> t == "Continue Watching" && l.any { it.backdropTag != null } }
+    LaunchedEffect(state.roomOpen, rows) {
+        app.lumiere.android.Probe.info("private room", "home drawn", "room ${if (state.roomOpen) "open" else "shut"}: " +
+            rows.shelves.joinToString { "${it.first} ${it.second.size}" } + "; ${rows.libraries.size} libraries; spotlight ${spotlight.size}" +
+            (if (noSpotlight) " (none: rows start at the top)" else ""))
+    }
     // Something half-watched opens the spotlight, Resume selected; then the new titles.
     val resumeFirst = rows.shelves.firstOrNull { it.first == "Continue Watching" }?.second?.firstOrNull()
     val pages = remember(spotlight, resumeFirst) { listOfNotNull(resumeFirst) + spotlight.filter { it.id != resumeFirst?.id } }
@@ -247,7 +255,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
             loader.enqueue(coil.request.ImageRequest.Builder(context).data(it).build()) } }
     }
     val restored = remember { state.homeScroll.first > 0 }
-    var heroFocused by remember { mutableStateOf(!restored) }
+    var heroFocused by remember { mutableStateOf(!restored && !noSpotlight) }
     var bannerHeld by remember { mutableStateOf(false) }
     // Read by the scroll spec outside composition, so a plain holder.
     val heroRef = remember { booleanArrayOf(!restored) }
@@ -337,7 +345,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
             }, state = list, contentPadding = PaddingValues(bottom = 64.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (nowPlaying != null) item(key = "nowplaying") { NowPlayingBanner(state, nowPlaying) }
-                item(key = "hero") {
+                if (!noSpotlight) item(key = "hero") {
                     Hero(state, hero, pages.size, page, { d -> if (pages.isNotEmpty()) page = (page + d + pages.size) % pages.size }, Modifier.height(screenH * 0.68f)
                         .onFocusChanged { heroFocused = it.hasFocus; heroRef[0] = it.hasFocus }, heroPlay) { bannerHeld = it }
                 }

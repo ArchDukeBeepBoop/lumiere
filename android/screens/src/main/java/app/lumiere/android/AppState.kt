@@ -435,6 +435,8 @@ class AppState(context: Context) {
 /** The open window's state, for panels outside it: the Quest's sidebar. */
 object OpenApp {
     var state by mutableStateOf<AppState?>(null)
+    /** Leaves the whole app: on the Quest the headset's own activity, of which this window is only a panel. */
+    var quit: (() -> Unit)? = null
     /** Presses a remote key in the open window, as a TV remote would: the Quest's controllers use it. */
     var press: ((Int) -> Unit)? = null
     /**

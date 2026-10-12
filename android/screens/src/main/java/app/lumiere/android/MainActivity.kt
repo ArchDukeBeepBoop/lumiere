@@ -84,7 +84,7 @@ class MainActivity : ComponentActivity() {
                     resources.displayMetrics.heightPixels.coerceAtMost(resources.displayMetrics.widthPixels) / 540f,
                     real.fontScale * textScale) else androidx.compose.ui.unit.Density(real.density, real.fontScale * textScale)
                 CompositionLocalProvider(LocalFormFactor provides form, androidx.compose.ui.platform.LocalDensity provides density) {
-                    App(state) { finish() }
+                    App(state) { OpenApp.quit?.invoke() ?: finishAndRemoveTask() }
                 }
                 // No screenshots, screen recording or app-switcher snapshot
                 // while the room is open.

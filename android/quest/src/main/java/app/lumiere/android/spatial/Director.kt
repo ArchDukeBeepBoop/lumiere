@@ -90,6 +90,8 @@ class Director(
     private var handsetShown = false
     /** The place the handset last saw, so arriving somewhere new puts the whole window away again. */
     private var handsetPlace: Stage.Place? = null
+    /** Whether the screen was on your wall last look: mounting it brings the handset. */
+    private var handsetMounted = false
     /** Since when a film was asked for from the handset with nothing yet to show for it (0: not waiting). */
     private var stuckSince = 0L
     private var seenAsks = Stage.bringHereAsks
@@ -255,6 +257,9 @@ class Director(
             // The place baked in Blender if it has one (and it loads); its modelled blocks otherwise.
             val bakedHere = bakedFor(place)?.takeIf { seated }
             baked.forEach { it.show(it === bakedHere) }
+            // The places you've left are let go (the winter cabin shares the cabin's sofa: not while either is here).
+            baked.filter { it !== bakedHere && it.place != place && !(bakedHere != null && it.withYou != null && it.withYou === bakedHere.withYou) }
+                .forEach { it.release() }
             val modelled = bakedHere == null
             if (theatreMade.isInitialized() || (hall && modelled)) theatre.show(hall && modelled)
             if (cabinMade.isInitialized() || (inCabin && modelled)) cabin.show(inCabin && modelled)
@@ -278,11 +283,14 @@ class Director(
         // Away from your room the handset chooses what plays, and the window stays as it is for your room,
         // unless you've asked for it (search, settings, everything else). Somewhere new, the handset again.
         if (place != handsetPlace) { handsetPlace = place; Stage.wholeWindow = false }
+        if ((Stage.mount != null) != handsetMounted) { handsetMounted = Stage.mount != null; Stage.wholeWindow = false }
         // Whatever only the window can do — signing in, choosing who's watching, a PIN, a report — has it.
         val shown = OpenApp.state
         val needsWindow = shown == null || shown.session == null || shown.choosing || shown.pinFor != null || shown.pinChooseFor != null ||
             shown.crashReport != null
-        val compact = away && handset != null && !Stage.wholeWindow && !needsWindow
+        // With the screen on your wall, the handset too: the wall shows the title you're on, the handset chooses.
+        val mountedHere = place == Stage.Place.ROOM && Stage.mount != null
+        val compact = (away || mountedHere) && handset != null && !Stage.wholeWindow && !needsWindow
         // A film asked for from the handset that never comes (an error, a sign-in): the window, to say why.
         if (compact && inPlayer && Theater.controls == null) {
             if (stuckSince == 0L) stuckSince = now else if (now - stuckSince > STUCK_MS) Stage.wholeWindow = true

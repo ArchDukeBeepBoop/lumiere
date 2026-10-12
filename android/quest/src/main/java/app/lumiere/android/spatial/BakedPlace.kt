@@ -150,6 +150,22 @@ class BakedPlace(
     }.onFailure { app.lumiere.android.Probe.fail("places", path, "materials couldn't be read: ${app.lumiere.android.Probe.why(it)}") }
         .getOrDefault(emptyList())
 
+    /**
+     * Unloaded: its models and their pictures let go, for the memory they hold
+     * (a place's atlases are up to 200 MB). Made again the next time it's placed.
+     */
+    fun release() {
+        if (hall == null && curtain == null) return
+        runCatching { hall?.destroy() }; runCatching { curtain?.destroy() }
+        hall = null; curtain = null; hallObject = null; curtainObject = null
+        lit = emptyList(); curtainLit = emptyList(); lastLight = null
+        textured.values.forEach { runCatching { it.destroy() } }; textured.clear()
+        origin = null; shown = false; curtainAt = Float.NaN
+        if (state != State.FAILED) state = State.NONE
+        app.lumiere.android.Probe.info("places", model, "released (left it): made again when you come back")
+        app.lumiere.android.Breadcrumbs.mark("released $model")
+    }
+
     fun show(on: Boolean) {
         if (on == shown) return
         shown = on

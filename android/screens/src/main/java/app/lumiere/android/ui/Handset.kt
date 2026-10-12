@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.material.icons.filled.ViewList
 import androidx.compose.material.icons.filled.ViewModule
@@ -204,6 +205,8 @@ private fun Rail(state: AppState, view: HandsetView, go: (HandsetView) -> Unit) 
         if (PosterWall.enabled) GlassButton(Icons.Default.ViewModule, "Poster wall", chosen = PosterWall.open, size = 48.dp) {
             PosterWall.open = !PosterWall.open
         }
+        if (Stage.place == Stage.Place.ROOM && Stage.mount != null)
+            GlassButton(Icons.Default.Tv, "Take the screen off your wall", chosen = true, size = 48.dp) { Stage.askMount() }
         GlassButton(Icons.Default.CenterFocusStrong, "Bring everything here", size = 48.dp) { Stage.bringHere() }
         MusicGroup(state, size = 40.dp)
     }

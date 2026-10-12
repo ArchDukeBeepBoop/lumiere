@@ -67,6 +67,8 @@ class LumiereSpace : AppSystemActivity() {
         super.onCreate(savedInstanceState)
         val unsettled = getSharedPreferences("start", MODE_PRIVATE).getInt("unsettled", 0)
         app.lumiere.android.Breadcrumbs.begin(this)
+        // Leave in the window closes all of Lumiere, not just the window's panel.
+        app.lumiere.android.OpenApp.quit = { runOnUiThread { app.lumiere.android.StartGuard.settled(this); finishAndRemoveTask() } }
         plain = app.lumiere.android.StartGuard.begin(this)
         app.lumiere.android.Breadcrumbs.mark(if (plain) "plain start" else "full start")
         if (plain) android.util.Log.w("Lumiere", "the last starts failed; starting plainly")
@@ -372,6 +374,7 @@ class LumiereSpace : AppSystemActivity() {
     }
 
     override fun onDestroy() {
+        if (isFinishing) app.lumiere.android.OpenApp.quit = null
         // Closed, not crashed: not a failed start.
         if (isFinishing) app.lumiere.android.StartGuard.settled(this)
         scope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
