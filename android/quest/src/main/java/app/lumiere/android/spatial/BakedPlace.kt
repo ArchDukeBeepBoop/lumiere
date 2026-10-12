@@ -103,6 +103,25 @@ class BakedPlace(
 
     /** Textures already put on materials, by material handle, kept alive with them. */
     private val textured = java.util.concurrent.ConcurrentHashMap<Long, com.meta.spatial.runtime.SceneTexture>()
+    private val pictures = java.util.concurrent.ConcurrentHashMap<Long, android.graphics.Bitmap>()
+
+    /** A few seconds on: what the GPU's copy of an atlas averages to, beside the picture's own — white on the GPU means the copy failed. */
+    private fun checkLater(file: String, texture: com.meta.spatial.runtime.SceneTexture, bitmap: android.graphics.Bitmap) {
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+            runCatching {
+                val gpu = FloatArray(4)
+                val read = texture.readAverageColor(gpu, 0, 0.5f, 0.5f)
+                val small = android.graphics.Bitmap.createScaledBitmap(bitmap, 16, 16, true)
+                var r = 0f; var g = 0f; var b = 0f
+                for (y in 0 until 16) for (x in 0 until 16) { val c = small.getPixel(x, y); r += (c shr 16 and 255) / 255f; g += (c shr 8 and 255) / 255f; b += (c and 255) / 255f }
+                val pic = floatArrayOf(r / 256, g / 256, b / 256)
+                val white = read && gpu[0] > 0.9f && gpu[1] > 0.9f && gpu[2] > 0.9f && pic.average() < 0.8
+                app.lumiere.android.Probe.report("places", "$file on the GPU", if (white) app.lumiere.android.Probe.Status.FAIL else app.lumiere.android.Probe.Status.OK,
+                    "GPU average ${if (read) "%.2f/%.2f/%.2f".format(gpu[0], gpu[1], gpu[2]) else "unreadable"}, picture average ${"%.2f/%.2f/%.2f".format(pic[0], pic[1], pic[2])}" +
+                        (if (white) " — WHITE ON THE GPU" else ""))
+            }.onFailure { app.lumiere.android.Probe.warn("places", "$file on the GPU", "couldn't read: ${app.lumiere.android.Probe.why(it)}") }
+        }, 4000)
+    }
 
     /**
      * [obj]'s materials, unlit, each baked surface given its atlas from
@@ -131,6 +150,10 @@ class BakedPlace(
                     m.setAlbedoTexture(texture)
                     app.lumiere.android.Breadcrumbs.mark("texture on $name")
                     textured[m.handle] = texture
+                    // The picture kept as long as its texture: the SDK may copy it to the GPU later, and a big
+                    // atlas collected before then drew white (the cinema's six were the likeliest to be).
+                    pictures[m.handle] = bitmap
+                    checkLater(file, texture, bitmap)
                     applied++
                 }
             }.onFailure { android.util.Log.w("Lumiere", "$name's atlas couldn't be put on", it); failed += "$name (${app.lumiere.android.Probe.why(it)})" }
@@ -159,7 +182,7 @@ class BakedPlace(
         runCatching { hall?.destroy() }; runCatching { curtain?.destroy() }
         hall = null; curtain = null; hallObject = null; curtainObject = null
         lit = emptyList(); curtainLit = emptyList(); lastLight = null
-        textured.values.forEach { runCatching { it.destroy() } }; textured.clear()
+        textured.values.forEach { runCatching { it.destroy() } }; textured.clear(); pictures.clear()
         origin = null; shown = false; curtainAt = Float.NaN
         if (state != State.FAILED) state = State.NONE
         app.lumiere.android.Probe.info("places", model, "released (left it): made again when you come back")
