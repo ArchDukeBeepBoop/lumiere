@@ -138,7 +138,7 @@ class CinemaHallTest {
         names.filter { BakedLight.kindOf(it) == BakedLight.Kind.SURFACE }.forEach { assertTrue("$it is baked", it.endsWith("/baked")) }
     }
 
-    /** The model itself: a glTF binary whose baked materials are unlit pictures, the left wall on your left. */
+    /** The model itself: a glTF binary whose baked materials are plain pictures (made unlit on loading), the left wall on your left. */
     @Test fun theModelIsDrawnAsBaked() {
         val glb = File("src/main/assets/environments/cinema.glb")
         if (!glb.exists()) return
@@ -147,7 +147,8 @@ class CinemaHallTest {
         for (i in 0 until materials.length()) {
             val m = materials.getJSONObject(i)
             val name = m.getString("name")
-            assertTrue("$name unlit", m.optJSONObject("extensions")?.has("KHR_materials_unlit") == true)
+            // Not marked unlit in the file: the Quest's loader drew those white. The app makes them unlit once loaded.
+            assertTrue("$name plain in the file", m.optJSONObject("extensions")?.has("KHR_materials_unlit") != true)
             if (name.endsWith("/baked")) assertTrue("$name shows its bake", m.getJSONObject("pbrMetallicRoughness").has("baseColorTexture"))
         }
         // Each side's walls on that side (x > 0 is your left).

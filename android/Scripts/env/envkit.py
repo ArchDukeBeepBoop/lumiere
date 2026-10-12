@@ -604,7 +604,27 @@ def export(objs, path, quality=88):
     bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_apply=True,
                               export_image_format='JPEG', export_jpeg_quality=quality, export_yup=True,
                               export_lights=False, export_cameras=False, export_materials='EXPORT')
+    plain_materials(path)
     log("exported", os.path.basename(path), "%.1f MB" % (os.path.getsize(path) / 1e6))
+
+
+def plain_materials(path):
+    """The glb's materials without KHR_materials_unlit: the Quest's loader drew those white, texture or not.
+    The app makes them unlit itself once loaded (BakedPlace), the way the SDK's own textured materials are."""
+    import struct
+    b = open(path, 'rb').read()
+    magic, ver, _ = struct.unpack('<4sII', b[:12]); clen, ctype = struct.unpack('<II', b[12:20])
+    j = json.loads(b[20:20 + clen])
+    for m in j.get("materials", []):
+        m.get("extensions", {}).pop("KHR_materials_unlit", None)
+        if "extensions" in m and not m["extensions"]: del m["extensions"]
+    for k in ("extensionsUsed", "extensionsRequired"):
+        if k in j:
+            j[k] = [e for e in j[k] if e != "KHR_materials_unlit"]
+            if not j[k]: del j[k]
+    js = json.dumps(j, separators=(',', ':')).encode(); js += b' ' * ((4 - len(js) % 4) % 4)
+    rest = b[20 + clen:]
+    open(path, 'wb').write(struct.pack('<4sII', magic, ver, 20 + len(js) + len(rest)) + struct.pack('<II', len(js), ctype) + js + rest)
 
 
 def preview(at, aim, path, res=(1280, 720), samples=48, lens=18):
