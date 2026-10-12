@@ -15,7 +15,7 @@ class TheaterGeometryTest {
 
     @Test fun eachSizeFillsItsShareOfYourViewInEveryPlace() {
         // (The cinema's sizes are its rows, within a degree or two: CinemaHallTest.)
-        Stage.Place.entries.filter { it != Stage.Place.CINEMA }.forEach { place ->
+        Stage.Place.entries.filter { it != Stage.Place.CINEMA && it != Stage.Place.PALACE }.forEach { place ->
             TheaterGeometry.SIZE_DEGREES.forEachIndexed { i, degrees ->
                 val s = TheaterGeometry.spec(tv, place, i, curved = false)
                 assertEquals("$place size $i", degrees, TheaterGeometry.angleDegrees(s.widthM, s.distanceM), 0.05f)
@@ -55,7 +55,7 @@ class TheaterGeometryTest {
         }
         assertTrue("each size larger", sizes.zipWithNext().all { (a, b) -> b.widthM > a.widthM })
         assertTrue("yours to carry, as in the dark and space", !TheaterGeometry.fixedScreen(Stage.Place.LAKE))
-        assertEquals(listOf(Stage.Place.CINEMA, Stage.Place.CABIN, Stage.Place.STATION), Stage.Place.entries.filter { TheaterGeometry.fixedScreen(it) })
+        assertEquals(listOf(Stage.Place.CINEMA, Stage.Place.CABIN, Stage.Place.STATION, Stage.Place.PALACE, Stage.Place.WINTER), Stage.Place.entries.filter { TheaterGeometry.fixedScreen(it) })
     }
 
     @Test fun theLineToTheScreensFootIsSteeperForACurve() {

@@ -14,6 +14,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Waves
+import androidx.compose.material.icons.filled.AcUnit
+import androidx.compose.material.icons.filled.LocationCity
+import androidx.compose.material.icons.filled.TheaterComedy
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.PlayArrow
@@ -155,6 +160,11 @@ fun placeIcon(place: Stage.Place): ImageVector = when (place) {
     Stage.Place.STATION -> Icons.Default.SatelliteAlt
     Stage.Place.VOID -> Icons.Default.DarkMode
     Stage.Place.SPACE -> Icons.Default.AutoAwesome
+    Stage.Place.DRIVE_IN -> Icons.Default.DirectionsCar
+    Stage.Place.PALACE -> Icons.Default.TheaterComedy
+    Stage.Place.ROOFTOP -> Icons.Default.LocationCity
+    Stage.Place.WINTER -> Icons.Default.AcUnit
+    Stage.Place.SEA -> Icons.Default.Waves
 }
 
 /** Each place in a word short enough for a 48 dp button ("Lakeside" wouldn't fit under its icon). */
@@ -168,4 +178,9 @@ fun placeCaption(place: Stage.Place): String = when (place) {
     Stage.Place.STATION -> "Station"
     Stage.Place.VOID -> "Dark"
     Stage.Place.SPACE -> "Space"
+    Stage.Place.DRIVE_IN -> "Drive-in"
+    Stage.Place.PALACE -> "Palace"
+    Stage.Place.ROOFTOP -> "Rooftop"
+    Stage.Place.WINTER -> "Winter"
+    Stage.Place.SEA -> "Sea"
 }

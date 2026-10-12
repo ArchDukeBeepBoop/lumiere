@@ -136,7 +136,7 @@ class Director(
         // With less motion asked for, the cinema's curtain stays open and nothing moves.
         if (app.lumiere.android.Motion.reduced) { FrontCurtain.closed = 0f; return }
         FrontCurtain.step(dt)
-        baked.firstOrNull { it.place == Stage.Place.CINEMA }?.room?.curtain(FrontCurtain.closed)
+        baked.forEach { if (it.place == Stage.Place.CINEMA || it.place == Stage.Place.PALACE) it.room.curtain(FrontCurtain.closed) }
         if (theatreMade.isInitialized()) theatre.animate(seconds)
         if (cabinMade.isInitialized()) cabin.animate(seconds)
         if (dockMade.isInitialized()) dock.animate(seconds)
@@ -237,7 +237,7 @@ class Director(
         val aboard = place == Stage.Place.STATION && seated
         // The place's sound, from where its sources are as you turn; quiet, and gone while a film plays.
         ambience?.let { a ->
-            val sounds = if (sphere || (place != Stage.Place.SPACE && !seated)) null else Soundscape.sceneFor(place, hall)
+            val sounds = if (sphere || (place != Stage.Place.SPACE && !seated)) null else Soundscape.sceneFor(place, hall || (place == Stage.Place.PALACE && seated))
             val from = (if (on) seat else browseSeat)?.facing
             val turned = from?.let { turnedFrom(it, lookingAt()) } ?: 0f
             a.set(sounds, Stage.ambience && !(on && playing), turned)
@@ -365,9 +365,10 @@ class Director(
             place == Stage.Place.ROOM && !sphere -> lightRoom(brightness, roomTint(left, right))
         }
         // The cinema's front curtain: drawn as a film comes, opening as it starts, drawn a while after it ends.
-        FrontCurtain.target = if (place != Stage.Place.CINEMA || app.lumiere.android.Motion.reduced) 0f
+        val curtained = place == Stage.Place.CINEMA || place == Stage.Place.PALACE
+        FrontCurtain.target = if (!curtained || app.lumiere.android.Motion.reduced) 0f
             else FrontCurtain.targetFor(waiting, on, now - endedAt)
-        if (place != Stage.Place.CINEMA) FrontCurtain.closed = 0f
+        if (!curtained) FrontCurtain.closed = 0f
         return brightness != target || left != wantLeft || right != wantRight || FrontCurtain.closed != FrontCurtain.target || handBusy
     }
 
@@ -559,7 +560,9 @@ class Director(
             Stage.Place.STATION -> station.build(s.floor, listOf(spec.widthM, spec.heightM, middle, spec.distanceM, eye)) {
                 Station.build(spec.widthM, spec.heightM, middle, spec.distanceM, eye)
             }
-            Stage.Place.ROOM, Stage.Place.VOID, Stage.Place.SPACE -> {}
+            // The new places are made in Blender only: their skies alone if their models can't load.
+            Stage.Place.ROOM, Stage.Place.VOID, Stage.Place.SPACE,
+            Stage.Place.DRIVE_IN, Stage.Place.PALACE, Stage.Place.ROOFTOP, Stage.Place.WINTER, Stage.Place.SEA -> {}
         }
     }
 

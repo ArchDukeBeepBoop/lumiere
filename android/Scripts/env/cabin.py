@@ -247,7 +247,8 @@ def sofa(M):
     return s
 
 
-def main():
+def main(name="cabin", restyle=None, extra=None, with_sofa=True):
+    """[restyle](M) recolours, [extra](M, hall, left, right, glows) adds: another room round this screen (winter.py)."""
     mode, out = sys.argv[-2], os.path.abspath(sys.argv[-1])
     os.makedirs(out, exist_ok=True)
     reset(16 if QUICK else 64)
@@ -260,12 +261,15 @@ def main():
     s.world.node_tree.nodes["Background"].inputs[0].default_value = (0.05, 0.07, 0.14, 1)
     s.world.node_tree.nodes["Background"].inputs[1].default_value = 0.25
     M = materials()
+    if restyle: restyle(M)
     hall, left, right, glows = room(M)
+    if extra: extra(M, hall, left, right, glows)
     sofa_at = -DISTANCES[DEFAULT]
     sofa_objs = sofa(M)
     sofa_obj = join(sofa_objs, "sofa")
     sofa_obj.data.transform(Matrix.Translation(P(0, 0, sofa_at)))
     groups = {"hall": join(hall, "hall"), "walls@L": join(left, "walls@L"), "walls@R": join(right, "walls@R"), "sofa": sofa_obj}
+    if not with_sofa: sofa_obj.hide_render = False
     glow_obj = join(glows, "lights")
     log("triangles", {k: triangles([o]) for k, o in groups.items()}, "glows", triangles([glow_obj]))
     exposure = float(os.environ.get("EXPOSURE", "1.0"))
@@ -290,15 +294,16 @@ def main():
     sizes = {"hall": 4096, "walls@L": 2048, "walls@R": 2048, "sofa": 2048}
     if QUICK: sizes = {k: v // 4 for k, v in sizes.items()}
     raw = {}
-    for name, o in groups.items():
-        raw[name] = bake(o, sizes[name], samples=16 if QUICK else 80, eyes=eyes, scene_bvh=occluders)
-    for name, px in raw.items():
-        finish(groups[name], px, out, exposure)
+    for g, o in groups.items():
+        if g == "sofa" and not with_sofa: continue
+        raw[g] = bake(o, sizes[g], samples=16 if QUICK else 80, eyes=eyes, scene_bvh=occluders)
+    for g, px in raw.items():
+        finish(groups[g], px, out, exposure)
     # The sofa's model is made round you: back to the origin.
     sofa_obj.data.transform(Matrix.Translation(P(0, 0, -sofa_at)))
-    export([groups[k] for k in ("hall", "walls@L", "walls@R")] + [glow_obj], os.path.join(out, "cabin.glb"), quality=86)
-    export([sofa_obj], os.path.join(out, "cabin_sofa.glb"), quality=86)
-    with open(os.path.join(out, "cabin.json"), "w") as f:
+    export([groups[k] for k in ("hall", "walls@L", "walls@R")] + [glow_obj], os.path.join(out, name + ".glb"), quality=86)
+    if with_sofa: export([sofa_obj], os.path.join(out, name + "_sofa.glb"), quality=86)
+    with open(os.path.join(out, name + ".json"), "w") as f:
         json.dump({"screen": {"width": SCREEN_W, "height": SCREEN_H, "middle": SCREEN_MID, "z": 0.0},
                    "room": {"halfWidth": HALF, "back": BACK, "ceiling": CEILING},
                    "sofa": {"tableFront": 1.05, "tableTop": 0.41}}, f, indent=1)

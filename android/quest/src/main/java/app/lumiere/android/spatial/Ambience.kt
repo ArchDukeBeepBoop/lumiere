@@ -16,7 +16,7 @@ import kotlin.math.sin
  * Ambience plays it.
  */
 class Soundscape(private val rate: Int = RATE, seed: Long = 1729L) {
-    enum class Scene { CABIN, LAKE, CINEMA, SPACE, CLOUDS, MOON, STATION }
+    enum class Scene { CABIN, LAKE, CINEMA, SPACE, CLOUDS, MOON, STATION, CITY, SEA, WINTER, NIGHT }
 
     private var noise = seed or 1L
     private fun white(): Float {
@@ -121,6 +121,67 @@ class Soundscape(private val rate: Int = RATE, seed: Long = 1729L) {
                     val (gl, gr) = pan(STATION_CHIME_ANGLE - turn)
                     l += fans + hum + chime * gl; r += fans * 0.95f + hum + chime * gr
                 }
+                Scene.CITY -> {
+                    // A city at night from a roof: the low rumble of traffic far below, swelling and easing, and now and then a horn far off.
+                    val w = white()
+                    low1 += 0.004f * (w - low1); low3 += 0.03f * (w - low3)
+                    val g = (0.7 + 0.3 * sin(2 * PI * 0.05 * seconds) * sin(2 * PI * 0.017 * seconds + 2.0)).toFloat()
+                    val rumble = (low1 * 2.2f + (low3 - low1) * 0.25f) * g
+                    if (beep <= 0 && white() > 1f - 0.03f * 2f / rate) beep = (rate * 0.6f).toInt()
+                    var horn = 0f
+                    if (beep > 0) {
+                        val k = 1f - beep / (rate * 0.6f)
+                        val env = if (k < 0.1f) k * 10f else (1f - k)
+                        horn = ((sin(2 * PI * 392.0 * seconds) + 0.5 * sin(2 * PI * 494.0 * seconds)).toFloat() * env * 0.012f)
+                        beep--
+                    }
+                    l += rumble + horn * 0.7f; r += rumble * 0.95f + horn
+                }
+                Scene.SEA -> {
+                    // Under the sea: a deep slow swell all round, and bubbles rising now and then, each a little upward chirp.
+                    low1 += 0.002f * (white() - low1); low3 += 0.0008f * (white() - low3)
+                    val swellAmp = (0.7 + 0.3 * sin(2 * PI * 0.08 * seconds)).toFloat()
+                    val deep = (low1 * 3.0f + low3 * 2.0f) * swellAmp
+                    if (beep <= 0 && white() > 1f - 1.5f * 2f / rate) { beep = (rate * 0.05f).toInt(); crackleTone = 600f + 900f * abs(white()) }
+                    var bubble = 0f
+                    if (beep > 0) {
+                        val k = 1f - beep / (rate * 0.05f)
+                        bubble = (sin(2 * PI * (crackleTone * (1 + k)) * seconds) * (1 - k)).toFloat() * 0.04f
+                        beep--
+                    }
+                    l += deep + bubble; r += deep * 0.9f + bubble * 0.6f
+                }
+                Scene.WINTER -> {
+                    // The fire, as the cabin's, and the wind round the cabin outside.
+                    low1 += 0.02f * (white() - low1)
+                    val roar = low1 * 1.4f
+                    if (crackle < 0.002f && white() > 1f - CRACKS_PER_SECOND * 2f / rate) {
+                        crackle = 0.25f + 0.75f * abs(white()); crackleTone = 0.2f + 0.6f * abs(white())
+                    }
+                    low2 += crackleTone * (white() - low2)
+                    val crack = low2 * crackle
+                    crackle *= 0.9985f - 0.004f * crackleTone
+                    val (gl, gr) = pan(FIRE_ANGLE - turn)
+                    l += (roar + crack) * gl; r += (roar + crack) * gr
+                    low3 += 0.003f * (white() - low3)
+                    val g = (0.5 + 0.5 * sin(2 * PI * 0.04 * seconds) * sin(2 * PI * 0.013 * seconds + 1.3)).toFloat()
+                    gust += 0.0004f * (g - gust)
+                    val wind = low3 * (0.6f + 2.0f * gust) * 1.2f
+                    l += wind * 0.9f; r += wind
+                }
+                Scene.NIGHT -> {
+                    // A summer field at night: crickets about you, and the faintest breeze.
+                    for ((k, c) in crickets.withIndex()) {
+                        c.phase = (c.phase + 2 * PI * c.pitch / rate) % (2 * PI)
+                        val beat = (seconds + c.offset) % c.every
+                        val pulses = if (beat < 0.18) (0.5 + 0.5 * cos(2 * PI * 28 * beat)).toFloat() else 0f
+                        val s = sin(c.phase).toFloat() * pulses * 0.08f
+                        val (gl, gr) = pan(CRICKET_ANGLES[k] - turn)
+                        l += s * gl; r += s * gr
+                    }
+                    low3 += 0.004f * (white() - low3)
+                    l += low3 * 0.4f; r += low3 * 0.4f
+                }
                 Scene.SPACE -> {
                     // A deep, slow drone, two low notes beating against each other.
                     swell = (0.6 + 0.4 * sin(2 * PI * 0.05 * seconds)).toFloat()
@@ -169,6 +230,11 @@ class Soundscape(private val rate: Int = RATE, seed: Long = 1729L) {
             app.lumiere.android.Stage.Place.CLOUDS -> Scene.CLOUDS
             app.lumiere.android.Stage.Place.MOON -> Scene.MOON
             app.lumiere.android.Stage.Place.STATION -> Scene.STATION
+            app.lumiere.android.Stage.Place.DRIVE_IN -> Scene.NIGHT
+            app.lumiere.android.Stage.Place.PALACE -> if (hall) Scene.CINEMA else null
+            app.lumiere.android.Stage.Place.ROOFTOP -> Scene.CITY
+            app.lumiere.android.Stage.Place.WINTER -> Scene.WINTER
+            app.lumiere.android.Stage.Place.SEA -> Scene.SEA
             else -> null
         }
 

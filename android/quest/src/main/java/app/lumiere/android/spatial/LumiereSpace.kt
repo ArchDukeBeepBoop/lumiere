@@ -287,6 +287,17 @@ class LumiereSpace : AppSystemActivity() {
             model("environments/lakeside.glb")?.let { BakedScene(Stage.Place.LAKE, it) },
             model("environments/terrace.glb")?.let { BakedScene(Stage.Place.CLOUDS, it) },
             model("environments/moonbase.glb")?.let { BakedScene(Stage.Place.MOON, it) },
+            model("environments/palace.glb", "environments/palace_curtain.glb", CinemaHall.CURTAIN_RISE)?.let { m ->
+                BakedScene(Stage.Place.PALACE, m) { floor, size -> BakedScene.ahead(floor, CinemaHall.origin(size)) }
+            },
+            model("environments/winter.glb")?.let { m ->
+                model("environments/cabin_sofa.glb")?.let { sofa ->
+                    BakedScene(Stage.Place.WINTER, m, sofa) { floor, size -> BakedScene.ahead(floor, CabinRoom.origin(size)) }
+                }
+            },
+            model("environments/drivein.glb")?.let { BakedScene(Stage.Place.DRIVE_IN, it) },
+            model("environments/rooftop.glb")?.let { BakedScene(Stage.Place.ROOFTOP, it) },
+            model("environments/sea.glb")?.let { BakedScene(Stage.Place.SEA, it) },
             model("environments/station.glb")?.let { m ->
                 BakedScene(Stage.Place.STATION, m) { floor, size -> BakedScene.ahead(floor, StationRoom.origin(size)) }
             },

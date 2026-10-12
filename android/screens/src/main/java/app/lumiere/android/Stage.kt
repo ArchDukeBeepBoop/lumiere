@@ -22,7 +22,8 @@ object Stage {
      */
     enum class Place(val label: String) {
         ROOM("your room"), CINEMA("the cinema"), CABIN("the cabin"), LAKE("the lakeside"), CLOUDS("above the clouds"),
-        MOON("the Moon"), STATION("the space station"), VOID("the dark"), SPACE("space")
+        MOON("the Moon"), STATION("the space station"), VOID("the dark"), SPACE("space"),
+        DRIVE_IN("the drive-in"), PALACE("the picture palace"), ROOFTOP("a city rooftop"), WINTER("the winter cabin"), SEA("under the sea")
     }
 
     /** A saved place by its name; a missing or unknown one (from another version) is the cinema, where everyone starts. */

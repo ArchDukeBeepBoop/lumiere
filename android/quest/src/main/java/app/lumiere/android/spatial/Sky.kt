@@ -49,7 +49,11 @@ class Sky {
             Stage.Place.CLOUDS -> R.drawable.lumiere_clouds
             Stage.Place.MOON -> R.drawable.lumiere_moon
             Stage.Place.STATION -> R.drawable.lumiere_orbit
-            Stage.Place.ROOM, Stage.Place.CINEMA, Stage.Place.VOID -> null
+            Stage.Place.DRIVE_IN -> R.drawable.lumiere_drivein
+            Stage.Place.ROOFTOP -> R.drawable.lumiere_city
+            Stage.Place.WINTER -> R.drawable.lumiere_winter
+            Stage.Place.SEA -> R.drawable.lumiere_sea
+            Stage.Place.ROOM, Stage.Place.CINEMA, Stage.Place.VOID, Stage.Place.PALACE -> null
         }
     }
 }

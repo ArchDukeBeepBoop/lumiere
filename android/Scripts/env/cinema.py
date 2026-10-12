@@ -438,7 +438,8 @@ def seat_view(k, look=(0, None, 0)):
     return eye, aim
 
 
-def main():
+def main(name="cinema", restyle=None, extra=None):
+    """[restyle](M) recolours the materials and [extra](M, hall, glows) adds to the hall: another hall on these rows (palace.py)."""
     mode = sys.argv[-2]
     out = os.path.abspath(sys.argv[-1])
     os.makedirs(out, exist_ok=True)
@@ -453,7 +454,9 @@ def main():
     s.cycles.use_light_tree = True
     s.render.threads_mode = "AUTO"
     M = materials()
+    if restyle: restyle(M)
     hall, rows, sides, glows, curtain = build(M)
+    if extra: extra(M, hall, glows)
     front, _ = seats(M, range(0, 6), "seats_front")
     back, _ = seats(M, range(6, ROWS), "seats_back")
     groups = {
@@ -502,20 +505,20 @@ def main():
     if QUICK: sizes = {k: v // 4 for k, v in sizes.items()}
     only = os.environ.get("ONLY")
     raw = {}
-    for name, o in groups.items():
-        if only and name not in only.split(","): continue
-        groups["curtain"].hide_render = name != "curtain"
-        raw[name] = bake(o, sizes[name], samples=16 if QUICK else 80, eyes=eyes, scene_bvh=occluders)
-        np.save(os.path.join(out, name.replace("@", "_") + ".npy"), raw[name])
+    for g, o in groups.items():
+        if only and g not in only.split(","): continue
+        groups["curtain"].hide_render = g != "curtain"
+        raw[g] = bake(o, sizes[g], samples=16 if QUICK else 80, eyes=eyes, scene_bvh=occluders)
+        np.save(os.path.join(out, g.replace("@", "_") + ".npy"), raw[g])
     groups["curtain"].hide_render = False
-    for name, px in raw.items():
-        finish(groups[name], px, out, exposure)
+    for g, px in raw.items():
+        finish(groups[g], px, out, exposure)
     # Out: the hall and its lights in one model, the curtain in another; and what the headset needs to know.
     hall_objs = [groups[k] for k in ("hall", "rows", "walls@L", "walls@R", "seats_front", "seats_back")] + [glow_obj]
-    export(hall_objs, os.path.join(out, "cinema.glb"), quality=86)
-    export([groups["curtain"]], os.path.join(out, "cinema_curtain.glb"), quality=86)
+    export(hall_objs, os.path.join(out, name + ".glb"), quality=86)
+    export([groups["curtain"]], os.path.join(out, name + "_curtain.glb"), quality=86)
     names = sorted({m.name for o in hall_objs for m in o.data.materials})
-    with open(os.path.join(out, "cinema.json"), "w") as f:
+    with open(os.path.join(out, name + ".json"), "w") as f:
         json.dump(layout(names), f, indent=1)
     # How it looks baked, as the headset will draw it: nothing lit but what was baked.
     for o in bpy.data.objects:

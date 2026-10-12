@@ -46,6 +46,12 @@ object TheaterGeometry {
         Stage.Place.STATION -> STATION_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
         Stage.Place.VOID -> 10f
         Stage.Place.SPACE -> 12f
+        Stage.Place.DRIVE_IN -> 30f
+        Stage.Place.ROOFTOP -> 16f
+        Stage.Place.SEA -> 13f
+        // (Their screens are their rooms': spec has the palace's rows and the winter cabin's sofa.)
+        Stage.Place.PALACE -> CINEMA_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
+        Stage.Place.WINTER -> CABIN_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
     }
 
     /**
@@ -63,10 +69,17 @@ object TheaterGeometry {
         Stage.Place.STATION -> StationRoom.aboveEyes(CinemaHall.SEAT_EYE)
         Stage.Place.VOID -> 0.1f
         Stage.Place.SPACE -> 0.2f
+        Stage.Place.DRIVE_IN -> 3.0f
+        Stage.Place.ROOFTOP -> 1.2f
+        Stage.Place.SEA -> 0.8f
+        Stage.Place.PALACE -> CinemaHall.aboveEyes(DEFAULT_SIZE, CinemaHall.SEAT_EYE)
+        Stage.Place.WINTER -> CabinRoom.aboveEyes(CinemaHall.SEAT_EYE)
     }
 
     /** Whether the screen is part of the place (the cinema's wall, the cabin's), so it stays put; elsewhere it's yours to carry. */
-    fun fixedScreen(place: Stage.Place): Boolean = place == Stage.Place.CINEMA || place == Stage.Place.CABIN || place == Stage.Place.STATION
+    fun fixedScreen(place: Stage.Place): Boolean = place in FIXED
+
+    private val FIXED = setOf(Stage.Place.CINEMA, Stage.Place.CABIN, Stage.Place.STATION, Stage.Place.PALACE, Stage.Place.WINTER)
 
     /**
      * How steeply you look down to the screen's foot, in metres down for each
@@ -104,7 +117,7 @@ object TheaterGeometry {
         val (pw, ph) = pictureSize(request)
         if (request.projection != Projection.FLAT)
             return Spec(request.projection, request.eyes, 0f, 0f, null, SPHERE_RADIUS_M, 0f, pw, ph)
-        if (place == Stage.Place.CINEMA) {
+        if (place == Stage.Place.CINEMA || place == Stage.Place.PALACE) {
             val (w, h) = CinemaHall.picture(aspectOf(request))
             return Spec(request.projection, request.eyes, w, h, null, CinemaHall.distance(size), CinemaHall.aboveEyes(size, eyeY), pw, ph)
         }
@@ -112,7 +125,7 @@ object TheaterGeometry {
             val (w, h) = StationRoom.picture(aspectOf(request))
             return Spec(request.projection, request.eyes, w, h, null, StationRoom.distance(size), StationRoom.aboveEyes(eyeY), pw, ph)
         }
-        if (place == Stage.Place.CABIN) {
+        if (place == Stage.Place.CABIN || place == Stage.Place.WINTER) {
             val (w, h) = CabinRoom.picture(aspectOf(request))
             return Spec(request.projection, request.eyes, w, h, null, CabinRoom.distance(size), CabinRoom.aboveEyes(eyeY), pw, ph)
         }
