@@ -40,7 +40,12 @@ fun BannerPreview(state: AppState, item: Item?, active: Boolean) {
     if (!start) return
     val context = LocalContext.current
     val player = remember(item.id) {
-        ExoPlayer.Builder(context).build().apply {
+        // Signed in, as the film's player is (the server answers 401 to a stream asked for without).
+        val data = androidx.media3.datasource.DefaultDataSource.Factory(context,
+            androidx.media3.datasource.okhttp.OkHttpDataSource.Factory(server.http))
+        ExoPlayer.Builder(context)
+            .setMediaSourceFactory(androidx.media3.exoplayer.source.DefaultMediaSourceFactory(data))
+            .build().apply {
             volume = 0f
             repeatMode = Player.REPEAT_MODE_OFF
             setMediaItem(MediaItem.fromUri(server.streamUrl(item.id, item.mediaSourceId)),
