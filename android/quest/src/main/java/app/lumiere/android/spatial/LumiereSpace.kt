@@ -267,7 +267,12 @@ class LumiereSpace : AppSystemActivity() {
         )
         val handMenu = Entity.createPanelEntity(R.id.lumiere_handmenu, Transform(Window.parked()), com.meta.spatial.toolkit.Visible(false))
         roomWalls = mruk?.let { RoomWalls(this, it) }
-        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset, handMenu).also { director = it }.start(scope) }
+        // The cinema as modelled and baked in Blender, if it came with the app; the SDK says when it has loaded.
+        val cinema = if (runCatching { assets.open(CINEMA_MODEL).close() }.isSuccess)
+            BakedPlace(CINEMA_MODEL, CINEMA_CURTAIN, CinemaHall.CURTAIN_RISE) { e ->
+                systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>().getSceneObject(e)
+            } else null
+        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset, handMenu, cinema).also { director = it }.start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "director unavailable", it) }
         // The place's own sounds, while the app is in front (onResume and onPause start and stop them).
         ambience.start()
@@ -304,6 +309,12 @@ class LumiereSpace : AppSystemActivity() {
             kotlinx.coroutines.delay(250)
             runCatching { director?.recenter() }.onFailure { android.util.Log.w("Lumiere", "recenter", it) }
         }
+    }
+
+    private companion object {
+        /** The cinema's hall and its front curtain, as Scripts/env/cinema.py bakes them. */
+        const val CINEMA_MODEL = "environments/cinema.glb"
+        const val CINEMA_CURTAIN = "environments/cinema_curtain.glb"
     }
 
     override fun onDestroy() {

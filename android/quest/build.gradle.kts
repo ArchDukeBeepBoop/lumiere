@@ -68,4 +68,5 @@ dependencies {
     implementation("com.meta.spatial:meta-spatial-sdk-mruk:$spatial")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

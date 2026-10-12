@@ -119,7 +119,8 @@ fun TheaterBar() = WithAppImages {
                 Shortcuts.Action.TRACKS -> sheet = if (sheet == Sheet.TRACKS) Sheet.NONE else Sheet.TRACKS
                 Shortcuts.Action.SMALLER -> { Stage.smaller(); if (Stage.place == Stage.Place.CINEMA) Theater.say("Your seat: ${Stage.seatName().lowercase()}") }
                 Shortcuts.Action.LARGER -> { Stage.larger(); if (Stage.place == Stage.Place.CINEMA) Theater.say("Your seat: ${Stage.seatName().lowercase()}") }
-                Shortcuts.Action.CURVE -> Stage.toggleCurve()
+                Shortcuts.Action.CURVE -> if (Stage.place == Stage.Place.CINEMA) Theater.say("The cinema's screen is its hall's own, flat")
+                    else Stage.toggleCurve()
                 Shortcuts.Action.PLACE -> Stage.nextPlace()
                 Shortcuts.Action.PLAYER_MENU -> Theater.windowAsked = !Theater.windowAsked
                 Shortcuts.Action.SLEEP -> Stage.cycleSleep()
@@ -208,7 +209,8 @@ private fun lookOf(a: Shortcuts.Action, speed: Float, tracksOpen: Boolean): Look
         else Look(Icons.Default.ZoomOut, "Smaller screen")
     Shortcuts.Action.LARGER -> if (Stage.place == Stage.Place.CINEMA) Look(Icons.Default.ZoomIn, "Sit nearer the screen", value = Stage.seatName())
         else Look(Icons.Default.ZoomIn, "Larger screen")
-    Shortcuts.Action.CURVE -> if (Stage.curved) Look(Icons.Default.Crop169, "Flatten the screen", value = "Curved now")
+    Shortcuts.Action.CURVE -> if (Stage.place == Stage.Place.CINEMA) Look(Icons.Default.Crop169, "Curve the screen", value = "Flat in the cinema")
+        else if (Stage.curved) Look(Icons.Default.Crop169, "Flatten the screen", value = "Curved now")
         else Look(Icons.Default.Panorama, "Curve the screen", value = "Flat now")
     Shortcuts.Action.PLACE -> placeCaption(Stage.place).let { Look(placeIcon(Stage.place), "Watch in ${Stage.place.label}", caption = it, value = "$it: tap for the next") }
     Shortcuts.Action.PLAYER_MENU -> Look(Icons.Default.Tune, "Player menu", value = "Speed, picture, sound", chosen = Theater.windowAsked)
@@ -349,7 +351,8 @@ private fun PictureSheet(c: Theater.Controls, onClose: () -> Unit) {
             if (!p.plain) TextButtonGlass("As it came") { set(Stage.Picture()) }
         } else Text("This film is HDR: it's shown as it came", color = Palette.textSecondary, modifier = Modifier.weight(1f))
         Spacer(Modifier.weight(1f))
-        Column {
+        // In the cinema a wide film is as wide as its screen, as a cinema's masking has it.
+        if (Stage.place != Stage.Place.CINEMA) Column {
             Text("Wide films", style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
             TrackColumn("", Modifier, listOf("The same width" to !Stage.scopeFill, "Wider, as in a scope cinema" to Stage.scopeFill)) { i ->
                 if ((i == 1) != Stage.scopeFill) Stage.toggleScopeFill()

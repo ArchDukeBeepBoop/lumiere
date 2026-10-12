@@ -24,8 +24,8 @@ object TheaterGeometry {
     /** Where everyone starts: 85°, a screen that fills your view, as Bigscreen's do. */
     const val DEFAULT_SIZE = 2
 
-    /** The cinema's screen: one IMAX wall, 24 m across; a size is how near you sit to it. */
-    const val CINEMA_SCREEN_WIDTH_M = 24f
+    /** The cinema's screen: its hall's (CinemaHall), 20 m across; a size is which row you sit in. */
+    const val CINEMA_SCREEN_WIDTH_M = CinemaHall.SCREEN_W
     /** The cabin's screen: a home cinema's wall screen, 5.5 m across; a size is how near the sofa is (5.3 m to 1.75 m). */
     const val CABIN_SCREEN_WIDTH_M = 5.5f
     /** The space station's screen, on its front bulkhead: a size is how near you float to it. */
@@ -38,7 +38,7 @@ object TheaterGeometry {
      */
     fun distance(place: Stage.Place, degrees: Float): Float = when (place) {
         Stage.Place.ROOM -> 3.0f
-        Stage.Place.CINEMA -> CINEMA_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
+        Stage.Place.CINEMA -> CINEMA_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())   // near enough; spec has the hall's rows
         Stage.Place.CABIN -> CABIN_SCREEN_WIDTH_M / (2 * tan(Math.toRadians(degrees / 2.0)).toFloat())
         Stage.Place.LAKE -> 14f
         Stage.Place.CLOUDS -> 16f
@@ -55,7 +55,7 @@ object TheaterGeometry {
      */
     fun aboveEyes(place: Stage.Place): Float = when (place) {
         Stage.Place.ROOM -> -0.05f
-        Stage.Place.CINEMA -> 0.3f
+        Stage.Place.CINEMA -> CinemaHall.aboveEyes(DEFAULT_SIZE, CinemaHall.SEAT_EYE)
         Stage.Place.CABIN -> 0.2f
         Stage.Place.LAKE -> 0.9f
         Stage.Place.CLOUDS -> 0.9f
@@ -92,11 +92,22 @@ object TheaterGeometry {
         val pixelWidth: Int, val pixelHeight: Int,
     )
 
-    /** The screen for [request], [place], [size] and [curved]; [scopeFill]: a wide film as tall as a 16:9 one, so wider (Stage.scopeFill). */
-    fun spec(request: Theater.Request, place: Stage.Place, size: Int, curved: Boolean, scopeFill: Boolean = false): Spec {
+    /**
+     * The screen for [request], [place], [size] and [curved]; [scopeFill]: a
+     * wide film as tall as a 16:9 one, so wider (Stage.scopeFill). In the
+     * cinema the screen is the hall's own, flat in its frame, and [size] is
+     * your row: its middle is as far above your eyes ([eyeY] over the floor)
+     * as the hall has it.
+     */
+    fun spec(request: Theater.Request, place: Stage.Place, size: Int, curved: Boolean, scopeFill: Boolean = false,
+             eyeY: Float = CinemaHall.SEAT_EYE): Spec {
         val (pw, ph) = pictureSize(request)
         if (request.projection != Projection.FLAT)
             return Spec(request.projection, request.eyes, 0f, 0f, null, SPHERE_RADIUS_M, 0f, pw, ph)
+        if (place == Stage.Place.CINEMA) {
+            val (w, h) = CinemaHall.picture(aspectOf(request))
+            return Spec(request.projection, request.eyes, w, h, null, CinemaHall.distance(size), CinemaHall.aboveEyes(size, eyeY), pw, ph)
+        }
         val degrees = SIZE_DEGREES[size.coerceIn(0, SIZE_DEGREES.lastIndex)]
         val d = distance(place, degrees)
         val radians = Math.toRadians(degrees.toDouble()).toFloat()

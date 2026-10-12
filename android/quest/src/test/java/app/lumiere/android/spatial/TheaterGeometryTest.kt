@@ -14,7 +14,8 @@ class TheaterGeometryTest {
     private val tv = Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 1080)
 
     @Test fun eachSizeFillsItsShareOfYourViewInEveryPlace() {
-        Stage.Place.entries.forEach { place ->
+        // (The cinema's sizes are its rows, within a degree or two: CinemaHallTest.)
+        Stage.Place.entries.filter { it != Stage.Place.CINEMA }.forEach { place ->
             TheaterGeometry.SIZE_DEGREES.forEachIndexed { i, degrees ->
                 val s = TheaterGeometry.spec(tv, place, i, curved = false)
                 assertEquals("$place size $i", degrees, TheaterGeometry.angleDegrees(s.widthM, s.distanceM), 0.05f)
@@ -23,7 +24,7 @@ class TheaterGeometryTest {
         }
     }
 
-    @Test fun theCinemaIsOneImaxWallAndASizeIsYourSeat() {
+    @Test fun theCinemaIsOneWallAndASizeIsYourSeat() {
         val seats = (0 until Stage.SCREEN_SIZES).map { TheaterGeometry.spec(tv, Stage.Place.CINEMA, it, false) }
         seats.forEach { assertEquals("one wall", TheaterGeometry.CINEMA_SCREEN_WIDTH_M, it.widthM, 1e-3f) }
         assertTrue("larger sits nearer", seats.zipWithNext().all { (a, b) -> b.distanceM < a.distanceM })
@@ -75,7 +76,7 @@ class TheaterGeometryTest {
     }
 
     @Test fun curvedIsCentredOnYouAndKeepsTheSameAngle() {
-        val s = TheaterGeometry.spec(tv, Stage.Place.CINEMA, 3, curved = true)
+        val s = TheaterGeometry.spec(tv, Stage.Place.VOID, 3, curved = true)
         assertEquals(s.distanceM, s.radiusM!!, 0f)
         assertEquals(TheaterGeometry.SIZE_DEGREES[3], Math.toDegrees((s.widthM / s.radiusM!!).toDouble()).toFloat(), 0.05f)
     }
@@ -97,7 +98,8 @@ class TheaterGeometryTest {
     @Test fun wideFilmsFillTheWallWhenAsked() {
         val scope = Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 804)
         val tv = Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 1080)
-        for (place in listOf(Stage.Place.CINEMA, Stage.Place.LAKE, Stage.Place.ROOM)) {
+        // (Not the cinema: its screen is its hall's, wide films within its width.)
+        for (place in listOf(Stage.Place.CABIN, Stage.Place.LAKE, Stage.Place.ROOM)) {
             val plain = TheaterGeometry.spec(scope, place, 2, false)
             val filled = TheaterGeometry.spec(scope, place, 2, false, scopeFill = true)
             val sixteen = TheaterGeometry.spec(tv, place, 2, false)
