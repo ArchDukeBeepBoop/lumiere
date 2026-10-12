@@ -154,9 +154,15 @@ class Director(
     fun start(scope: CoroutineScope): Job = scope.launch {
         // The tab bar's spatial buttons work from now on (a plain start never gets here).
         Stage.directed = true
+        app.lumiere.android.Breadcrumbs.mark("director running, place ${Stage.place}")
+        var ticks = 0
         while (isActive) {
             // A failure here costs a quarter-second, never the app.
-            val moving = runCatching { tick() }.onFailure { android.util.Log.w("Lumiere", "director", it) }.getOrDefault(false)
+            val moving = runCatching { tick() }.onFailure {
+                android.util.Log.w("Lumiere", "director", it)
+                app.lumiere.android.Probe.fail("theater", "director", "a frame failed: ${app.lumiere.android.Probe.why(it)}")
+            }.getOrDefault(false)
+            if (++ticks <= 3 || ticks % 40 == 0) app.lumiere.android.Breadcrumbs.mark("director tick $ticks, place ${Stage.place}")
             delay(if (moving) 40 else 250)
         }
     }
@@ -244,6 +250,7 @@ class Director(
         }
         if (shownPlace != place to seated) {
             shownPlace = place to seated
+            app.lumiere.android.Breadcrumbs.mark("showing $place (seated $seated)")
             scene.enablePassthrough(place == Stage.Place.ROOM && !sphere)
             // The place baked in Blender if it has one (and it loads); its modelled blocks otherwise.
             val bakedHere = bakedFor(place)?.takeIf { seated }

@@ -66,7 +66,9 @@ class LumiereSpace : AppSystemActivity() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         val unsettled = getSharedPreferences("start", MODE_PRIVATE).getInt("unsettled", 0)
+        app.lumiere.android.Breadcrumbs.begin(this)
         plain = app.lumiere.android.StartGuard.begin(this)
+        app.lumiere.android.Breadcrumbs.mark(if (plain) "plain start" else "full start")
         if (plain) android.util.Log.w("Lumiere", "the last starts failed; starting plainly")
         app.lumiere.android.Probe.report("start", "mode", if (plain) app.lumiere.android.Probe.Status.FAIL else app.lumiere.android.Probe.Status.OK,
             if (plain) "PLAIN START: the last $unsettled starts ended within ${app.lumiere.android.StartGuard.SETTLE_MS / 1000} s (a crash, or the app " +
@@ -201,6 +203,7 @@ class LumiereSpace : AppSystemActivity() {
     )
 
     override fun onSceneReady() {
+        app.lumiere.android.Breadcrumbs.mark("scene ready")
         super.onSceneReady()
         // The places' modelled parts (Modeller), made as the SDK asks for them.
         runCatching { registerMeshCreator(ModelMeshes.BASE) { entity, uri -> ModelMeshes.create(entity, uri, this) } }
@@ -237,6 +240,7 @@ class LumiereSpace : AppSystemActivity() {
         scope.launch {
             kotlinx.coroutines.delay(app.lumiere.android.StartGuard.SETTLE_MS)
             app.lumiere.android.StartGuard.settled(this@LumiereSpace)
+            app.lumiere.android.Breadcrumbs.mark("settled (ran ${app.lumiere.android.StartGuard.SETTLE_MS / 1000} s)")
         }
         // The thumbsticks are the remote's arrows here, not a way to walk about the room. The
         // system stays (input reads it every frame; removing it stopped the app at launch), turned off.
@@ -281,11 +285,10 @@ class LumiereSpace : AppSystemActivity() {
         val sceneObjects: (com.meta.spatial.core.Entity) -> java.util.concurrent.CompletableFuture<com.meta.spatial.runtime.SceneObject>? =
             { e -> systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>().getSceneObject(e) }
         fun has(path: String) = runCatching { assets.open(path).close() }.isSuccess
-        // Baked atlases have no transparency: 16-bit colour, half the memory of 32 (a 4096 atlas: 32 MB, not 64).
         val picture: (String) -> android.graphics.Bitmap? = { p ->
             try {
-                assets.open(p).use { android.graphics.BitmapFactory.decodeStream(it, null,
-                    android.graphics.BitmapFactory.Options().apply { inPreferredConfig = android.graphics.Bitmap.Config.RGB_565 }) }
+                app.lumiere.android.Breadcrumbs.mark("decoding $p")
+                assets.open(p).use { android.graphics.BitmapFactory.decodeStream(it) }
                     .also { b -> if (b == null) app.lumiere.android.Probe.fail("places", p, "the atlas is in the build but couldn't be decoded") }
             } catch (e: OutOfMemoryError) {
                 val rt = Runtime.getRuntime()
@@ -322,6 +325,7 @@ class LumiereSpace : AppSystemActivity() {
                 BakedScene(Stage.Place.STATION, m) { floor, size -> BakedScene.ahead(floor, StationRoom.origin(size)) }
             },
         )
+        app.lumiere.android.Breadcrumbs.mark("baked places listed: ${baked.size}; starting the director")
         runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset, handMenu, baked).also { director = it }.start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "director unavailable", it) }
         // The place's own sounds, while the app is in front (onResume and onPause start and stop them).

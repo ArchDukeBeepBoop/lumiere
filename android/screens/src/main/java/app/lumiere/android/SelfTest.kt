@@ -63,8 +63,69 @@ object SelfTest {
         val last = CrashLog.last(context)
         if (last == null) Probe.ok("crashes", "last crash", "none recorded")
         else Probe.warn("crashes", "last crash", CrashLog.essentials(last, 14).replace("\n", " ⏎ "))
+        exits(context)
+        Breadcrumbs.previous(context).takeIf { it.isNotBlank() }?.let {
+            Probe.info("crashes", "last start's steps", it.lines().takeLast(25).joinToString(" ⏎ "))
+        }
+        Probe.info("crashes", "this start's steps", Breadcrumbs.current(context).lines().takeLast(12).joinToString(" ⏎ "))
         val unsettled = context.getSharedPreferences("start", Context.MODE_PRIVATE).getInt("unsettled", 0)
         if (unsettled > 0) Probe.info("crashes", "early ends", "$unsettled recent start(s) ended within ${StartGuard.SETTLE_MS / 1000} s")
+    }
+
+    /** How the last runs ended, as Android recorded it: a native crash's backtrace, an ANR's stacks, a kill for memory. */
+    private fun exits(context: Context) {
+        if (android.os.Build.VERSION.SDK_INT < 30) return
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val exits = runCatching { am.getHistoricalProcessExitReasons(context.packageName, 0, 6) }.getOrNull().orEmpty()
+        val clock = java.text.SimpleDateFormat("d MMM HH:mm:ss", java.util.Locale.ROOT)
+        exits.forEachIndexed { i, e ->
+            val reason = when (e.reason) {
+                android.app.ApplicationExitInfo.REASON_CRASH_NATIVE -> "NATIVE CRASH"
+                android.app.ApplicationExitInfo.REASON_CRASH -> "CRASH (Java/Kotlin)"
+                android.app.ApplicationExitInfo.REASON_ANR -> "NOT RESPONDING (ANR)"
+                android.app.ApplicationExitInfo.REASON_LOW_MEMORY -> "killed: low memory"
+                android.app.ApplicationExitInfo.REASON_SIGNALED -> "killed by signal ${e.status}"
+                android.app.ApplicationExitInfo.REASON_EXIT_SELF -> "exited itself"
+                android.app.ApplicationExitInfo.REASON_USER_REQUESTED -> "closed by you / the system UI"
+                android.app.ApplicationExitInfo.REASON_PACKAGE_UPDATED -> "app updated"
+                android.app.ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE -> "killed: excessive resource use"
+                android.app.ApplicationExitInfo.REASON_DEPENDENCY_DIED -> "a dependency died"
+                android.app.ApplicationExitInfo.REASON_INITIALIZATION_FAILURE -> "failed to start"
+                android.app.ApplicationExitInfo.REASON_OTHER -> "other"
+                else -> "reason ${e.reason}"
+            }
+            val bad = e.reason in setOf(android.app.ApplicationExitInfo.REASON_CRASH_NATIVE, android.app.ApplicationExitInfo.REASON_CRASH,
+                android.app.ApplicationExitInfo.REASON_ANR, android.app.ApplicationExitInfo.REASON_LOW_MEMORY,
+                android.app.ApplicationExitInfo.REASON_EXCESSIVE_RESOURCE_USAGE, android.app.ApplicationExitInfo.REASON_INITIALIZATION_FAILURE)
+            val trace = if (e.reason == android.app.ApplicationExitInfo.REASON_CRASH_NATIVE || e.reason == android.app.ApplicationExitInfo.REASON_ANR)
+                runCatching { e.traceInputStream?.use { it.readBytes() } }.getOrNull()?.let { traceLines(it, e.reason == android.app.ApplicationExitInfo.REASON_ANR) } else null
+            Probe.report("crashes", "exit ${i + 1}: ${clock.format(java.util.Date(e.timestamp))}", if (bad) Status.FAIL else Status.INFO,
+                "$reason${e.description?.let { " — $it" } ?: ""}; memory then ${e.pss / 1024} MB (rss ${e.rss / 1024} MB)" +
+                    (trace?.let { " ⏎ $it" } ?: ""))
+        }
+        if (exits.isEmpty()) Probe.info("crashes", "exits", "Android has no record of how earlier runs ended")
+    }
+
+    /** The readable part of a trace: a native tombstone's frames (it's binary) or an ANR's main thread. */
+    private fun traceLines(bytes: ByteArray, anr: Boolean): String {
+        if (anr) {
+            val text = String(bytes)
+            val main = text.substringAfter("\"main\"", text).lines().take(30)
+            return main.joinToString(" ⏎ ")
+        }
+        // Printable runs from the tombstone's protobuf: the signal, abort message, and frames (library + function).
+        val runs = mutableListOf<String>()
+        val sb = StringBuilder()
+        for (b in bytes) {
+            val c = b.toInt() and 0xFF
+            if (c in 32..126) sb.append(c.toChar()) else { if (sb.length >= 5) runs += sb.toString(); sb.setLength(0) }
+        }
+        if (sb.length >= 5) runs += sb.toString()
+        val interesting = runs.filter { r ->
+            r.startsWith("SIG") || "Abort" in r || "abort" in r || ".so" in r || "::" in r || "app.lumiere" in r || "com.meta" in r ||
+                "Exception" in r || "Error" in r || "fault" in r
+        }.distinct()
+        return interesting.take(40).joinToString(" ⏎ ")
     }
 
     private fun memory() {

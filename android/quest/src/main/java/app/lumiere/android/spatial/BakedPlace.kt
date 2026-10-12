@@ -77,6 +77,7 @@ class BakedPlace(
         state = State.LOADING
         loadingSince = now
         app.lumiere.android.Probe.info("places", path, "loading")
+        app.lumiere.android.Breadcrumbs.mark("loading model $path")
         val e = Entity.create(listOf(
             Mesh(Uri.parse("apk:///$path"), hittable = MeshCollision.NoCollision),
             Transform(at),
@@ -93,6 +94,7 @@ class BakedPlace(
                 if (path == model) broken = true
                 return@whenComplete
             }
+            app.lumiere.android.Breadcrumbs.mark("model loaded $path")
             if (path == model) { hallObject = obj; state = State.READY } else curtainObject = obj
             done(materialsOf(obj, path))
         }
@@ -124,8 +126,10 @@ class BakedPlace(
                 val bitmap = picture(file)
                 if (bitmap == null) missing += file
                 else {
+                    app.lumiere.android.Breadcrumbs.mark("texture ${bitmap.width}x${bitmap.height} onto $name")
                     val texture = com.meta.spatial.runtime.SceneTexture(bitmap, com.meta.spatial.runtime.SamplerConfig())
                     m.setAlbedoTexture(texture)
+                    app.lumiere.android.Breadcrumbs.mark("texture on $name")
                     textured[m.handle] = texture
                     applied++
                 }
