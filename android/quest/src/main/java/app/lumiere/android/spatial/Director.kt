@@ -420,11 +420,12 @@ class Director(
                 RoomWalls.State.READY -> {
                     val now = scene.getViewerPose()
                     val hit = WallMount.facing(w.walls(), now.t, now.forward().normalize())
-                    if (hit == null) pinHere(" (no wall of your Space Setup there)")
+                    val known = w.walls()
+                    if (hit == null) pinHere(if (known.isEmpty()) " (Space Setup gave no walls)" else " (none of your ${known.size} walls is before you)")
                     else {
                         val (wall, at) = hit
                         Stage.mounted(Stage.Mount(wall.id, at.first, at.second, WallMount.distance(wall, now.t)))
-                        Theater.say("On your wall: films in your room play here now")
+                        Theater.say("On your wall (one of ${w.walls().size}): films in your room play here now")
                     }
                 }
                 RoomWalls.State.NO_PERMISSION -> pinHere(" (allow spatial data for real walls)")

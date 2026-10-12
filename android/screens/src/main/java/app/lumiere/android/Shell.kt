@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
@@ -55,6 +56,7 @@ internal fun tabs(state: AppState, tv: Boolean): List<Tab> {
         Tab("Library", Icons.Default.VideoLibrary, { Screen.TvLibrary }, { it == Screen.TvLibrary }),
         Tab("Search", Icons.Default.Search, { Screen.Search }, { it == Screen.Search }),
         music?.let { m -> Tab("Music", Icons.Default.LibraryMusic, { Screen.Music(m) }, { it is Screen.Music }) },
+        Tab("On this device", Icons.Default.SdStorage, { Screen.OnDevice }, { it == Screen.OnDevice }),
         Tab("Settings", Icons.Default.Settings, { state.guarded { state.tab(Screen.Settings) }; null }, { it == Screen.Settings }),
     )
     return listOfNotNull(

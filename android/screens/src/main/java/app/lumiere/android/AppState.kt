@@ -22,6 +22,8 @@ sealed interface Screen {
     data object Search : Screen
     data object Settings : Screen
     data object Downloads : Screen
+    /** The videos kept on this device itself (local.OnDeviceScreen). */
+    data object OnDevice : Screen
     data class Music(val view: Item) : Screen
     data class Album(val id: String) : Screen
     data class Artist(val artist: Item, val libraryId: String) : Screen

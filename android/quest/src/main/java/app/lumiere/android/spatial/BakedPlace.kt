@@ -33,6 +33,8 @@ class BakedPlace(
     private val curtainRise: Float,
     /** The SDK's scene object for an entity, once its mesh has loaded. */
     private val sceneObjects: (Entity) -> CompletableFuture<SceneObject>?,
+    /** A picture from the app's assets (a baked atlas), or null. */
+    private val picture: (String) -> android.graphics.Bitmap? = { null },
 ) {
     enum class State { NONE, LOADING, READY, FAILED }
 
@@ -86,16 +88,33 @@ class BakedPlace(
                 return@whenComplete
             }
             if (path == model) { hallObject = obj; state = State.READY } else curtainObject = obj
-            done(materialsOf(obj))
+            done(materialsOf(obj, path))
         }
         return e
     }
 
-    private fun materialsOf(obj: SceneObject): List<Lit> = runCatching {
+    /** Textures already put on materials, by material handle, kept alive with them. */
+    private val textured = java.util.concurrent.ConcurrentHashMap<Long, com.meta.spatial.runtime.SceneTexture>()
+
+    /**
+     * [obj]'s materials, unlit, each baked surface given its atlas from
+     * environments/<model>/<material>.jpg (Scripts/env/textures.py): the
+     * SDK's glTF loader may leave a baked material without its picture, and
+     * the place then shows white.
+     */
+    private fun materialsOf(obj: SceneObject, path: String): List<Lit> = runCatching {
         val mesh = obj.mesh ?: return emptyList()
+        val folder = path.removeSuffix(".glb")
         (mesh.materials ?: return emptyList()).mapIndexed { i, m ->
             val name = runCatching { mesh.getMaterialName(i) }.getOrDefault("")
             runCatching { m.setUnlit(true) }
+            if (name.endsWith("/baked") && !textured.containsKey(m.handle)) runCatching {
+                picture("$folder/${name.replace('/', '_').replace('@', '_').replace(':', '_')}.jpg")?.let { bitmap ->
+                    val texture = com.meta.spatial.runtime.SceneTexture(bitmap, com.meta.spatial.runtime.SamplerConfig())
+                    m.setAlbedoTexture(texture)
+                    textured[m.handle] = texture
+                }
+            }.onFailure { android.util.Log.w("Lumiere", "$name's atlas couldn't be put on", it) }
             Lit(m, BakedLight.kindOf(name), BakedLight.sideOf(name))
         }
     }.getOrDefault(emptyList())
@@ -110,8 +129,8 @@ class BakedPlace(
     /** As Scenery.light: the house lights at [level], the picture's halves' light on each side. */
     fun light(level: Float, left: Triple<Float, Float, Float>?, right: Triple<Float, Float, Float>? = left) {
         // Materials not readable when it loaded: try again (no dimming meanwhile, but the place is there).
-        if (lit.isEmpty()) hallObject?.let { o -> materialsOf(o).takeIf { it.isNotEmpty() }?.let { lit = it; lastLight = null } }
-        if (curtainLit.isEmpty()) curtainObject?.let { o -> materialsOf(o).takeIf { it.isNotEmpty() }?.let { curtainLit = it; lastLight = null } }
+        if (lit.isEmpty()) hallObject?.let { o -> materialsOf(o, model).takeIf { it.isNotEmpty() }?.let { lit = it; lastLight = null } }
+        if (curtainLit.isEmpty()) curtainObject?.let { o -> materialsOf(o, curtainModel ?: model).takeIf { it.isNotEmpty() }?.let { curtainLit = it; lastLight = null } }
         val now = Triple(level, left, right)
         if (now == lastLight || (lit.isEmpty() && curtainLit.isEmpty())) return
         lastLight = now

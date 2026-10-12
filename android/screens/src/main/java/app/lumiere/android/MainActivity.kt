@@ -458,6 +458,7 @@ private fun App(state: AppState, onExit: () -> Unit) {
                 is Screen.Music -> app.lumiere.android.music.MusicScreen(state, screen.view)
                 is Screen.Album -> app.lumiere.android.music.AlbumScreen(state, screen.id)
                 is Screen.Artist -> app.lumiere.android.music.ArtistScreen(state, screen.artist, screen.libraryId)
+                Screen.OnDevice -> app.lumiere.android.local.OnDeviceScreen(state)
                 Screen.NowPlaying -> if (LocalFormFactor.current.isTv) app.lumiere.android.tv.TvNowPlayingScreen(state)
                     else app.lumiere.android.music.NowPlayingScreen(state)
                 is Screen.Edit -> app.lumiere.android.ui.EditScreen(state, screen.id)

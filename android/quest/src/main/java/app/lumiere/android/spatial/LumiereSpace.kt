@@ -273,7 +273,8 @@ class LumiereSpace : AppSystemActivity() {
         val sceneObjects: (com.meta.spatial.core.Entity) -> java.util.concurrent.CompletableFuture<com.meta.spatial.runtime.SceneObject>? =
             { e -> systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>().getSceneObject(e) }
         fun has(path: String) = runCatching { assets.open(path).close() }.isSuccess
-        fun model(path: String, curtain: String? = null, rise: Float = 0f) = if (has(path)) BakedPlace(path, curtain, rise, sceneObjects) else null
+        val picture: (String) -> android.graphics.Bitmap? = { p -> runCatching { assets.open(p).use { android.graphics.BitmapFactory.decodeStream(it) } }.getOrNull() }
+        fun model(path: String, curtain: String? = null, rise: Float = 0f) = if (has(path)) BakedPlace(path, curtain, rise, sceneObjects, picture) else null
         val baked = listOfNotNull(
             model(CINEMA_MODEL, CINEMA_CURTAIN, CinemaHall.CURTAIN_RISE)?.let { m ->
                 BakedScene(Stage.Place.CINEMA, m) { floor, size -> BakedScene.ahead(floor, CinemaHall.origin(size)) }

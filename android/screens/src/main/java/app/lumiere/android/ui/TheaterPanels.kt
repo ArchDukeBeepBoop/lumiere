@@ -94,6 +94,7 @@ import kotlinx.coroutines.launch
  * one of them, to use or pin. It shows when the film is paused or you've just touched anything, and
  * steps away a few seconds later.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun TheaterBar() = WithAppImages {
     LumiereTheme {
@@ -177,7 +178,13 @@ fun TheaterBar() = WithAppImages {
                         scrubbing = null; Floating.scrub = null
                     },
                     colors = SliderDefaults.colors(thumbColor = Palette.accent, activeTrackColor = Palette.accent),
-                    modifier = Modifier.fillMaxWidth(),
+                    // A small dot and a fine track, as a film's seek bar is; the default thumb was a slab.
+                    thumb = { Box(Modifier.size(if (scrubbing != null) 18.dp else 14.dp).background(Palette.accent, androidx.compose.foundation.shape.CircleShape)) },
+                    track = { st ->
+                        SliderDefaults.Track(sliderState = st, modifier = Modifier.height(4.dp), thumbTrackGapSize = 0.dp, drawStopIndicator = null,
+                            colors = SliderDefaults.colors(activeTrackColor = Palette.accent, inactiveTrackColor = Color.White.copy(alpha = 0.22f)))
+                    },
+                    modifier = Modifier.fillMaxWidth().height(28.dp),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     GlassButton(Icons.Default.Replay10, "Back 10 seconds", size = 52.dp) { touch { c.clock.seek((c.clock.now() - 10).coerceAtLeast(0.0)) } }

@@ -103,20 +103,49 @@ class Server(val baseUrl: String, private val deviceId: String, var token: Strin
 
     suspend fun views(userId: String) = parseItems(get("UserViews", mapOf("userId" to userId)))
 
-    suspend fun resume(userId: String) = parseItems(
-        get("UserItems/Resume", mapOf("userId" to userId, "MediaTypes" to "Video", "Limit" to "24", "Fields" to FIELDS))
-    )
+    /**
+     * Which library each title is in, as learned from asking each library
+     * for its own: a server that doesn't say (no TopParentId) would leave the
+     * private room empty, every title in it of no known library.
+     */
+    private val libraryOf = java.util.concurrent.ConcurrentHashMap<String, String>()
 
-    suspend fun nextUp(userId: String) = parseItems(
-        get("Shows/NextUp", mapOf("userId" to userId, "Limit" to "24", "Fields" to FIELDS))
-    )
+    private fun List<Item>.inLibrary(id: String): List<Item> = map { item ->
+        libraryOf[item.id] = item.libraryId ?: id
+        item.seriesId?.let { libraryOf.putIfAbsent(it, item.libraryId ?: id) }
+        if (item.libraryId == null) item.copy(libraryId = id) else item
+    }
+
+    /** Titles with their library filled in where it's been learned. */
+    fun known(items: List<Item>): List<Item> = items.map { item ->
+        if (item.libraryId != null) item
+        else (libraryOf[item.id] ?: item.seriesId?.let(libraryOf::get))?.let { item.copy(libraryId = it) } ?: item
+    }
+
+    /** [ask] once; if the server didn't say which library some of them are in, once per library, to learn it. */
+    private suspend fun everyLibrary(userId: String, ask: suspend (String?) -> List<Item>): List<Item> {
+        val all = known(ask(null))
+        if (all.none { it.libraryId == null }) return all
+        runCatching {
+            views(userId).forEach { v -> runCatching { ask(v.id).inLibrary(v.id) } }
+        }
+        return known(all)
+    }
+
+    suspend fun resume(userId: String) = everyLibrary(userId) { parent -> parseItems(
+        get("UserItems/Resume", mapOf("userId" to userId, "MediaTypes" to "Video", "Limit" to "24", "Fields" to FIELDS, "ParentId" to parent))
+    ) }
+
+    suspend fun nextUp(userId: String) = everyLibrary(userId) { parent -> parseItems(
+        get("Shows/NextUp", mapOf("userId" to userId, "Limit" to "24", "Fields" to FIELDS, "ParentId" to parent))
+    ) }
 
     suspend fun latest(userId: String, parentId: String) = parseItems(
         get("Items/Latest", mapOf("userId" to userId, "ParentId" to parentId, "Limit" to "24", "Fields" to FIELDS))
-    )
+    ).inLibrary(parentId)
 
     suspend fun library(userId: String, parentId: String, start: Int, limit: Int, sortBy: String = "SortName",
-                        descending: Boolean = false, search: String? = null) = parseItems(
+                        descending: Boolean = false, search: String? = null) = parseItemsIn(parentId,
         get(
             "Items", mapOf(
                 "userId" to userId, "ParentId" to parentId, "Recursive" to "true",
@@ -128,16 +157,28 @@ class Server(val baseUrl: String, private val deviceId: String, var token: Strin
         )
     )
 
-    suspend fun search(userId: String, term: String) = parseItems(
+    suspend fun search(userId: String, term: String) = everyLibrary(userId) { parent -> parseItems(
         get(
             "Items", mapOf(
                 "userId" to userId, "Recursive" to "true", "SearchTerm" to term, "Limit" to "40",
-                "IncludeItemTypes" to "Movie,Series,Episode,Video,MusicAlbum,Audio", "Fields" to FIELDS,
+                "IncludeItemTypes" to "Movie,Series,Episode,Video,MusicAlbum,Audio", "Fields" to FIELDS, "ParentId" to parent,
             )
         )
-    )
+    ) }
 
-    suspend fun item(userId: String, id: String) = parseItem(JSONObject(get("Users/$userId/Items/$id")))
+    suspend fun item(userId: String, id: String): Item {
+        val item = known(listOf(parseItem(JSONObject(get("Users/$userId/Items/$id"))))).first()
+        if (item.libraryId != null) return item
+        // Its library from its ancestors: the one that's a library (a collection folder).
+        val library = runCatching {
+            parseItems(get("Items/$id/Ancestors", mapOf("userId" to userId))).lastOrNull { it.type == "CollectionFolder" }?.id
+        }.getOrNull() ?: return item
+        libraryOf[id] = library
+        return item.copy(libraryId = library)
+    }
+
+    /** [body]'s titles, each in library [parentId] unless it says otherwise. */
+    private fun parseItemsIn(parentId: String, body: String) = parseItems(body).inLibrary(parentId)
 
     suspend fun seasons(userId: String, seriesId: String) =
         parseItems(get("Shows/$seriesId/Seasons", mapOf("userId" to userId)))

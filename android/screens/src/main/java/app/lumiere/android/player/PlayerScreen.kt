@@ -196,6 +196,16 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     if (!isTv) VideoSession(player, item, state)
 
     LaunchedEffect(id) {
+        // A video on this device itself: straight from its file, nothing asked of (or told to) the server.
+        if (app.lumiere.android.local.LocalVideos.isLocal(id)) {
+            val found = app.lumiere.android.local.LocalVideos.itemFor(context, id)
+            item = found
+            player.setMediaItem(androidx.media3.common.MediaItem.fromUri(app.lumiere.android.local.LocalVideos.uriOf(id)),
+                ((startSeconds ?: 0.0) * 1000).toLong())
+            player.prepare()
+            player.play()
+            return@LaunchedEffect
+        }
         val local = state.downloads.playable(id)
         // Offline, a download carries its own copy of the item.
         runCatching { server.item(session.userId, id) }

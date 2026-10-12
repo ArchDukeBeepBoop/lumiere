@@ -197,14 +197,17 @@ class Reporter(private val server: Server, var itemId: String, private val scope
         ?: (player.currentPosition.coerceAtLeast(0) * 10_000)
 
     fun started(player: ExoPlayer) = scope.launch {
+        if (app.lumiere.android.local.LocalVideos.isLocal(itemId)) return@launch
         server.report("Sessions/Playing", itemId, ticks(player), session, false)
     }
 
     fun progress(player: ExoPlayer) = scope.launch {
+        if (app.lumiere.android.local.LocalVideos.isLocal(itemId)) return@launch
         server.report("Sessions/Playing/Progress", itemId, ticks(player), session, !player.isPlaying)
     }
 
     fun stopped(player: ExoPlayer, finished: Boolean) {
+        if (app.lumiere.android.local.LocalVideos.isLocal(itemId)) return
         if (stopped) return
         stopped = true
         val position = if (finished) ((clock()?.duration() ?: (player.duration / 1000.0)) * 10_000_000).toLong() else ticks(player)

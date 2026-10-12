@@ -51,10 +51,28 @@ object WallMount {
         return x to y
     }
 
-    /** The wall your gaze meets nearest of [walls], with where on it. */
-    fun facing(walls: List<Wall>, eye: Vector3, look: Vector3): Pair<Wall, Pair<Float, Float>>? =
+    /**
+     * The wall your gaze meets nearest of [walls], with where on it; failing
+     * that (Space Setup's walls a little off, or your gaze just past an
+     * edge), the wall you most nearly face, within 40°, at the point on it
+     * nearest your gaze's line.
+     */
+    fun facing(walls: List<Wall>, eye: Vector3, look: Vector3): Pair<Wall, Pair<Float, Float>>? {
         walls.mapNotNull { w -> hit(w, eye, look)?.let { w to it } }
-            .minByOrNull { (w, at) -> (w.point(at.first, at.second) - eye).length() }
+            .minByOrNull { (w, at) -> (w.point(at.first, at.second) - eye).length() }?.let { return it }
+        val flat = Vector3(look.x, 0f, look.z).let { if (it.length() < 1e-3f) return null else it.normalize() }
+        return walls.mapNotNull { w ->
+            val n = w.facing(eye)
+            val toward = -flat.dot(n)
+            if (toward < kotlin.math.cos(Math.toRadians(40.0)).toFloat()) return@mapNotNull null
+            val t = (w.pose.t - eye).dot(n) / flat.dot(n)
+            if (t <= 0f) return@mapNotNull null
+            val at = eye + flat * t - w.pose.t
+            val x = at.dot(w.along()).coerceIn(w.minX, w.maxX)
+            val y = (eye.y - w.pose.t.y).coerceIn(w.minY, w.maxY)
+            Triple(w, x to y, toward)
+        }.maxByOrNull { it.third }?.let { (w, at, _) -> w to at }
+    }
 
     /** How far [eye] stands from [wall]'s face. */
     fun distance(wall: Wall, eye: Vector3): Float = kotlin.math.abs((eye - wall.pose.t).dot(wall.facing(eye)))
