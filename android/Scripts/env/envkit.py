@@ -432,6 +432,11 @@ def bake(obj, size, samples=64, margin=4, eyes=None, scene_bvh=None):
         bpy.ops.mesh.select_all(action='SELECT')
         bpy.ops.uv.pack_islands(margin=margin / size, rotate=True, scale=True)
         bpy.ops.object.mode_set(mode='OBJECT')
+    # A bake that was cut short resumes: atlases already baked (in $RESUME) are read back, not baked again.
+    cache = os.path.join(os.environ["RESUME"], obj.name.replace("@", "_") + ".npy") if os.environ.get("RESUME") else None
+    if cache and os.path.exists(cache):
+        log("resumed", obj.name, "from", cache)
+        return np.load(cache)
     img = bpy.data.images.new(obj.name + "_bake", size, size, float_buffer=True, alpha=True)
     img.generated_color = (0, 0, 0, 0)
     nodes = []
@@ -452,6 +457,7 @@ def bake(obj, size, samples=64, margin=4, eyes=None, scene_bvh=None):
     for nt, n in nodes: nt.nodes.remove(n)
     px = np.array(img.pixels[:], dtype=np.float32).reshape(size, size, 4)
     bpy.data.images.remove(img)
+    if cache: np.save(cache, px)
     return px
 
 
