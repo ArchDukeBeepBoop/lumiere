@@ -459,8 +459,8 @@ class Director(
                     }
                 }
                 RoomWalls.State.NO_PERMISSION -> pinHere(" (allow spatial data for real walls)")
-                RoomWalls.State.NO_ROOM -> pinHere(" (run Space Setup for real walls)")
-                else -> pinHere("")
+                RoomWalls.State.NO_ROOM -> pinHere(" (no walls in Space Setup: run it in Settings > Physical space)")
+                else -> pinHere(" (your room's walls couldn't be read: see Check)")
             }
         }
     }

@@ -46,10 +46,29 @@ class RoomWalls(private val activity: android.app.Activity, private val mruk: MR
         if (granted) readRoom() else finish(State.NO_PERMISSION)
     }
 
-    private fun readRoom() {
+    private fun readRoom(attempt: Int = 1) {
+        val reading = ++reads
+        app.lumiere.android.Probe.info("wall mount", "Space Setup", "reading the room (attempt $attempt)…")
+        // Not answered in time: whatever walls came anyway are used; else once more, then give up and say so.
+        handler.postDelayed({
+            if (reading != reads || state != State.LOADING) return@postDelayed
+            val all = walls()
+            if (all.isNotEmpty()) {
+                app.lumiere.android.Probe.warn("wall mount", "Space Setup", "no answer in ${TIMEOUT_MS / 1000} s, but ${all.size} wall(s) arrived: using them")
+                finish(State.READY)
+            } else if (attempt < 2) readRoom(attempt + 1)
+            else {
+                app.lumiere.android.Probe.fail("wall mount", "Space Setup", "no answer from the headset's room data after $attempt tries " +
+                    "(${runCatching { mruk.rooms.size }.getOrDefault(-1)} rooms known): run Space Setup in the headset's Settings > Physical space, then press Wall again")
+                finish(State.FAILED)
+            }
+        }, TIMEOUT_MS)
         runCatching {
-            mruk.loadSceneFromDevice().whenComplete { result, error ->
+            // Never opens Space Setup itself (that could wait for ever): no room says so instead.
+            mruk.loadSceneFromDevice(false, true, com.meta.spatial.mruk.SceneModel.V2_FALLBACK_V1).whenComplete { result, error ->
                 activity.runOnUiThread {
+                    if (reading != reads || state != State.LOADING) return@runOnUiThread
+                    reads++
                     val all = walls()
                     val rooms = runCatching { mruk.rooms.size }.getOrDefault(-1)
                     app.lumiere.android.Probe.report("wall mount", "Space Setup",
@@ -59,16 +78,20 @@ class RoomWalls(private val activity: android.app.Activity, private val mruk: MR
                             (if (all.isNotEmpty()) ": " + all.joinToString { "%.1f×%.1f m".format(it.maxX - it.minX, it.maxY - it.minY) } else "") +
                             "; raw wall entities ${runCatching { mruk.rooms.sumOf { it.walls.size } }.getOrDefault(-1)}")
                     finish(when {
+                        all.isNotEmpty() -> State.READY
                         error != null -> State.FAILED
-                        result == MRUKLoadDeviceResult.SUCCESS -> if (walls().isEmpty()) State.NO_ROOM else State.READY
+                        result == MRUKLoadDeviceResult.SUCCESS -> State.NO_ROOM
                         result == MRUKLoadDeviceResult.ERROR_NO_ROOMS_FOUND -> State.NO_ROOM
                         result == MRUKLoadDeviceResult.ERROR_PERMISSION_INSUFFICIENT -> State.NO_PERMISSION
                         else -> State.FAILED
                     })
                 }
             }
-        }.onFailure { app.lumiere.android.Probe.fail("wall mount", "Space Setup", "loading the room threw ${app.lumiere.android.Probe.why(it)}"); finish(State.FAILED) }
+        }.onFailure { reads++; app.lumiere.android.Probe.fail("wall mount", "Space Setup", "loading the room threw ${app.lumiere.android.Probe.why(it)}"); finish(State.FAILED) }
     }
+
+    private var reads = 0
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
 
     private fun finish(s: State) {
         // A refusal or a failure can be tried again next time; a loaded room stays.
@@ -107,5 +130,6 @@ class RoomWalls(private val activity: android.app.Activity, private val mruk: MR
     companion object {
         const val PERMISSION = "com.oculus.permission.USE_SCENE"
         const val REQUEST = 4207
+        const val TIMEOUT_MS = 10_000L
     }
 }
