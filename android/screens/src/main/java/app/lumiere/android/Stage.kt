@@ -183,7 +183,10 @@ object Stage {
     /** Asked to mount the screen on the wall before you, or take it off (the Director answers). */
     var mountAsks by mutableIntStateOf(0)
         private set
-    fun askMount() { mountAsks++ }
+    fun askMount() {
+        mountAsks++
+        Probe.info("wall mount", "button", "pressed (${if (mount != null) "to unmount" else "to mount"}); the headset's scene picks it up next frame")
+    }
     fun mounted(m: Mount?) {
         mount = m
         prefs?.edit()?.apply {

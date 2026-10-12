@@ -32,7 +32,7 @@ object Diagnostics {
     fun report(): String {
         val head = listOf(
             "device ${Build.MANUFACTURER} ${Build.MODEL}, Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})",
-            "app ${AppBuild.versionName} (${AppBuild.versionCode})",
+            "app ${AppBuild.stamp} (${AppBuild.versionCode})",
             "memory ${Runtime.getRuntime().maxMemory() / 1_048_576} MB heap allowed, " +
                 "${(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1_048_576} MB in use, " +
                 "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB native (pictures and video), " +
@@ -51,5 +51,8 @@ object Diagnostics {
     /** Set by the activity: the picture cache's size now, for the report. */
     var imageCacheMb: () -> Long = { 0 }
 
-    suspend fun send(server: Server): Boolean = runCatching { server.postText("Lumiere/Diagnostics", report()) }.isSuccess
+    /** Everything — the checks (Probe, SelfTest) and the notes and log — to the Mac's server log. */
+    suspend fun send(server: Server): Boolean = runCatching { server.postText("Lumiere/Diagnostics", SelfTest.text()) }.isSuccess
+
+    suspend fun sendFull(server: Server): Boolean = send(server)
 }

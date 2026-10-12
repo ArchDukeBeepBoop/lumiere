@@ -19,6 +19,13 @@ android {
         val minutes = ((System.currentTimeMillis() / 1000 - 1767225600L) / 60).toInt()
         versionCode = minutes
         versionName = "1.${minutes / 1440}.${minutes % 1440}-spatial"
+        // Which source and when, shown on Home and in Diagnostics: to tell at a glance which build is installed.
+        val commit = runCatching {
+            val p = ProcessBuilder("git", "rev-parse", "--short", "HEAD").directory(rootDir).start()
+            p.inputStream.bufferedReader().readText().trim()
+        }.getOrDefault("")
+        buildConfigField("String", "GIT_COMMIT", "\"$commit\"")
+        buildConfigField("long", "BUILT_AT", "${System.currentTimeMillis()}L")
         // Quest 3 and 3S are arm64; other processors' libraries would only add weight.
         ndk { abiFilters += "arm64-v8a" }
     }

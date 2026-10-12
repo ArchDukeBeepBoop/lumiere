@@ -6,7 +6,7 @@ import app.lumiere.android.AppBuild
 /** Lumiere on a Quest: the shared modules take the TV layout and leave updates to sideloading. */
 class SpatialApp : Application() {
     override fun onCreate() {
-        AppBuild.set(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, quest = true)
+        AppBuild.set(BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE, quest = true, BuildConfig.GIT_COMMIT, BuildConfig.BUILT_AT)
         super.onCreate()
         // A crash leaves a report in the headset's Downloads › Lumiere.
         app.lumiere.android.CrashLog.install(this)

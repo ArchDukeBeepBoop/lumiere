@@ -76,14 +76,20 @@ class BakedPlace(
     private fun load(path: String, at: Pose, now: Long, visible: Boolean = shown, done: (List<Lit>) -> Unit): Entity {
         state = State.LOADING
         loadingSince = now
+        app.lumiere.android.Probe.info("places", path, "loading")
         val e = Entity.create(listOf(
             Mesh(Uri.parse("apk:///$path"), hittable = MeshCollision.NoCollision),
             Transform(at),
             Visible(visible),
         ))
-        runCatching { sceneObjects(e) }.getOrNull()?.whenComplete { obj, error ->
+        val future = runCatching { sceneObjects(e) }
+            .onFailure { app.lumiere.android.Probe.fail("places", path, "the scene object couldn't be asked for: ${app.lumiere.android.Probe.why(it)}") }
+            .getOrNull()
+        if (future == null) app.lumiere.android.Probe.fail("places", path, "no scene object for the model (the SDK gave none)")
+        future?.whenComplete { obj, error ->
             if (error != null || obj == null) {
                 android.util.Log.w("Lumiere", "$path didn't load", error)
+                app.lumiere.android.Probe.fail("places", path, "the model didn't load: ${app.lumiere.android.Probe.why(error)}")
                 if (path == model) broken = true
                 return@whenComplete
             }
@@ -103,21 +109,42 @@ class BakedPlace(
      * the place then shows white.
      */
     private fun materialsOf(obj: SceneObject, path: String): List<Lit> = runCatching {
-        val mesh = obj.mesh ?: return emptyList()
+        val mesh = obj.mesh ?: return emptyList<Lit>().also { app.lumiere.android.Probe.warn("places", path, "loaded, but its mesh isn't readable yet") }
         val folder = path.removeSuffix(".glb")
-        (mesh.materials ?: return emptyList()).mapIndexed { i, m ->
+        val materials = mesh.materials ?: return emptyList<Lit>().also { app.lumiere.android.Probe.warn("places", path, "loaded, but its materials aren't readable yet") }
+        var baked = 0; var applied = 0; var unlitFailed = 0
+        val missing = mutableListOf<String>(); val failed = mutableListOf<String>()
+        val out = materials.mapIndexed { i, m ->
             val name = runCatching { mesh.getMaterialName(i) }.getOrDefault("")
-            runCatching { m.setUnlit(true) }
+            runCatching { m.setUnlit(true) }.onFailure { unlitFailed++ }
+            if (name.endsWith("/baked")) baked++
+            if (name.endsWith("/baked") && textured.containsKey(m.handle)) applied++
             if (name.endsWith("/baked") && !textured.containsKey(m.handle)) runCatching {
-                picture("$folder/${name.replace('/', '_').replace('@', '_').replace(':', '_')}.jpg")?.let { bitmap ->
+                val file = "$folder/${name.replace('/', '_').replace('@', '_').replace(':', '_')}.jpg"
+                val bitmap = picture(file)
+                if (bitmap == null) missing += file
+                else {
                     val texture = com.meta.spatial.runtime.SceneTexture(bitmap, com.meta.spatial.runtime.SamplerConfig())
                     m.setAlbedoTexture(texture)
                     textured[m.handle] = texture
+                    applied++
                 }
-            }.onFailure { android.util.Log.w("Lumiere", "$name's atlas couldn't be put on", it) }
+            }.onFailure { android.util.Log.w("Lumiere", "$name's atlas couldn't be put on", it); failed += "$name (${app.lumiere.android.Probe.why(it)})" }
             Lit(m, BakedLight.kindOf(name), BakedLight.sideOf(name))
         }
-    }.getOrDefault(emptyList())
+        val summary = "${materials.size} materials, $baked baked, $applied atlases on" +
+            (if (unlitFailed > 0) ", $unlitFailed couldn't be made unlit" else "") +
+            (if (missing.isNotEmpty()) "; atlases not found: ${missing.joinToString()}" else "") +
+            (if (failed.isNotEmpty()) "; atlases that failed: ${failed.joinToString()}" else "")
+        when {
+            missing.isNotEmpty() || failed.isNotEmpty() -> app.lumiere.android.Probe.fail("places", path, summary)
+            baked > 0 && applied < baked -> app.lumiere.android.Probe.warn("places", path, summary)
+            materials.isEmpty() -> app.lumiere.android.Probe.warn("places", path, "loaded with no materials")
+            else -> app.lumiere.android.Probe.ok("places", path, summary)
+        }
+        out
+    }.onFailure { app.lumiere.android.Probe.fail("places", path, "materials couldn't be read: ${app.lumiere.android.Probe.why(it)}") }
+        .getOrDefault(emptyList())
 
     fun show(on: Boolean) {
         if (on == shown) return

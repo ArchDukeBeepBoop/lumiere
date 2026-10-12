@@ -28,6 +28,8 @@ object LocalVideos {
         val out = mutableListOf<Video>()
         val columns = arrayOf(MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME, MediaStore.Video.Media.DURATION,
             MediaStore.Video.Media.SIZE, MediaStore.Video.Media.WIDTH, MediaStore.Video.Media.HEIGHT, MediaStore.Video.Media.BUCKET_DISPLAY_NAME)
+        if (!allowed(context)) app.lumiere.android.Probe.fail("on this device", "permission", "$PERMISSION not granted: videos can't be listed")
+        else app.lumiere.android.Probe.ok("on this device", "permission", "$PERMISSION granted")
         runCatching {
             context.contentResolver.query(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, columns, null, null,
                 "${MediaStore.Video.Media.DATE_ADDED} DESC")?.use { c ->
@@ -36,8 +38,13 @@ object LocalVideos {
                     out += Video(ContentUris.withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id),
                         c.getString(1) ?: "Video", c.getString(6) ?: "", c.getLong(2), c.getLong(3), c.getInt(4), c.getInt(5))
                 }
+            } ?: app.lumiere.android.Probe.fail("on this device", "videos", "the media library gave no answer (query returned null)")
+        }.onFailure { app.lumiere.android.Probe.fail("on this device", "videos", "listing failed: ${app.lumiere.android.Probe.why(it)}") }
+            .onSuccess {
+                app.lumiere.android.Probe.report("on this device", "videos", if (out.isEmpty()) app.lumiere.android.Probe.Status.WARN else app.lumiere.android.Probe.Status.OK,
+                    "${out.size} video(s) found" + (if (out.isNotEmpty()) ": " + out.take(5).joinToString { "${it.folder}/${it.name}" } else
+                        " (copy them into Movies or Download on the headset; the media scanner must have seen them)"))
             }
-        }
         return out
     }
 

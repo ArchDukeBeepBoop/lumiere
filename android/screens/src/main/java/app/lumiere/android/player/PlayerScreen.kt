@@ -291,6 +291,40 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
             }
         }
         player.addListener(once)
+        app.lumiere.android.Probe.clear("captions")
+        // What Diagnostics says of captions and sound: the tracks there are, the ones chosen, and whether caption lines arrive.
+        var cueEvents = 0; var cueLines = 0; var lastText = ""
+        val watch = object : androidx.media3.common.Player.Listener {
+            override fun onTracksChanged(tracks: androidx.media3.common.Tracks) {
+                fun list(type: Int) = tracks.groups.filter { it.type == type }.flatMap { g ->
+                    (0 until g.length).map { i ->
+                        val f = g.getTrackFormat(i)
+                        (f.language ?: "und") + (f.label?.let { " \"$it\"" } ?: "") + " " + (f.sampleMimeType ?: f.codecs ?: "?") +
+                            (if (g.isTrackSelected(i)) " [ON]" else "") + (if (!g.isTrackSupported(i)) " [UNSUPPORTED]" else "")
+                    }
+                }
+                val text = list(androidx.media3.common.C.TRACK_TYPE_TEXT)
+                val audio = list(androidx.media3.common.C.TRACK_TYPE_AUDIO)
+                val on = text.count { "[ON]" in it }
+                app.lumiere.android.Probe.report("captions", "tracks",
+                    when { text.isEmpty() -> app.lumiere.android.Probe.Status.INFO; text.any { "[UNSUPPORTED]" in it } -> app.lumiere.android.Probe.Status.WARN
+                        else -> app.lumiere.android.Probe.Status.OK },
+                    "${item?.name ?: "?"}: ${text.size} subtitle track(s), $on on" + (if (text.isNotEmpty()) ": " + text.joinToString("; ") else "") +
+                        (if (Theater.active) "; shown in the Theater" else "; shown in the window"))
+                app.lumiere.android.Probe.info("sound", "tracks", "${audio.size} audio track(s): ${audio.joinToString("; ")}")
+            }
+            override fun onCues(cueGroup: androidx.media3.common.text.CueGroup) {
+                cueEvents++
+                if (cueGroup.cues.isNotEmpty()) {
+                    cueLines++
+                    lastText = cueGroup.cues.mapNotNull { it.text?.toString() }.joinToString(" / ").take(60)
+                }
+                if (cueEvents % 10 == 1) app.lumiere.android.Probe.ok("captions", "lines", "$cueLines caption line(s) arrived from the player so far; last \"$lastText\"" +
+                    "; ${if (Theater.active) "the Theater draws them" else "the window draws them"}" +
+                    (if (Theater.active) ", offset ${Theater.subtitleOffsetMs} ms" else ""))
+            }
+        }
+        player.addListener(watch)
         // The film gets the memory: pictures held for the screens behind it go.
         @Suppress("DEPRECATION")
         runCatching { imageLoader.memoryCache?.clear() }
@@ -320,7 +354,7 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
         player.addAnalyticsListener(decoders)
         PictureInPicture.player = player
         onDispose {
-            player.removeListener(once); player.removeListener(failed); player.removeAnalyticsListener(decoders)
+            player.removeListener(once); player.removeListener(watch); player.removeListener(failed); player.removeAnalyticsListener(decoders)
             PictureInPicture.player = null; sound.release()
         }
     }

@@ -70,6 +70,7 @@ object AudioOutputs {
             if (output == null) remove("audioOutput") else putString("audioOutput", output.name)
         }.apply()
         applyAll(context)
+        app.lumiere.android.Probe.info("sound", "output chosen", output?.let { "${it.name} (${it.kind}, device ${it.id})" } ?: "the system's own choice")
     }
 
     /** The players asked to use the chosen output. */
@@ -91,6 +92,14 @@ object AudioOutputs {
             list(context).firstOrNull { it.id == d.id }?.name == name
         }
         runCatching { player.setPreferredAudioDevice(device) }
+            .onSuccess {
+                app.lumiere.android.Probe.report("sound", "output applied",
+                    if (name != null && device == null) app.lumiere.android.Probe.Status.WARN else app.lumiere.android.Probe.Status.OK,
+                    if (name == null) "the system's choice, for ${players.size} player(s)"
+                    else if (device == null) "\"$name\" chosen but not connected now: the system's choice stands"
+                    else "\"$name\" asked of ${players.size} player(s)")
+            }
+            .onFailure { app.lumiere.android.Probe.fail("sound", "output applied", "the player refused the output: ${app.lumiere.android.Probe.why(it)}") }
     }
 
     /** The headset's Bluetooth settings, to pair something new. */

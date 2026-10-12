@@ -257,6 +257,15 @@ class Director(
             if (stationMade.isInitialized() || (aboard && modelled)) station.show(aboard && modelled)
             sky.show(if (sphere) null else Sky.pictureFor(place))
             shownBrightness = -1f; shownTint = null
+            val bakedThere = baked.firstOrNull { it.place == place }
+            app.lumiere.android.Probe.info("theater", "place shown", "$place, ${if (seated) "seated (a film or the place chosen)" else "browsing"}; " +
+                when {
+                    bakedHere != null -> "the baked model (${bakedHere.room.state})"
+                    bakedThere == null -> "no baked model in this build: the modelled blocks"
+                    !bakedThere.usable -> "its baked model FAILED to load: the modelled blocks"
+                    else -> "the modelled blocks while browsing (the baked model shows once seated)"
+                } + (if (sphere) "; a 180/360 film's sphere" else "; sky ${Sky.pictureFor(place) ?: "none"}") +
+                (if (place == Stage.Place.ROOM) "; passthrough on" else ""))
         }
 
         // Away from your room the handset chooses what plays, and the window stays as it is for your room,
@@ -379,17 +388,24 @@ class Director(
     private fun onYourWall(request: Theater.Request, s: TheaterScreen.Seat): Pair<TheaterGeometry.Spec, Pose>? {
         val m = Stage.mount ?: return null
         if (m.wall == Stage.PINNED) {
+            app.lumiere.android.Probe.ok("wall mount", "showing", "pinned in the air at ${"%.1f".format(m.distance)} m (not on a wall)")
             val degrees = TheaterGeometry.SIZE_DEGREES[Stage.screenSize.coerceIn(0, TheaterGeometry.SIZE_DEGREES.lastIndex)]
             val width = (2 * m.distance * kotlin.math.tan(Math.toRadians(degrees / 2.0)).toFloat()).coerceAtMost(3.5f)
             val facing = Quaternion.fromDirection(Vector3(kotlin.math.sin(m.yaw), 0f, kotlin.math.cos(m.yaw)))
             return TheaterGeometry.mounted(request, width, m.distance) to Pose(Vector3(m.x, m.y, m.z), facing)
         }
-        val w = walls ?: return null
+        val w = walls ?: return null.also { app.lumiere.android.Probe.fail("wall mount", "showing", "mounted on a wall, but the scene kit isn't running to find it") }
         if (w.state != RoomWalls.State.READY) {
             if (!wallsTried && w.allowed()) { wallsTried = true; w.load { shownPlace = null } }
+            app.lumiere.android.Probe.warn("wall mount", "showing", "mounted on a wall, but the room isn't read yet (${w.state}" +
+                (if (!w.allowed()) ", spatial data not allowed" else if (wallsTried) ", read once already" else "") + "): the screen floats meanwhile")
             return null
         }
-        val wall = w.wall(m.wall) ?: return null
+        val wall = w.wall(m.wall) ?: return null.also {
+            app.lumiere.android.Probe.fail("wall mount", "showing", "the wall it was mounted on (${m.wall.take(8)}) isn't in the room any more " +
+                "(${w.walls().size} walls now; Space Setup run again?): mount it again")
+        }
+        app.lumiere.android.Probe.ok("wall mount", "showing", "on wall ${m.wall.take(8)} at ${"%.2f".format(m.x)}, ${"%.2f".format(m.y)}, ${"%.1f".format(m.distance)} m")
         val aspect = TheaterGeometry.aspectOf(request)
         val width = WallMount.width(wall, TheaterGeometry.SIZE_DEGREES[Stage.screenSize.coerceIn(0, TheaterGeometry.SIZE_DEGREES.lastIndex)], m.distance, aspect)
         val (x, y) = WallMount.fit(wall, m.x, m.y, width, width / aspect)
@@ -403,6 +419,7 @@ class Director(
      * looking, upright and facing you, so the button always does something.
      */
     private fun mountOrUnmount() {
+        app.lumiere.android.Probe.info("wall mount", "asked", "the Wall button reached the headset's scene (was ${if (Stage.mount != null) "mounted: unmounting" else "floating: mounting"})")
         if (Stage.mount != null) { Stage.mounted(null); Theater.say("The screen floats again"); return }
         val head = scene.getViewerPose()
         val look = head.forward().normalize()
@@ -413,8 +430,11 @@ class Director(
             val y = (head.t.y + look.y * d).coerceIn(1.0f, head.t.y + 0.6f)
             Stage.mounted(Stage.Mount(Stage.PINNED, at.x, y, d, at.z, kotlin.math.atan2(flat.x, flat.z)))
             Theater.say("Pinned where you're looking$why: films in your room play there now")
+            app.lumiere.android.Probe.warn("wall mount", "result", "pinned in the air ${"%.1f".format(d)} m ahead, not on a wall$why")
         }
-        val w = walls ?: return pinHere("")
+        val w = walls ?: return pinHere(" (this headset's scene kit didn't start)").also {
+            app.lumiere.android.Probe.fail("wall mount", "scene kit", "MRUK (the Mixed Reality Utility Kit) isn't running: no walls can be read")
+        }
         Theater.say("Reading your room's walls…")
         w.load { state ->
             when (state) {
@@ -427,6 +447,8 @@ class Director(
                         val (wall, at) = hit
                         Stage.mounted(Stage.Mount(wall.id, at.first, at.second, WallMount.distance(wall, now.t)))
                         Theater.say("On your wall (one of ${w.walls().size}): films in your room play here now")
+                        app.lumiere.android.Probe.ok("wall mount", "result", "on wall ${wall.id.take(8)} (one of ${known.size}), " +
+                            "${"%.1f".format(WallMount.distance(wall, now.t))} m away, at ${"%.2f".format(at.first)}, ${"%.2f".format(at.second)} on it")
                     }
                 }
                 RoomWalls.State.NO_PERMISSION -> pinHere(" (allow spatial data for real walls)")

@@ -30,13 +30,19 @@ class RoomWalls(private val activity: android.app.Activity, private val mruk: MR
         waiting += done
         if (state == State.LOADING) return
         state = State.LOADING
-        if (!allowed()) { activity.requestPermissions(arrayOf(PERMISSION), REQUEST); return }
+        if (!allowed()) {
+            app.lumiere.android.Probe.info("wall mount", "permission", "asking for spatial data ($PERMISSION)")
+            activity.requestPermissions(arrayOf(PERMISSION), REQUEST); return
+        }
+        app.lumiere.android.Probe.ok("wall mount", "permission", "spatial data allowed")
         readRoom()
     }
 
     /** The answer to the permission's question (LumiereSpace.onRequestPermissionsResult). */
     fun answered(granted: Boolean) {
         if (state != State.LOADING) return
+        app.lumiere.android.Probe.report("wall mount", "permission", if (granted) app.lumiere.android.Probe.Status.OK else app.lumiere.android.Probe.Status.FAIL,
+            if (granted) "spatial data allowed just now" else "spatial data refused: allow it in Settings > Apps > Lumiere > Permissions")
         if (granted) readRoom() else finish(State.NO_PERMISSION)
     }
 
@@ -44,6 +50,14 @@ class RoomWalls(private val activity: android.app.Activity, private val mruk: MR
         runCatching {
             mruk.loadSceneFromDevice().whenComplete { result, error ->
                 activity.runOnUiThread {
+                    val all = walls()
+                    val rooms = runCatching { mruk.rooms.size }.getOrDefault(-1)
+                    app.lumiere.android.Probe.report("wall mount", "Space Setup",
+                        if (error == null && result == MRUKLoadDeviceResult.SUCCESS && all.isNotEmpty()) app.lumiere.android.Probe.Status.OK else app.lumiere.android.Probe.Status.FAIL,
+                        "load result $result${if (error != null) ", error ${app.lumiere.android.Probe.why(error)}" else ""}; " +
+                            "$rooms room(s), ${all.size} wall(s) with planes" +
+                            (if (all.isNotEmpty()) ": " + all.joinToString { "%.1f×%.1f m".format(it.maxX - it.minX, it.maxY - it.minY) } else "") +
+                            "; raw wall entities ${runCatching { mruk.rooms.sumOf { it.walls.size } }.getOrDefault(-1)}")
                     finish(when {
                         error != null -> State.FAILED
                         result == MRUKLoadDeviceResult.SUCCESS -> if (walls().isEmpty()) State.NO_ROOM else State.READY
@@ -53,7 +67,7 @@ class RoomWalls(private val activity: android.app.Activity, private val mruk: MR
                     })
                 }
             }
-        }.onFailure { finish(State.FAILED) }
+        }.onFailure { app.lumiere.android.Probe.fail("wall mount", "Space Setup", "loading the room threw ${app.lumiere.android.Probe.why(it)}"); finish(State.FAILED) }
     }
 
     private fun finish(s: State) {

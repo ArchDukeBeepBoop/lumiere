@@ -65,8 +65,16 @@ class LumiereSpace : AppSystemActivity() {
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
+        val unsettled = getSharedPreferences("start", MODE_PRIVATE).getInt("unsettled", 0)
         plain = app.lumiere.android.StartGuard.begin(this)
         if (plain) android.util.Log.w("Lumiere", "the last starts failed; starting plainly")
+        app.lumiere.android.Probe.report("start", "mode", if (plain) app.lumiere.android.Probe.Status.FAIL else app.lumiere.android.Probe.Status.OK,
+            if (plain) "PLAIN START: the last $unsettled starts ended within ${app.lumiere.android.StartGuard.SETTLE_MS / 1000} s (a crash, or the app " +
+                "closed or reinstalled quickly), so this one runs without the 3D scene — no cinema or places, no Wall, Theater or handset. " +
+                "Press 'Start fully next time' below, then close and reopen Lumiere."
+            else "full start (the 3D scene, places, Wall, Theater, handset)" + (if (unsettled > 0) "; $unsettled start(s) before this ended early" else ""))
+        app.lumiere.android.Probe.report("start", "scene kit", if (mruk != null) app.lumiere.android.Probe.Status.OK else app.lumiere.android.Probe.Status.FAIL,
+            if (mruk != null) "MRUK running (walls from Space Setup can be read)" else "MRUK not running: Wall can only pin in the air")
         // Up Next, the scrub frames and the song float under the screen, not over it.
         app.lumiere.android.ui.Floating.enabled = !plain
         app.lumiere.android.ui.PosterWall.enabled = !plain
@@ -273,8 +281,20 @@ class LumiereSpace : AppSystemActivity() {
         val sceneObjects: (com.meta.spatial.core.Entity) -> java.util.concurrent.CompletableFuture<com.meta.spatial.runtime.SceneObject>? =
             { e -> systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>().getSceneObject(e) }
         fun has(path: String) = runCatching { assets.open(path).close() }.isSuccess
-        val picture: (String) -> android.graphics.Bitmap? = { p -> runCatching { assets.open(p).use { android.graphics.BitmapFactory.decodeStream(it) } }.getOrNull() }
-        fun model(path: String, curtain: String? = null, rise: Float = 0f) = if (has(path)) BakedPlace(path, curtain, rise, sceneObjects, picture) else null
+        // Baked atlases have no transparency: 16-bit colour, half the memory of 32 (a 4096 atlas: 32 MB, not 64).
+        val picture: (String) -> android.graphics.Bitmap? = { p ->
+            try {
+                assets.open(p).use { android.graphics.BitmapFactory.decodeStream(it, null,
+                    android.graphics.BitmapFactory.Options().apply { inPreferredConfig = android.graphics.Bitmap.Config.RGB_565 }) }
+                    .also { b -> if (b == null) app.lumiere.android.Probe.fail("places", p, "the atlas is in the build but couldn't be decoded") }
+            } catch (e: OutOfMemoryError) {
+                val rt = Runtime.getRuntime()
+                app.lumiere.android.Probe.fail("places", p, "OUT OF MEMORY decoding the atlas (heap ${(rt.totalMemory() - rt.freeMemory()) / 1_048_576} of ${rt.maxMemory() / 1_048_576} MB)")
+                null
+            } catch (e: java.io.IOException) { null }
+        }
+        fun model(path: String, curtain: String? = null, rise: Float = 0f) = if (has(path)) BakedPlace(path, curtain, rise, sceneObjects, picture)
+            else null.also { app.lumiere.android.Probe.fail("places", path, "not in this build's assets: the place falls back to its plain blocks") }
         val baked = listOfNotNull(
             model(CINEMA_MODEL, CINEMA_CURTAIN, CinemaHall.CURTAIN_RISE)?.let { m ->
                 BakedScene(Stage.Place.CINEMA, m) { floor, size -> BakedScene.ahead(floor, CinemaHall.origin(size)) }

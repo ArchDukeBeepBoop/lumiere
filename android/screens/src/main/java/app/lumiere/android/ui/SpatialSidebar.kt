@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Cabin
 import androidx.compose.material.icons.filled.Landscape
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -94,6 +95,9 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
         // Who's watching: their picture; pressed, "Who's watching?". Never while a film plays.
         if (state.top !is app.lumiere.android.Screen.Player && !app.lumiere.android.player.Theater.active)
             ProfileGlassButton(state.currentProfile) { state.askWhoIsWatching() }
+        // Diagnostics, always (a plain start too): which build this is, and what works.
+        RailButton(Icons.Default.BugReport, "Diagnostics: ${app.lumiere.android.AppBuild.stamp}",
+            chosen = top is app.lumiere.android.Screen.DiagnosticsView, caption = "Check") { state.push(app.lumiere.android.Screen.DiagnosticsView) }
         // The spatial buttons, only while the headset's director runs; a plain start (after
         // starts that failed) has none, and they would do nothing there.
         if (!Stage.directed) return@Column

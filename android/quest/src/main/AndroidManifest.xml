@@ -29,6 +29,7 @@
 
     <application
         android:name="app.lumiere.android.spatial.SpatialApp"
+        android:largeHeap="true"
         android:label="Lumiere"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
