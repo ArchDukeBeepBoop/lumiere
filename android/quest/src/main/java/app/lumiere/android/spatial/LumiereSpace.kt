@@ -298,7 +298,12 @@ class LumiereSpace : AppSystemActivity() {
                 null
             } catch (e: java.io.IOException) { null }
         }
-        fun model(path: String, curtain: String? = null, rise: Float = 0f) = if (has(path)) BakedPlace(path, curtain, rise, sceneObjects, picture)
+        val atlas: (String) -> com.meta.spatial.runtime.SceneTexture? = { name ->
+            val id = resources.getIdentifier(name, "drawable", packageName)
+            if (id == 0) null else runCatching { com.meta.spatial.runtime.SceneTexture.fromResource(this, id) }
+                .onFailure { app.lumiere.android.Probe.fail("places", name, "the SDK couldn't load it: ${app.lumiere.android.Probe.why(it)}") }.getOrNull()
+        }
+        fun model(path: String, curtain: String? = null, rise: Float = 0f) = if (has(path)) BakedPlace(path, curtain, rise, sceneObjects, picture, atlas)
             else null.also { app.lumiere.android.Probe.fail("places", path, "not in this build's assets: the place falls back to its plain blocks") }
         val baked = listOfNotNull(
             model(CINEMA_MODEL, CINEMA_CURTAIN, CinemaHall.CURTAIN_RISE)?.let { m ->

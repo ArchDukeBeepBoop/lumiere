@@ -142,10 +142,13 @@ object SelfTest {
         for (m in MODELS) {
             if ("$m.glb" !in present) { Probe.fail("assets", "$m.glb", "missing from this build: that place shows its plain blocks"); continue }
             val size = runCatching { am.openFd("environments/$m.glb").use { it.length } }.getOrElse { runCatching { am.open("environments/$m.glb").use { it.available().toLong() } }.getOrDefault(-1) }
-            val atlases = runCatching { am.list("environments/$m")?.toList() }.getOrNull().orEmpty().filter { it.endsWith(".jpg") }
+            // The atlases are drawables now (atlas_<model>_<material>), loaded the SDK's own way.
+            // cinema's are atlas_cinema_*, but not cinema_curtain's (atlas_cinema_curtain_*).
+            val longer = MODELS.filter { it != m && it.startsWith("${m}_") }
+            val atlases = drawables(context).filter { d -> d.startsWith("atlas_${m}_") && longer.none { d.startsWith("atlas_${it}_") } }
             val broken = atlases.filter { a ->
                 val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                runCatching { am.open("environments/$m/$a").use { android.graphics.BitmapFactory.decodeStream(it, null, o) } }
+                runCatching { android.graphics.BitmapFactory.decodeResource(context.resources, context.resources.getIdentifier(a, "drawable", context.packageName), o) }
                 o.outWidth <= 0
             }
             Probe.report("assets", "$m.glb", when { atlases.isEmpty() -> Status.FAIL; broken.isNotEmpty() -> Status.FAIL; else -> Status.OK },
@@ -158,6 +161,11 @@ object SelfTest {
         Probe.report("assets", "skies", if (missing.isEmpty()) Status.OK else Status.FAIL,
             "${skies.size - missing.size} of ${skies.size} skies in this build" + (if (missing.isNotEmpty()) "; missing ${missing.joinToString()}" else ""))
     }
+
+    private var drawableNames: List<String>? = null
+    private fun drawables(context: Context): List<String> = drawableNames ?: runCatching {
+        Class.forName(context.packageName + ".R\$drawable").fields.map { it.name }
+    }.getOrDefault(emptyList()).also { drawableNames = it }
 
     private fun permissions(context: Context) {
         val info = runCatching { context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.GET_PERMISSIONS) }.getOrNull()

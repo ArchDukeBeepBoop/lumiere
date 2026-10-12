@@ -35,6 +35,8 @@ class BakedPlace(
     private val sceneObjects: (Entity) -> CompletableFuture<SceneObject>?,
     /** A picture from the app's assets (a baked atlas), or null. */
     private val picture: (String) -> android.graphics.Bitmap? = { null },
+    /** A baked atlas from the app's drawables, by name, as the SDK loads a resource; or null. */
+    private val resourceTexture: (String) -> com.meta.spatial.runtime.SceneTexture? = { null },
 ) {
     enum class State { NONE, LOADING, READY, FAILED }
 
@@ -106,19 +108,14 @@ class BakedPlace(
     private val pictures = java.util.concurrent.ConcurrentHashMap<Long, android.graphics.Bitmap>()
 
     /** A few seconds on: what the GPU's copy of an atlas averages to, beside the picture's own — white on the GPU means the copy failed. */
-    private fun checkLater(file: String, texture: com.meta.spatial.runtime.SceneTexture, bitmap: android.graphics.Bitmap) {
+    private fun checkLater(file: String, texture: com.meta.spatial.runtime.SceneTexture) {
         android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
             runCatching {
                 val gpu = FloatArray(4)
                 val read = texture.readAverageColor(gpu, 0, 0.5f, 0.5f)
-                val small = android.graphics.Bitmap.createScaledBitmap(bitmap, 16, 16, true)
-                var r = 0f; var g = 0f; var b = 0f
-                for (y in 0 until 16) for (x in 0 until 16) { val c = small.getPixel(x, y); r += (c shr 16 and 255) / 255f; g += (c shr 8 and 255) / 255f; b += (c and 255) / 255f }
-                val pic = floatArrayOf(r / 256, g / 256, b / 256)
-                val white = read && gpu[0] > 0.9f && gpu[1] > 0.9f && gpu[2] > 0.9f && pic.average() < 0.8
+                val white = read && gpu[0] > 0.97f && gpu[1] > 0.97f && gpu[2] > 0.97f
                 app.lumiere.android.Probe.report("places", "$file on the GPU", if (white) app.lumiere.android.Probe.Status.FAIL else app.lumiere.android.Probe.Status.OK,
-                    "GPU average ${if (read) "%.2f/%.2f/%.2f".format(gpu[0], gpu[1], gpu[2]) else "unreadable"}, picture average ${"%.2f/%.2f/%.2f".format(pic[0], pic[1], pic[2])}" +
-                        (if (white) " — WHITE ON THE GPU" else ""))
+                    "GPU average ${if (read) "%.2f/%.2f/%.2f".format(gpu[0], gpu[1], gpu[2]) else "unreadable"}" + (if (white) " — WHITE ON THE GPU" else ""))
             }.onFailure { app.lumiere.android.Probe.warn("places", "$file on the GPU", "couldn't read: ${app.lumiere.android.Probe.why(it)}") }
         }, 4000)
     }
@@ -141,19 +138,17 @@ class BakedPlace(
             if (name.endsWith("/baked")) baked++
             if (name.endsWith("/baked") && textured.containsKey(m.handle)) applied++
             if (name.endsWith("/baked") && !textured.containsKey(m.handle)) runCatching {
-                val file = "$folder/${name.replace('/', '_').replace('@', '_').replace(':', '_')}.jpg"
-                val bitmap = picture(file)
-                if (bitmap == null) missing += file
+                // The atlas as an app resource, loaded the SDK's own way (as the skies are): a texture made
+                // from a decoded picture reached the GPU white, every one (Diagnostics compared them).
+                val file = "atlas_" + (folder.substringAfterLast('/') + "_" + name.replace('/', '_').replace('@', '_').replace(':', '_'))
+                    .lowercase().replace(Regex("[^a-z0-9_]"), "_")
+                val texture = resourceTexture(file)
+                if (texture == null) missing += file
                 else {
-                    app.lumiere.android.Breadcrumbs.mark("texture ${bitmap.width}x${bitmap.height} onto $name")
-                    val texture = com.meta.spatial.runtime.SceneTexture(bitmap, com.meta.spatial.runtime.SamplerConfig())
+                    app.lumiere.android.Breadcrumbs.mark("texture $file onto $name")
                     m.setAlbedoTexture(texture)
-                    app.lumiere.android.Breadcrumbs.mark("texture on $name")
                     textured[m.handle] = texture
-                    // The picture kept as long as its texture: the SDK may copy it to the GPU later, and a big
-                    // atlas collected before then drew white (the cinema's six were the likeliest to be).
-                    pictures[m.handle] = bitmap
-                    checkLater(file, texture, bitmap)
+                    checkLater(file, texture)
                     applied++
                 }
             }.onFailure { android.util.Log.w("Lumiere", "$name's atlas couldn't be put on", it); failed += "$name (${app.lumiere.android.Probe.why(it)})" }
