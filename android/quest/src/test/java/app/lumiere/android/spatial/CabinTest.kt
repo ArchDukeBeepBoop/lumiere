@@ -114,16 +114,13 @@ class CabinTest {
         }
     }
 
-    @Test fun aSunkenRoomIsReachedByStepsUnderYourSightline() {
-        // A 4:3 film from a chair at the nearest seat: the screen's foot is below your floor.
-        val spec = TheaterGeometry.spec(Theater.Request(Projection.FLAT, StereoLayout.MONO, 1440, 1080), Stage.Place.CABIN, 4, false)
-        val parts = Cabin.build(spec.widthM, spec.heightM, 1.2f + spec.aboveEyesM, spec.distanceM, 1.2f, TheaterGeometry.footSlope(spec))
-        assertTrue("the foot below your floor", 1.2f + spec.aboveEyesM - spec.heightM / 2 < 0f)
-        val steps = parts.filter { it.kind == Cabin.Kind.STEP }.sortedBy { it.z }
-        assertTrue("steps down: ${steps.size}", steps.isNotEmpty())
-        assertTrue("each lower than the last", steps.zipWithNext().all { (a, b) -> b.top < a.top })
-        val floors = parts.filter { it.kind == Cabin.Kind.FLOOR }
-        assertEquals("your dais at your floor", 0f, floors.maxOf { it.top }, 0f)
+    @Test fun theScreensFootIsAboveTheFloorAndInSightOverTheTable() {
+        // The baked room's screen stands on its wall above the floor, and the sofa's table stays under every sightline to its foot.
+        assertTrue(CabinRoom.SCREEN_BOTTOM > 0.1f)
+        for (size in 0 until Stage.SCREEN_SIZES) for (eye in listOf(0.95f, 1.2f, 1.7f)) {
+            val slope = (eye - CabinRoom.SCREEN_BOTTOM) / CabinRoom.distance(size)
+            assertTrue("size $size, eyes $eye", eye - slope * CabinRoom.TABLE_FRONT > CabinRoom.TABLE_TOP)
+        }
     }
 
     @Test fun aFewDrawCallsWorth() {

@@ -56,11 +56,11 @@ object TheaterGeometry {
     fun aboveEyes(place: Stage.Place): Float = when (place) {
         Stage.Place.ROOM -> -0.05f
         Stage.Place.CINEMA -> CinemaHall.aboveEyes(DEFAULT_SIZE, CinemaHall.SEAT_EYE)
-        Stage.Place.CABIN -> 0.2f
+        Stage.Place.CABIN -> CabinRoom.aboveEyes(CinemaHall.SEAT_EYE)
         Stage.Place.LAKE -> 0.9f
         Stage.Place.CLOUDS -> 0.9f
         Stage.Place.MOON -> 1.2f
-        Stage.Place.STATION -> 0.3f
+        Stage.Place.STATION -> StationRoom.aboveEyes(CinemaHall.SEAT_EYE)
         Stage.Place.VOID -> 0.1f
         Stage.Place.SPACE -> 0.2f
     }
@@ -107,6 +107,14 @@ object TheaterGeometry {
         if (place == Stage.Place.CINEMA) {
             val (w, h) = CinemaHall.picture(aspectOf(request))
             return Spec(request.projection, request.eyes, w, h, null, CinemaHall.distance(size), CinemaHall.aboveEyes(size, eyeY), pw, ph)
+        }
+        if (place == Stage.Place.STATION) {
+            val (w, h) = StationRoom.picture(aspectOf(request))
+            return Spec(request.projection, request.eyes, w, h, null, StationRoom.distance(size), StationRoom.aboveEyes(eyeY), pw, ph)
+        }
+        if (place == Stage.Place.CABIN) {
+            val (w, h) = CabinRoom.picture(aspectOf(request))
+            return Spec(request.projection, request.eyes, w, h, null, CabinRoom.distance(size), CabinRoom.aboveEyes(eyeY), pw, ph)
         }
         val degrees = SIZE_DEGREES[size.coerceIn(0, SIZE_DEGREES.lastIndex)]
         val d = distance(place, degrees)

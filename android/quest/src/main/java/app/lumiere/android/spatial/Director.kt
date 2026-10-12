@@ -45,8 +45,8 @@ class Director(
     private val handset: Entity? = null,
     /** The row of buttons by a raised hand (HandMenu); none on a plain start. */
     private val handMenu: Entity? = null,
-    /** The cinema as modelled and baked in Blender (CinemaHall); none on a plain start, or if it never loads. */
-    private val cinemaModel: BakedPlace? = null,
+    /** The places modelled and baked in Blender (BakedScene); none on a plain start. */
+    private val baked: List<BakedScene> = emptyList(),
 ) {
     private var seenMountAsks = Stage.mountAsks
     /** The room is read for a mount made before at most once a start, and only if already allowed. */
@@ -136,7 +136,7 @@ class Director(
         // With less motion asked for, the cinema's curtain stays open and nothing moves.
         if (app.lumiere.android.Motion.reduced) { FrontCurtain.closed = 0f; return }
         FrontCurtain.step(dt)
-        cinemaModel?.curtain(FrontCurtain.closed)
+        baked.firstOrNull { it.place == Stage.Place.CINEMA }?.room?.curtain(FrontCurtain.closed)
         if (theatreMade.isInitialized()) theatre.animate(seconds)
         if (cabinMade.isInitialized()) cabin.animate(seconds)
         if (dockMade.isInitialized()) dock.animate(seconds)
@@ -183,7 +183,7 @@ class Director(
         // the big screen showing the title until the picture comes (or a while, if it never does).
         val waiting = hold.waiting(inPlayer && Theater.controls != null, on, now) && away
         // The baked cinema never came: the modelled hall instead, made now.
-        val fellBack = cinemaModel?.failedNow(now) == true
+        val fellBack = baked.map { it.failedNow(now) }.any { it }
         if (fellBack) shownPlace = null
         if (!on && away) {
             // Not before the headset knows where your head is (at the very start it may read the floor).
@@ -245,14 +245,16 @@ class Director(
         if (shownPlace != place to seated) {
             shownPlace = place to seated
             scene.enablePassthrough(place == Stage.Place.ROOM && !sphere)
-            val baked = bakedHall()
-            baked?.show(hall)
-            if (theatreMade.isInitialized() || (hall && baked == null)) theatre.show(hall && baked == null)
-            if (cabinMade.isInitialized() || inCabin) cabin.show(inCabin)
-            if (dockMade.isInitialized() || onDock) dock.show(onDock)
-            if (terraceMade.isInitialized() || onTerrace) terrace.show(onTerrace)
-            if (moonMade.isInitialized() || onMoon) moonBase.show(onMoon)
-            if (stationMade.isInitialized() || aboard) station.show(aboard)
+            // The place baked in Blender if it has one (and it loads); its modelled blocks otherwise.
+            val bakedHere = bakedFor(place)?.takeIf { seated }
+            baked.forEach { it.show(it === bakedHere) }
+            val modelled = bakedHere == null
+            if (theatreMade.isInitialized() || (hall && modelled)) theatre.show(hall && modelled)
+            if (cabinMade.isInitialized() || (inCabin && modelled)) cabin.show(inCabin && modelled)
+            if (dockMade.isInitialized() || (onDock && modelled)) dock.show(onDock && modelled)
+            if (terraceMade.isInitialized() || (onTerrace && modelled)) terrace.show(onTerrace && modelled)
+            if (moonMade.isInitialized() || (onMoon && modelled)) moonBase.show(onMoon && modelled)
+            if (stationMade.isInitialized() || (aboard && modelled)) station.show(aboard && modelled)
             sky.show(if (sphere) null else Sky.pictureFor(place))
             shownBrightness = -1f; shownTint = null
         }
@@ -351,8 +353,10 @@ class Director(
         tintLeft = if (app.lumiere.android.Motion.reduced) wantLeft else CinemaLight.easeTint(tintLeft, wantLeft)
         tintRight = if (app.lumiere.android.Motion.reduced) wantRight else CinemaLight.easeTint(tintRight, wantRight)
         val left = tintLeft; val right = tintRight
-        when {
-            hall -> bakedHall()?.light(brightness, left, right) ?: theatre.light(brightness, left, right)
+        val bakedHere = bakedFor(place)?.takeIf { seated && place != Stage.Place.ROOM }
+        if (bakedHere != null) bakedHere.light(brightness, left, right)
+        else when {
+            hall -> theatre.light(brightness, left, right)
             inCabin -> cabin.light(brightness, left, right)
             onDock -> dock.light(brightness, left, right)
             onTerrace -> terrace.light(brightness, left, right)
@@ -539,11 +543,12 @@ class Director(
         val eye = s.eye.y
         val middle = eye + spec.aboveEyesM
         val slope = TheaterGeometry.footSlope(spec)
+        // Made in Blender: its model where it belongs, and what comes with you at your feet.
+        bakedFor(place)?.let { it.place(s.floor, Stage.screenSize); return }
         when (place) {
-            Stage.Place.CINEMA -> bakedHall()?.place(hallAt(s, Stage.screenSize))
-                ?: theatre.build(s.floor, listOf(spec.widthM, spec.heightM, middle, spec.distanceM, eye)) {
-                    Auditorium.build(spec.widthM, spec.heightM, middle, spec.distanceM, eye)
-                }
+            Stage.Place.CINEMA -> theatre.build(s.floor, listOf(spec.widthM, spec.heightM, middle, spec.distanceM, eye)) {
+                Auditorium.build(spec.widthM, spec.heightM, middle, spec.distanceM, eye)
+            }
             Stage.Place.CABIN -> cabin.build(s.floor, listOf(spec.widthM, spec.heightM, middle, spec.distanceM, eye, slope)) {
                 Cabin.build(spec.widthM, spec.heightM, middle, spec.distanceM, eye, slope)
             }
@@ -562,15 +567,8 @@ class Director(
         Theater.Request(Projection.FLAT, app.lumiere.android.api.StereoLayout.MONO, 1920, 1080),
         place, Stage.screenSize, Stage.curved, eyeY = eyeY)
 
-    /** The baked cinema, unless it never loaded. */
-    private fun bakedHall(): BakedPlace? = cinemaModel?.takeIf { it.state != BakedPlace.State.FAILED }
-
-    /** Where the cinema's hall goes round [s] seated in [size]'s row: its origin, in the floor's frame under your eyes. */
-    private fun hallAt(s: TheaterScreen.Seat, size: Int): Pose {
-        val o = CinemaHall.origin(size)
-        val floor = s.floor
-        return Pose(floor.t + floor.q * Vector3(o[0], o[1], o[2]), floor.q)
-    }
+    /** The baked scene for [place], unless it never loaded. */
+    private fun bakedFor(place: Stage.Place): BakedScene? = baked.firstOrNull { it.place == place && it.usable }
 
     /** Your eyes and the way you face now: level, or tilted with you when you lie back and look up. */
     private fun seatHere(): TheaterScreen.Seat {

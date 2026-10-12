@@ -39,7 +39,7 @@ class TheaterGeometryTest {
         val seats = (0 until Stage.SCREEN_SIZES).map { TheaterGeometry.spec(tv, Stage.Place.CABIN, it, false) }
         seats.forEach {
             assertEquals("one wall screen", TheaterGeometry.CABIN_SCREEN_WIDTH_M, it.widthM, 1e-3f)
-            assertEquals("its middle a little above your eyes", 0.2f, it.aboveEyesM, 0f)
+            assertEquals("its middle a little above your eyes", CabinRoom.aboveEyes(CinemaHall.SEAT_EYE), it.aboveEyesM, 1e-5f)
         }
         assertTrue("larger sits nearer", seats.zipWithNext().all { (a, b) -> b.distanceM < a.distanceM })
         assertTrue("the nearest seat still has room before the screen: ${seats.last().distanceM}", seats.last().distanceM > 1.7f)
@@ -136,8 +136,8 @@ class TheaterGeometryTest {
     @Test fun wideFilmsFillTheWallWhenAsked() {
         val scope = Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 804)
         val tv = Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 1080)
-        // (Not the cinema: its screen is its hall's, wide films within its width.)
-        for (place in listOf(Stage.Place.CABIN, Stage.Place.LAKE, Stage.Place.ROOM)) {
+        // (Not the cinema or the cabin: their screens are their rooms', wide films within their width.)
+        for (place in listOf(Stage.Place.VOID, Stage.Place.LAKE, Stage.Place.ROOM)) {
             val plain = TheaterGeometry.spec(scope, place, 2, false)
             val filled = TheaterGeometry.spec(scope, place, 2, false, scopeFill = true)
             val sixteen = TheaterGeometry.spec(tv, place, 2, false)

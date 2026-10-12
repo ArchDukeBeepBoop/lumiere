@@ -1,5 +1,7 @@
 package app.lumiere.android.spatial
 
+import app.lumiere.android.Stage
+
 import androidx.compose.ui.platform.ComposeView
 import app.lumiere.android.MainActivity
 import app.lumiere.android.ui.SpatialSidebar
@@ -267,12 +269,28 @@ class LumiereSpace : AppSystemActivity() {
         )
         val handMenu = Entity.createPanelEntity(R.id.lumiere_handmenu, Transform(Window.parked()), com.meta.spatial.toolkit.Visible(false))
         roomWalls = mruk?.let { RoomWalls(this, it) }
-        // The cinema as modelled and baked in Blender, if it came with the app; the SDK says when it has loaded.
-        val cinema = if (runCatching { assets.open(CINEMA_MODEL).close() }.isSuccess)
-            BakedPlace(CINEMA_MODEL, CINEMA_CURTAIN, CinemaHall.CURTAIN_RISE) { e ->
-                systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>().getSceneObject(e)
-            } else null
-        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset, handMenu, cinema).also { director = it }.start(scope) }
+        // The places as modelled and baked in Blender, those that came with the app; the SDK says when each has loaded.
+        val sceneObjects: (com.meta.spatial.core.Entity) -> java.util.concurrent.CompletableFuture<com.meta.spatial.runtime.SceneObject>? =
+            { e -> systemManager.findSystem<com.meta.spatial.toolkit.SceneObjectSystem>().getSceneObject(e) }
+        fun has(path: String) = runCatching { assets.open(path).close() }.isSuccess
+        fun model(path: String, curtain: String? = null, rise: Float = 0f) = if (has(path)) BakedPlace(path, curtain, rise, sceneObjects) else null
+        val baked = listOfNotNull(
+            model(CINEMA_MODEL, CINEMA_CURTAIN, CinemaHall.CURTAIN_RISE)?.let { m ->
+                BakedScene(Stage.Place.CINEMA, m) { floor, size -> BakedScene.ahead(floor, CinemaHall.origin(size)) }
+            },
+            model("environments/cabin.glb")?.let { m ->
+                model("environments/cabin_sofa.glb")?.let { sofa ->
+                    BakedScene(Stage.Place.CABIN, m, sofa) { floor, size -> BakedScene.ahead(floor, CabinRoom.origin(size)) }
+                }
+            },
+            model("environments/lakeside.glb")?.let { BakedScene(Stage.Place.LAKE, it) },
+            model("environments/terrace.glb")?.let { BakedScene(Stage.Place.CLOUDS, it) },
+            model("environments/moonbase.glb")?.let { BakedScene(Stage.Place.MOON, it) },
+            model("environments/station.glb")?.let { m ->
+                BakedScene(Stage.Place.STATION, m) { floor, size -> BakedScene.ahead(floor, StationRoom.origin(size)) }
+            },
+        )
+        runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset, handMenu, baked).also { director = it }.start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "director unavailable", it) }
         // The place's own sounds, while the app is in front (onResume and onPause start and stop them).
         ambience.start()
