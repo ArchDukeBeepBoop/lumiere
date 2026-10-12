@@ -11,6 +11,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.key
@@ -281,8 +283,11 @@ private fun MoreRow(look: Look, pinned: Boolean, modifier: Modifier, onUse: () -
 }
 
 /**
- * Audio and subtitles, as Netflix lays them out: two columns, the chosen
- * one ticked, subtitles with Off first. A choice applies at once.
+ * Audio and subtitles, in the app's own glass: a titled sheet with three
+ * columns of choices — the sound, the subtitles (Off first), and a second
+ * language under them — each a pill, the chosen one filled and ticked in
+ * the accent; and under them the captions' size and where they sit, as
+ * segmented pills. A choice applies at once.
  */
 @Composable
 private fun TrackSheet(c: Theater.Controls, onClose: () -> Unit) {
@@ -294,42 +299,77 @@ private fun TrackSheet(c: Theater.Controls, onClose: () -> Unit) {
     // A second language under the first: the film's other text subtitles, read from the server.
     val readable = remember(c) { c.streams.filter { app.lumiere.android.player.SecondSubtitles.readable(it.codec) } }
     val scope = androidx.compose.runtime.rememberCoroutineScope()
-    Row(Modifier.fillMaxWidth().heightIn(max = 290.dp).spatialGlass(30).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        TrackColumn("Audio", Modifier.weight(1f), audio.map { it.label to it.selected }) { i ->
-            choose(c.player, audio[i], C.TRACK_TYPE_AUDIO); tick++
-        }
-        TrackColumn("Subtitles", Modifier.weight(1f), listOf("Off" to textOff) + text.map { it.label to it.selected }) { i ->
-            choose(c.player, if (i == 0) null else text[i - 1], C.TRACK_TYPE_TEXT); tick++
-        }
-        val second = Theater.second
-        TrackColumn("And under them", Modifier.weight(1f), listOf("Nothing" to (second == null)) +
-            readable.map { app.lumiere.android.player.SecondSubtitles.label(it.language, it.title) to (second?.index == it.index) }) { i ->
-            if (i == 0) Theater.second = null
-            else readable[i - 1].let { st ->
-                val label = app.lumiere.android.player.SecondSubtitles.label(st.language, st.title)
-                scope.launch {
-                    val cues = runCatching { app.lumiere.android.player.SecondSubtitles.parse(c.server.subtitleText(c.itemId, c.mediaSourceId, st.index)) }
-                        .getOrDefault(emptyList())
-                    if (cues.isEmpty()) Theater.say("$label can't be shown under the subtitles")
-                    else Theater.second = app.lumiere.android.player.SecondSubtitles.Track(st.index, label, cues)
+    Column(Modifier.fillMaxWidth().heightIn(max = 300.dp).spatialGlass(30).padding(horizontal = 22.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SheetTitle(Icons.Default.Subtitles, "Audio & Subtitles", onClose)
+        Row(Modifier.weight(1f, fill = false), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            TrackColumn("Audio", Modifier.weight(1f), audio.map { it.label to it.selected }) { i ->
+                choose(c.player, audio[i], C.TRACK_TYPE_AUDIO); tick++
+            }
+            ColumnRule()
+            TrackColumn("Subtitles", Modifier.weight(1f), listOf("Off" to textOff) + text.map { it.label to it.selected }) { i ->
+                choose(c.player, if (i == 0) null else text[i - 1], C.TRACK_TYPE_TEXT); tick++
+            }
+            ColumnRule()
+            val second = Theater.second
+            TrackColumn("Second line", Modifier.weight(1f), listOf("None" to (second == null)) +
+                readable.map { app.lumiere.android.player.SecondSubtitles.label(it.language, it.title) to (second?.index == it.index) }) { i ->
+                if (i == 0) Theater.second = null
+                else readable[i - 1].let { st ->
+                    val label = app.lumiere.android.player.SecondSubtitles.label(st.language, st.title)
+                    scope.launch {
+                        val cues = runCatching { app.lumiere.android.player.SecondSubtitles.parse(c.server.subtitleText(c.itemId, c.mediaSourceId, st.index)) }
+                            .getOrDefault(emptyList())
+                        if (cues.isEmpty()) Theater.say("$label can't be shown under the subtitles")
+                        else Theater.second = app.lumiere.android.player.SecondSubtitles.Track(st.index, label, cues)
+                    }
                 }
             }
         }
         // The captions themselves: their size (the same setting as the window's), and where they are.
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Captions", style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
-            if (prefs != null) Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf("S", "M", "L", "XL").forEachIndexed { i, s ->
-                    GlassButton(Icons.Default.Subtitles, "Caption size $s", chosen = prefs.subtitleSize == i, caption = s, size = 44.dp) {
-                        Theater.poke(); prefs.subtitleSize = i
-                    }
-                }
-            }
-            TrackColumn("", Modifier, listOf("On the screen" to !Stage.captionsNear, "Before you" to Stage.captionsNear)) { i ->
-                if ((i == 1) != Stage.captionsNear) Stage.toggleCaptionsNear()
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Text("Captions", style = MaterialTheme.typography.labelLarge, color = Palette.textSecondary)
+            if (prefs != null) Segmented(listOf("S", "M", "L", "XL"), prefs.subtitleSize) { Theater.poke(); prefs.subtitleSize = it }
+            Spacer(Modifier.weight(1f))
+            Segmented(listOf("On the screen", "Before you"), if (Stage.captionsNear) 1 else 0) { i ->
+                Theater.poke(); if ((i == 1) != Stage.captionsNear) Stage.toggleCaptionsNear()
             }
         }
-        GlassButton(Icons.Default.Close, "Close", size = 52.dp, onClick = onClose)
+    }
+}
+
+/** A sheet's title: its icon and name, and Close at the end. */
+@Composable
+private fun SheetTitle(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, onClose: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Icon(icon, null, tint = Palette.accent, modifier = Modifier.size(22.dp))
+        Text(title, style = MaterialTheme.typography.titleMedium, color = Palette.textPrimary, modifier = Modifier.weight(1f))
+        GlassButton(Icons.Default.Close, "Close", size = 44.dp, onClick = onClose)
+    }
+}
+
+/** The fine line between a sheet's columns. */
+@Composable
+private fun ColumnRule() = Box(Modifier.width(1.dp).fillMaxHeight().background(Color.White.copy(alpha = 0.08f)))
+
+/**
+ * Choices side by side in one capsule, as tvOS's segmented control: the
+ * chosen one filled white with dark text, the one you point at brighter.
+ */
+@Composable
+private fun Segmented(labels: List<String>, chosen: Int, onPick: (Int) -> Unit) {
+    Row(Modifier.background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(50)).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        labels.forEachIndexed { i, label ->
+            val source = remember { MutableInteractionSource() }
+            val hovered by source.collectIsHoveredAsState()
+            val on = i == chosen
+            Text(label, style = MaterialTheme.typography.labelLarge, color = if (on) Palette.canvas else Palette.textPrimary,
+                modifier = Modifier.heightIn(min = 40.dp)
+                    .background(when { on -> Palette.textPrimary; hovered -> Color.White.copy(alpha = 0.16f); else -> Color.Transparent }, RoundedCornerShape(50))
+                    .hoverable(source).clickable(interactionSource = source, indication = null) { onPick(i) }
+                    .padding(horizontal = 16.dp, vertical = 10.dp))
+        }
     }
 }
 
@@ -343,8 +383,9 @@ private fun PictureSheet(c: Theater.Controls, onClose: () -> Unit) {
     var p by remember(c, Stage.pictureChanges) { mutableStateOf(Stage.pictureFor(c.pictureKey)) }
     fun set(next: Stage.Picture) { Theater.poke(); p = next; Stage.setPicture(c.pictureKey, next) }
     val adjustable = Theater.pictureAdjustable != false
-    Row(Modifier.fillMaxWidth().spatialGlass(30).padding(20.dp), horizontalArrangement = Arrangement.spacedBy(22.dp),
-        verticalAlignment = Alignment.CenterVertically) {
+    Column(Modifier.fillMaxWidth().spatialGlass(30).padding(horizontal = 22.dp, vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    SheetTitle(Icons.Default.Tune, "Picture", onClose)
+    Row(horizontalArrangement = Arrangement.spacedBy(22.dp), verticalAlignment = Alignment.CenterVertically) {
         if (adjustable) {
             Stepper("Brightness", p.brightness) { set(p.copy(brightness = it)) }
             Stepper("Contrast", p.contrast) { set(p.copy(contrast = it)) }
@@ -352,13 +393,13 @@ private fun PictureSheet(c: Theater.Controls, onClose: () -> Unit) {
         } else Text("This film is HDR: it's shown as it came", color = Palette.textSecondary, modifier = Modifier.weight(1f))
         Spacer(Modifier.weight(1f))
         // In the cinema a wide film is as wide as its screen, as a cinema's masking has it.
-        if (Stage.place != Stage.Place.CINEMA) Column {
-            Text("Wide films", style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
-            TrackColumn("", Modifier, listOf("The same width" to !Stage.scopeFill, "Wider, as in a scope cinema" to Stage.scopeFill)) { i ->
-                if ((i == 1) != Stage.scopeFill) Stage.toggleScopeFill()
+        if (Stage.place != Stage.Place.CINEMA) Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("Wide films", style = MaterialTheme.typography.labelLarge, color = Palette.textSecondary)
+            Segmented(listOf("Same width", "Wider, as in a scope cinema"), if (Stage.scopeFill) 1 else 0) { i ->
+                Theater.poke(); if ((i == 1) != Stage.scopeFill) Stage.toggleScopeFill()
             }
         }
-        GlassButton(Icons.Default.Close, "Close", size = 52.dp, onClick = onClose)
+    }
     }
 }
 
@@ -388,17 +429,19 @@ private fun TextButtonGlass(label: String, onClick: () -> Unit) {
 @Composable
 private fun TrackColumn(title: String, modifier: Modifier, rows: List<Pair<String, Boolean>>, onPick: (Int) -> Unit) {
     Column(modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        if (title.isNotEmpty()) Text(title, style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
-        if (title.isNotEmpty() && rows.isEmpty()) Text("None in this file", color = Palette.textSecondary)
+        if (title.isNotEmpty()) Text(title, style = MaterialTheme.typography.labelLarge, color = Palette.textSecondary,
+            modifier = Modifier.padding(start = 14.dp, bottom = 2.dp))
+        if (title.isNotEmpty() && rows.isEmpty()) Text("None in this file", color = Palette.textMuted, modifier = Modifier.padding(start = 14.dp))
         rows.forEachIndexed { i, (label, chosen) ->
             val source = remember { MutableInteractionSource() }
             val hovered by source.collectIsHoveredAsState()
-            Row(Modifier.fillMaxWidth().heightIn(min = 52.dp)
-                .background(if (hovered) Color.White.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(12.dp))
+            Row(Modifier.fillMaxWidth().heightIn(min = 46.dp)
+                .background(when { chosen -> Palette.surfaceRaised; hovered -> Color.White.copy(alpha = 0.12f); else -> Color.Transparent }, RoundedCornerShape(50))
                 .hoverable(source).clickable(interactionSource = source, indication = null) { Theater.poke(); onPick(i) }
-                .padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (chosen) "✓" else "", modifier = Modifier.width(28.dp), color = Palette.accent)
-                Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                .padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge, color = if (chosen) Palette.textPrimary else Palette.textSecondary)
+                if (chosen) Icon(Icons.Default.Check, null, tint = Palette.accent, modifier = Modifier.size(20.dp))
             }
         }
     }

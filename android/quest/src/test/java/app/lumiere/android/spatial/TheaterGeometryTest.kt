@@ -95,6 +95,44 @@ class TheaterGeometryTest {
         assertTrue("just in front", ahead in 0.01f..0.1f)
     }
 
+    /** Every flat screen in every place, size, curve and shape. */
+    private fun allFlat() = Stage.Place.entries.flatMap { place -> (0 until Stage.SCREEN_SIZES).flatMap { size ->
+        listOf(false, true).flatMap { curved -> listOf(tv, wide).map { TheaterGeometry.spec(it, place, size, curved) } } } }
+
+    @Test fun captionsAreTheSameSizeInYourViewWherever() {
+        fun lineDegrees(widthM: Float, dp: Float, distance: Float) =
+            Math.toDegrees(kotlin.math.atan(TheaterGeometry.CAPTION_LINE_DP * widthM / dp / distance).toDouble())
+        allFlat().forEach { s ->
+            val (w, h, _, ahead, dp) = TheaterGeometry.captions(s).toList()
+            // Unless the screen is too small to hold them at that size, which only makes them smaller.
+            if (h < s.heightM * 0.45f - 1e-4f)
+                assertEquals("$s", TheaterGeometry.CAPTION_LINE_DEGREES.toDouble(), lineDegrees(w, dp, s.distanceM - ahead), 0.05)
+            val near = TheaterGeometry.nearCaptions(s)
+            assertEquals(TheaterGeometry.CAPTION_LINE_DEGREES.toDouble(), lineDegrees(near[0], near[4], near[3]), 0.05)
+        }
+    }
+
+    @Test fun captionsBeforeYouAreNeverBehindTheScreen() {
+        allFlat().forEach { s ->
+            val (w, _, below, ahead) = TheaterGeometry.nearCaptions(s).toList()
+            // The screen right behind the captions' ends (a curve's comes nearer than its middle).
+            val behind = s.radiusM?.let { r -> kotlin.math.sqrt(r * r - w * w / 4) } ?: s.distanceM
+            assertTrue("${s.distanceM} m screen: captions at $ahead", ahead < behind - 0.15f)
+            assertTrue(below > 0f)
+        }
+    }
+
+    @Test fun captionsStandClearOfACurvedScreensEnds() {
+        allFlat().filter { it.radiusM != null }.forEach { s ->
+            val r = s.radiusM!!
+            val (w, h, up, ahead) = TheaterGeometry.captions(s).toList()
+            // The screen's surface at the captions' ends, nearer than its middle by this much.
+            val sag = r - kotlin.math.sqrt(r * r - w * w / 4)
+            assertTrue("ahead $ahead, the curve comes $sag nearer", ahead > sag)
+            assertTrue("within the screen's lower half", up - h / 2 >= -s.heightM / 2 && up + h / 2 <= 0.05f)
+        }
+    }
+
     @Test fun wideFilmsFillTheWallWhenAsked() {
         val scope = Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 804)
         val tv = Theater.Request(Projection.FLAT, StereoLayout.MONO, 1920, 1080)

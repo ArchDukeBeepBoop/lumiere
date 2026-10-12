@@ -65,7 +65,7 @@ class TheaterScreen {
         captionsNear = spec.projection != Projection.FLAT || app.lumiere.android.Stage.captionsNear
         captions = if (!captionsNear)
             Entity.createPanelEntity(R.id.lumiere_captions, Transform(captionsOnScreen(spec)), TransformParent(screen))
-        else Entity.createPanelEntity(R.id.lumiere_captions, Transform(sphereCaptions(seat)))
+        else Entity.createPanelEntity(R.id.lumiere_captions, Transform(nearCaptions(seat)))
     }
 
     /** Whether the captions are before you (not on the screen). */
@@ -84,7 +84,7 @@ class TheaterScreen {
 
     /** Captions before you turned to where you now face, from [eye]. */
     fun turnCaptions(eye: Vector3, facing: com.meta.spatial.core.Quaternion) {
-        if (captionsNear) captions?.setComponent(Transform(sphereCaptions(Seat(eye, facing, tilted = false))))
+        if (captionsNear) captions?.setComponent(Transform(nearCaptions(Seat(eye, facing, tilted = false))))
     }
 
     private var madeMovable = false
@@ -96,7 +96,7 @@ class TheaterScreen {
         val spec = made ?: return
         if (pinned != null) return
         entity?.setComponent(Transform(screenPose(spec, seat)))
-        if (captionsNear) captions?.setComponent(Transform(sphereCaptions(seat)))
+        if (captionsNear) captions?.setComponent(Transform(nearCaptions(seat)))
     }
 
     /** The film is over: the screen goes, and the player takes its picture back to the window. */
@@ -117,8 +117,11 @@ class TheaterScreen {
         return Pose(Vector3(0f, up, -ahead))
     }
 
-    private fun sphereCaptions(seat: Seat): Pose =
-        Pose(seat.eye + seat.facing * Vector3(0f, -0.55f, TheaterGeometry.SPHERE_CAPTIONS_DISTANCE_M), seat.facing)
+    /** Captions before you: low in your view, and nearer than the screen if it's close (TheaterGeometry.nearCaptions). */
+    private fun nearCaptions(seat: Seat): Pose {
+        val (_, _, below, ahead) = TheaterGeometry.nearCaptions(made)
+        return Pose(seat.eye + seat.facing * Vector3(0f, -below, ahead), seat.facing)
+    }
 
     /**
      * Where you watch from: your eyes, and the way you face — level when you
@@ -146,19 +149,19 @@ class TheaterScreen {
                 MediaPanelRenderOptions(false, stereoModeOf(s.eyes)))
         }
 
-        /** The captions' panel: the screen's scale, laid out 1920 dp across whatever its size. */
+        /** The captions' panel, on the screen or before you. */
         fun captionSettings(spec: TheaterGeometry.Spec?): UIPanelSettings {
             val near = spec == null || spec.projection != Projection.FLAT || app.lumiere.android.Stage.captionsNear
-            val (w, h) = if (near) TheaterGeometry.NEAR_CAPTIONS_W to TheaterGeometry.NEAR_CAPTIONS_H
-                else TheaterGeometry.captions(spec!!).let { c -> c[0] to c[1] }
+            // Each laid out so a line of the middle size is the same share of your view wherever it is.
+            val c = if (near) TheaterGeometry.nearCaptions(spec) else TheaterGeometry.captions(spec!!)
+            val w = c[0]; val h = c[1]; val dp = c[4]
             return UIPanelSettings(
                 shape = QuadShapeOptions(width = w, height = h),
-                display = DpDisplayOptions(width = CAPTIONS_DP, height = CAPTIONS_DP * h / w, dpi = 160),
+                display = DpDisplayOptions(width = dp, height = dp * h / w, dpi = 160),
                 style = PanelStyleOptions(themeResourceId = R.style.LumiereGlassPanel),
             )
         }
 
-        private const val CAPTIONS_DP = 1920f
 
         fun stereoModeOf(eyes: StereoLayout): StereoMode = when (eyes) {
             StereoLayout.SIDE_BY_SIDE -> StereoMode.LeftRight

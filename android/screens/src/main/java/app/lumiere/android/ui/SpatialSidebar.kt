@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.SatelliteAlt
@@ -93,6 +94,10 @@ private fun Rail(state: AppState, activity: android.app.Activity) {
         // Away from your room, back to the handset near your hands (the whole window stays for your room).
         if (Stage.place != Stage.Place.ROOM && Handset.enabled && Stage.wholeWindow)
             RailButton(Icons.Default.SettingsRemote, "Back to the handset", chosen = false, caption = "Handset") { Stage.wholeWindow = false }
+        // In your room, the big screen onto the wall you're facing (or off it again): films play there from then on.
+        if (Stage.place == Stage.Place.ROOM)
+            RailButton(Icons.Default.Tv, if (Stage.mount != null) "Take the screen off your wall" else "Put the screen on the wall you're facing",
+                chosen = Stage.mount != null, caption = "Wall") { Stage.askMount() }
         if (PosterWall.enabled) RailButton(Icons.Default.ViewModule, "Poster wall", chosen = PosterWall.open) { PosterWall.open = !PosterWall.open }
         RailButton(Icons.Default.CenterFocusStrong, "Bring everything here", chosen = false) { Stage.bringHere() }
         // The place's own sounds (the fire, the lake at night): on or off.

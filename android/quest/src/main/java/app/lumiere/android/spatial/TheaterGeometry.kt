@@ -153,20 +153,56 @@ object TheaterGeometry {
         Math.toDegrees(2 * kotlin.math.atan((widthM / 2 / distanceM).toDouble())).toFloat()
 
     /**
-     * The captions' panel for a screen: a band over its foot, 60% of its
-     * width and a quarter of its height, just in front of it, so the words
-     * keep the screen's scale. Width, height, how far up from the screen's
-     * middle its own middle sits, and how far in front.
+     * The captions' panel on a screen: a band over its foot, just in front
+     * of it, laid out so a line of the middle size is [CAPTION_LINE_DEGREES]
+     * of your view whatever the screen's size or distance — a wall TV's
+     * captions as readable as the cinema's. Room for two speakers and the
+     * second language under them, within the screen's lower half. In front
+     * of a curved screen's ends, which come nearer than its middle. Width,
+     * height, how far up from the screen's middle its own middle sits, how
+     * far in front, and its width in dp.
      */
     fun captions(spec: Spec): FloatArray {
-        if (spec.projection != Projection.FLAT) return floatArrayOf(2.0f, 0.5f, -0.55f, 0f)
-        val w = spec.widthM * 0.6f
-        val h = spec.heightM * 0.25f
-        return floatArrayOf(w, h, -spec.heightM / 2 + h / 2 + spec.heightM * 0.03f, 0.04f)
+        if (spec.projection != Projection.FLAT) return nearCaptions(spec)
+        val r = spec.radiusM
+        val w = (spec.widthM * 0.8f).let { if (r != null) it.coerceAtMost(0.7f * r) else it }
+        val sag = if (r == null) 0f else r - kotlin.math.sqrt((r * r - w * w / 4).coerceAtLeast(0f))
+        val ahead = 0.04f + sag
+        val perM = dpPerMetre((spec.distanceM - ahead).coerceAtLeast(0.5f))
+        val h = (CAPTION_ROOM_DP / perM).coerceAtMost(spec.heightM * 0.45f)
+        return floatArrayOf(w, h, -spec.heightM / 2 + h / 2 + spec.heightM * 0.03f, ahead, w * perM)
     }
 
-    /** For 180° and 360°, and wherever you want them before you: captions this far in front of you, this big. */
+    /**
+     * Captions before you, low in your view, for 180° and 360° and wherever
+     * you'd rather have them there: [SPHERE_CAPTIONS_DISTANCE_M] away, or
+     * nearer than a screen that's closer (the cabin's, the station's), so
+     * it never hides them. Width, height, how far below your eyes, how far
+     * ahead, and its width in dp.
+     */
+    fun nearCaptions(spec: Spec?): FloatArray {
+        val nearest = when {
+            spec == null || spec.projection != Projection.FLAT -> Float.MAX_VALUE
+            spec.radiusM != null -> spec.distanceM * kotlin.math.cos((spec.widthM / 2 / spec.distanceM).coerceAtMost(1.4f))
+            else -> spec.distanceM
+        }
+        val d = minOf(SPHERE_CAPTIONS_DISTANCE_M, nearest * 0.75f).coerceAtLeast(0.6f)
+        val perM = dpPerMetre(d)
+        val w = d * NEAR_CAPTIONS_W / SPHERE_CAPTIONS_DISTANCE_M
+        return floatArrayOf(w, CAPTION_ROOM_DP / perM, d * 0.22f, d, w * perM)
+    }
+
+    /** dp to the metre for a panel [distance] away, so a middle-size line is [CAPTION_LINE_DEGREES] tall. */
+    private fun dpPerMetre(distance: Float): Float =
+        CAPTION_LINE_DP / (distance * tan(Math.toRadians(CAPTION_LINE_DEGREES.toDouble())).toFloat())
+
+    /** A caption line of the middle size, in degrees of your view; its height in the captions' dp (TheaterCaptions). */
+    const val CAPTION_LINE_DEGREES = 1.3f
+    const val CAPTION_LINE_DP = 46f
+    /** Room on the captions' panel: two speakers' lines at the largest size and the second language under them. */
+    const val CAPTION_ROOM_DP = 400f
+
+    /** For 180° and 360°, and wherever you want them before you: captions this far in front of you at most, this wide there. */
     const val SPHERE_CAPTIONS_DISTANCE_M = 2.5f
     const val NEAR_CAPTIONS_W = 2.0f
-    const val NEAR_CAPTIONS_H = 0.5f
 }

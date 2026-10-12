@@ -518,6 +518,21 @@ private fun App(state: AppState, onExit: () -> Unit) {
                 }
             }
         }
+        // On a Quest, a word from the headset while no film is up (putting the screen on your wall, for one):
+        // there's no transport to say it on, so the window does, at its foot, for five seconds.
+        if (app.lumiere.android.AppBuild.quest) {
+            val word = app.lumiere.android.player.Theater.notice?.takeIf { !app.lumiere.android.player.Theater.active }
+            androidx.compose.runtime.LaunchedEffect(word) {
+                if (word != null) { kotlinx.coroutines.delay(5_000); if (app.lumiere.android.player.Theater.notice == word) app.lumiere.android.player.Theater.notice = null }
+            }
+            if (word != null) androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
+                androidx.compose.material3.Text(word, color = app.lumiere.android.ui.Palette.textPrimary,
+                    style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                    modifier = androidx.compose.ui.Modifier.padding(bottom = 36.dp)
+                        .background(app.lumiere.android.ui.Palette.surface.copy(alpha = 0.95f), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                        .padding(horizontal = 22.dp, vertical = 12.dp))
+            }
+        }
         state.crashReport?.let { report ->
             app.lumiere.android.ui.CrashReportDialog(report) { CrashLog.markSeen(context, report); state.crashReport = null }
         }
