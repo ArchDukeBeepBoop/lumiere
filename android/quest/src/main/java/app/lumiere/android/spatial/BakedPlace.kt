@@ -181,6 +181,11 @@ class BakedPlace(
         val now = Triple(level, left, right)
         if (now == lastLight || (lit.isEmpty() && curtainLit.isEmpty())) return
         lastLight = now
+        lit.firstOrNull()?.let { l ->
+            val a = BakedLight.albedo(l.kind, level, left)
+            app.lumiere.android.Probe.info("places", "$model light", "house lights ${"%.2f".format(level)}, drawn at ${"%.2f".format(a[0])}/${"%.2f".format(a[1])}/${"%.2f".format(a[2])} of full" +
+                (if (a.maxOrNull() ?: 0f < 0.15f) " — VERY DARK" else ""))
+        }
         val middle = if (left != null && right != null) Triple((left.first + right.first) / 2, (left.second + right.second) / 2, (left.third + right.third) / 2)
             else left ?: right
         for (l in lit + curtainLit) {

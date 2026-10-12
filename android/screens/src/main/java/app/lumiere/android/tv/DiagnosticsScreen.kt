@@ -1,6 +1,7 @@
 package app.lumiere.android.tv
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -123,9 +124,10 @@ fun DiagnosticsScreen(state: AppState) {
             Text("Notes and system log", color = Palette.textPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(top = 18.dp))
         }
-        items(raw) { l ->
-            Text(l, fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Palette.textSecondary,
-                modifier = Modifier.focusCard {}.padding(vertical = 1.dp))
+        // The log in plain blocks of 40 lines, each one stop for the joystick (hundreds of animated cards crashed it).
+        items(raw.chunked(40)) { block ->
+            Text(block.joinToString("\n"), fontFamily = FontFamily.Monospace, fontSize = 11.sp, color = Palette.textSecondary,
+                modifier = Modifier.fillMaxWidth().focusable().padding(vertical = 1.dp))
         }
     }
 }
@@ -141,7 +143,7 @@ private object StatusColor {
 @Composable
 private fun ResultRow(r: Probe.Result) {
     val ago = ((System.currentTimeMillis() - r.at) / 1000).let { if (it < 60) "${it}s ago" else "${it / 60} min ago" }
-    Row(Modifier.fillMaxWidth().focusCard {}.background(Palette.surface, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
+    Row(Modifier.fillMaxWidth().focusable().background(Palette.surface, RoundedCornerShape(10.dp)).padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.Top) {
         Box(Modifier.padding(top = 5.dp).size(10.dp).background(StatusColor.of(r.status), CircleShape))
         Spacer(Modifier.width(12.dp))

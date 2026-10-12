@@ -108,7 +108,8 @@ class MainActivity : ComponentActivity() {
                     app.lumiere.android.Motion.reduced = state.settings.reduceMotion || (app.lumiere.android.Device.lowMemory && app.lumiere.android.music.Music.isPlaying)
                 }
                 androidx.compose.runtime.LaunchedEffect(state.roomOpen, state.settings.roomBlocksCapture) {
-                    if (state.roomOpen && state.settings.roomBlocksCapture) {
+                    // Never on the Quest: a secure window is drawn black inside the headset's scene (the room showed nothing).
+                    if (state.roomOpen && state.settings.roomBlocksCapture && !app.lumiere.android.AppBuild.quest) {
                         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
                     } else {
                         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)

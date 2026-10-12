@@ -236,7 +236,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
     // rather than an empty band two-thirds of the screen tall pushing every row out of sight.
     val noSpotlight = spotlight.isEmpty() && rows.shelves.none { (t, l) -> t == "Continue Watching" && l.any { it.backdropTag != null } }
     LaunchedEffect(state.roomOpen, rows) {
-        app.lumiere.android.Probe.info("private room", "home drawn", "room ${if (state.roomOpen) "open" else "shut"}: " +
+        app.lumiere.android.Probe.info("home", "drawn", "room ${if (state.roomOpen) "open" else "shut"}: " +
             rows.shelves.joinToString { "${it.first} ${it.second.size}" } + "; ${rows.libraries.size} libraries; spotlight ${spotlight.size}" +
             (if (noSpotlight) " (none: rows start at the top)" else ""))
     }
