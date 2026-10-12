@@ -439,6 +439,8 @@ object OpenApp {
     var quit: (() -> Unit)? = null
     /** Presses a remote key in the open window, as a TV remote would: the Quest's controllers use it. */
     var press: ((Int) -> Unit)? = null
+    /** Scrolls the open window by [amount] wheel steps (up positive): the Quest's thumbstick, smoothly. */
+    var scroll: ((Float) -> Unit)? = null
     /**
      * The window's signed-in image loader, for panels outside it (the Quest's
      * poster wall, ornament and transport): posters are behind sign-in, and a

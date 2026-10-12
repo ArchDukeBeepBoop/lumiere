@@ -36,17 +36,30 @@ class Remote : SystemBase() {
         val inPlayer = OpenApp.state?.top is Screen.Player
         // A trigger or grip counts as a touch too: the transport shows.
         if (down != held && down != 0) app.lumiere.android.player.Theater.poke()
-        val fresh = down and held.inv()
+        // Up and down outside a film scroll the page smoothly, a little each frame and quicker the longer
+        // it's held, rather than hopping card to card (the poster wall and a film keep their keys).
+        val scrolls = !inPlayer && !app.lumiere.android.ui.PosterWall.open && OpenApp.scroll != null
+        val vertical = down and (UP or DOWN)
+        if (scrolls && vertical != 0) {
+            if (scrollSince == 0L) scrollSince = now
+            val ramp = ((now - scrollSince) / 700f).coerceIn(0f, 1f)
+            val step = 0.035f + 0.16f * ramp * ramp
+            OpenApp.scroll?.invoke(if (vertical and UP != 0) step else -step)
+        } else scrollSince = 0L
+        val keyBits = if (scrolls) down and (UP or DOWN).inv() else down
+        val fresh = keyBits and held.inv()
         keysFor(fresh, inPlayer).forEach(::deliver)
         if (fresh != 0) { heldSince = now; lastRepeat = now }
         // A direction held: again after 0.45 s, then every 0.14 s.
-        val dirs = down and DIRECTIONS
+        val dirs = keyBits and DIRECTIONS
         if (dirs != 0 && fresh and DIRECTIONS == 0 && now - heldSince > 450 && now - lastRepeat > 140) {
             lastRepeat = now
             keysFor(dirs, inPlayer).forEach(::deliver)
         }
-        held = down
+        held = keyBits
     }
+
+    private var scrollSince = 0L
 
     companion object {
         /**

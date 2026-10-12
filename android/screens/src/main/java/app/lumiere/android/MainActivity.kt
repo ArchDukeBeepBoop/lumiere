@@ -59,6 +59,22 @@ class MainActivity : ComponentActivity() {
                 dispatchKeyEvent(android.view.KeyEvent(now, now, android.view.KeyEvent.ACTION_UP, code, 0))
             }
         }
+        // The thumbstick held up or down: a little scroll each frame, as a trackpad's, where the page is.
+        OpenApp.scroll = { amount ->
+            runOnUiThread {
+                val root = window.decorView
+                val now = android.os.SystemClock.uptimeMillis()
+                val props = android.view.MotionEvent.PointerProperties().apply { id = 0; toolType = android.view.MotionEvent.TOOL_TYPE_MOUSE }
+                val coords = android.view.MotionEvent.PointerCoords().apply {
+                    x = root.width / 2f; y = root.height * 0.6f
+                    setAxisValue(android.view.MotionEvent.AXIS_VSCROLL, amount)
+                }
+                val e = android.view.MotionEvent.obtain(now, now, android.view.MotionEvent.ACTION_SCROLL, 1, arrayOf(props), arrayOf(coords),
+                    0, 0, 1f, 1f, 0, 0, android.view.InputDevice.SOURCE_MOUSE, 0)
+                root.dispatchGenericMotionEvent(e)
+                e.recycle()
+            }
+        }
         state.downloads = app.lumiere.android.downloads.Downloads(this)
         state.cache = app.lumiere.android.cache.LibraryCache(this)
         state.cacheSync = app.lumiere.android.cache.CacheSync(state.cache)
