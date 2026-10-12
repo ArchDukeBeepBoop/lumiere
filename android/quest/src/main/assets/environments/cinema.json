@@ -1,0 +1,60 @@
+{
+ "screen": {
+  "width": 20.0,
+  "height": 11.25,
+  "bottom": 1.1,
+  "z": 0.0
+ },
+ "rows": {
+  "count": 12,
+  "nearest": 6.37,
+  "pitch": 1.15,
+  "firstFloor": 1.98,
+  "rake": 0.38
+ },
+ "seatRows": [
+  11,
+  7,
+  4,
+  2,
+  0
+ ],
+ "seatEye": 1.2,
+ "seatTop": 1.04,
+ "seatTopBehindEye": 0.33,
+ "parapet": {
+  "z": -5.62,
+  "top": 0.78,
+  "depth": 0.18
+ },
+ "curtain": {
+  "rise": 14.5,
+  "bottom": 0.92,
+  "top": 13.7,
+  "z": -0.45,
+  "front": -0.71,
+  "halfWidth": 11.399999999999999
+ },
+ "hall": {
+  "halfWidth": 12.8,
+  "back": -21.8,
+  "proscenium": -0.8,
+  "openingTop": 13.2,
+  "valanceBottom": 12.6
+ },
+ "materials": [
+  "glow:booth",
+  "glow:exit",
+  "glow:step",
+  "hall/baked",
+  "lamp:down",
+  "lamp:foot",
+  "lamp:sconce",
+  "lamp:screen",
+  "rows/baked",
+  "seats_back/baked",
+  "seats_front/baked",
+  "walls@L/baked",
+  "walls@R/baked"
+ ]
+}
