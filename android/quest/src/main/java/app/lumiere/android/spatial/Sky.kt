@@ -31,7 +31,7 @@ class Sky {
     /** The shown picture turned so its middle is [q]'s ahead (a room's screen side). */
     fun face(seat: com.meta.spatial.core.Quaternion) {
         // The skybox's picture faces the other way from a seat's ahead: turned half round, its middle is ahead.
-        val q = seat * com.meta.spatial.core.Quaternion(0f, 1f, 0f, 0f)
+        val q = seat * com.meta.spatial.core.Quaternion(0f, 0f, 1f, 0f)  // (w, x, y, z): half round about the up axis
         if (q == facing) return
         facing = q
         shown?.let { made[it]?.setComponent(Transform(Pose(Vector3(0f), q))) }
