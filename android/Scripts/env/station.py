@@ -196,7 +196,7 @@ def main():
     views = {"ahead": (0, SCREEN_MID, 0), "left": (5, 1.3, -2.0), "right": (-5, 1.3, -2.0), "back": (0, 1.4, -20), "up": (0, 6, -2.3)}
     if mode == "preview":
         for k, aim in views.items():
-            preview(view(2), aim, os.path.join(out, k + ".png"), res=RES, samples=24 if QUICK else 64, lens=15)
+            preview(view(int(os.environ.get("PANO_SIZE", "2"))), aim, os.path.join(out, k + ".png"), res=RES, samples=24 if QUICK else 64, lens=15)
         return
     eyes = [Vector(P(dx, h, -d + dz)) for d in DISTANCES for dx in (-0.8, 0, 0.8) for h in (1.0, 1.7) for dz in (-0.4, 0.4)]
     occluders = scene_bvh(list(groups.values()) + [glow_obj])

@@ -212,7 +212,7 @@ class Director(
         if (!away) browseSeat = null
         if (on) {
             val s = seat ?: seatHere().also { seat = it }
-            val spec = TheaterGeometry.spec(request!!, place, sizeIn(place), Stage.curved, Stage.scopeFill, s.eye.y)
+            val spec = far(place, TheaterGeometry.spec(request!!, place, sizeIn(place), Stage.curved, Stage.scopeFill, s.eye.y))
             val hung = if (place == Stage.Place.ROOM && request.projection == Projection.FLAT) onYourWall(request, s) else null
             if (hung != null) { if (screen.follow(hung.first, s, movable = false, on = hung.second)) shownPlace = null }
             else if (screen.follow(spec, s, movable = !TheaterGeometry.fixedScreen(place)) || fellBack) {
@@ -255,7 +255,7 @@ class Director(
             app.lumiere.android.Breadcrumbs.mark("showing $place (seated $seated)")
             scene.enablePassthrough(place == Stage.Place.ROOM && !sphere)
             // The place baked in Blender if it has one (and it loads); its modelled blocks otherwise.
-            val pano = Sky.panoramas[place]
+            val pano = Sky.panoramaFor(place, Stage.screenSize, false)
             val bakedHere = bakedFor(place)?.takeIf { seated && pano == null }
             baked.forEach { it.show(it === bakedHere) }
             // The places you've left are let go (the winter cabin shares the cabin's sofa: not while either is here).
@@ -282,7 +282,8 @@ class Director(
         }
 
         // A film starting or ending in a 360° place: the lights go down (its dark picture) and up again.
-        if (!sphere) Sky.panoramas[place]?.let { lit -> sky.fadeTo(if (on) Sky.darkPanoramas[place] ?: lit else lit, System.currentTimeMillis()) }
+        // And a different seat (another size) fades to its own picture.
+        if (!sphere && Sky.hasPanorama(place)) sky.fadeTo(Sky.panoramaFor(place, Stage.screenSize, on), System.currentTimeMillis())
         val skyFading = sky.step(System.currentTimeMillis())
 
         // Away from your room the handset chooses what plays, and the window stays as it is for your room,
@@ -588,7 +589,7 @@ class Director(
         val middle = eye + spec.aboveEyesM
         val slope = TheaterGeometry.footSlope(spec)
         // A 360° picture from the seat: turned so its screen side is ahead of you.
-        if (Sky.panoramas[place] != null) { sky.face(s.floor.q); return }
+        if (Sky.hasPanorama(place)) { sky.face(s.floor.q); return }
         // Made in Blender: its model where it belongs, and what comes with you at your feet.
         bakedFor(place)?.let { it.place(s.floor, Stage.screenSize); return }
         when (place) {
@@ -611,7 +612,9 @@ class Director(
     }
 
     /** The big screen while no film plays: the chosen size and curve, a 16:9 picture, for eyes [eyeY] over the floor. */
-    private fun browseSpec(place: Stage.Place, eyeY: Float) = TheaterGeometry.spec(
+    private fun browseSpec(place: Stage.Place, eyeY: Float) = far(place, browseSpecNear(place, eyeY))
+
+    private fun browseSpecNear(place: Stage.Place, eyeY: Float) = TheaterGeometry.spec(
         Theater.Request(Projection.FLAT, app.lumiere.android.api.StereoLayout.MONO, 1920, 1080),
         place, sizeIn(place), Stage.curved, eyeY = eyeY)
 
@@ -620,8 +623,14 @@ class Director(
      * cabin, the station) the size it was drawn at, so the film fills the screen you see there;
      * elsewhere the size you chose.
      */
-    private fun sizeIn(place: Stage.Place): Int =
-        if (TheaterGeometry.fixedScreen(place) && Sky.panoramas[place] != null) PANORAMA_SIZE else Stage.screenSize
+    @Suppress("UNUSED_PARAMETER")
+    private fun sizeIn(place: Stage.Place): Int = Stage.screenSize
+
+    /** The screen in a 360° place: [Sky.FAR] times as far and as large, at the depth of the room drawn round it. */
+    private fun far(place: Stage.Place, spec: TheaterGeometry.Spec): TheaterGeometry.Spec =
+        if (!Sky.hasPanorama(place) || spec.projection != Projection.FLAT) spec
+        else spec.copy(widthM = spec.widthM * Sky.FAR, heightM = spec.heightM * Sky.FAR, radiusM = spec.radiusM?.times(Sky.FAR),
+            distanceM = spec.distanceM * Sky.FAR, aboveEyesM = spec.aboveEyesM * Sky.FAR)
 
     /** The baked scene for [place], unless it never loaded. */
     private fun bakedFor(place: Stage.Place): BakedScene? = baked.firstOrNull { it.place == place && it.usable }
@@ -782,5 +791,3 @@ class Director(
     }
 }
 
-/** The size a 360° room was drawn at: the cinema's row 4, the cabin's middle sofa (Scripts/env, PANO). */
-private const val PANORAMA_SIZE = 2

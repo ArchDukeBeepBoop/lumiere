@@ -657,7 +657,7 @@ def lights_down(level):
         if n.type == 'BACKGROUND': n.inputs[1].default_value *= max(level * 3, 0.25)
 
 
-def see_through_near(near, eye):
+def see_through_near(near, eye, seat=None):
     """Everything within [near] of the eyes ([eye], world) gone, for light and camera alike: your own seat
     and its arms, which a picture from inside them draws huge at your feet, and the shadow they cast;
     the floor below (further than [near]) shows as if the seat weren't there."""
@@ -668,10 +668,29 @@ def see_through_near(near, eye):
         if out is None or not out.inputs["Surface"].links: continue
         src = out.inputs["Surface"].links[0].from_socket
         geo = nt.nodes.new("ShaderNodeNewGeometry")
-        dist = nt.nodes.new("ShaderNodeVectorMath"); dist.operation = 'DISTANCE'; dist.inputs[1].default_value = tuple(eye)
-        nt.links.new(geo.outputs["Position"], dist.inputs[0])
-        both = nt.nodes.new("ShaderNodeMath"); both.operation = 'LESS_THAN'; both.inputs[1].default_value = near
-        nt.links.new(dist.outputs["Value"], both.inputs[0])
+        if seat:
+            # Only your own seat: a box round where you sit ([seat] = half its width, how far it reaches
+            # behind and in front of your eyes), from just over the floor to above your head.
+            hx, back, front = seat
+            rel = nt.nodes.new("ShaderNodeVectorMath"); rel.operation = 'SUBTRACT'; rel.inputs[1].default_value = tuple(eye)
+            nt.links.new(geo.outputs["Position"], rel.inputs[0])
+            sep = nt.nodes.new("ShaderNodeSeparateXYZ"); nt.links.new(rel.outputs[0], sep.inputs[0])
+            def inside(sock, lo, hi):
+                a = nt.nodes.new("ShaderNodeMath"); a.operation = 'GREATER_THAN'; a.inputs[1].default_value = lo; nt.links.new(sock, a.inputs[0])
+                b = nt.nodes.new("ShaderNodeMath"); b.operation = 'LESS_THAN'; b.inputs[1].default_value = hi; nt.links.new(sock, b.inputs[0])
+                m = nt.nodes.new("ShaderNodeMath"); m.operation = 'MULTIPLY'; nt.links.new(a.outputs[0], m.inputs[0]); nt.links.new(b.outputs[0], m.inputs[1])
+                return m.outputs[0]
+            # Blender's axes from the seat's: x is x, its y is the seat's -z (ahead is -y), its z is up.
+            ix = inside(sep.outputs[0], -hx, hx)
+            iy = inside(sep.outputs[1], -front, back)
+            iz = inside(sep.outputs[2], -1.08, 0.4)
+            m1 = nt.nodes.new("ShaderNodeMath"); m1.operation = 'MULTIPLY'; nt.links.new(ix, m1.inputs[0]); nt.links.new(iy, m1.inputs[1])
+            both = nt.nodes.new("ShaderNodeMath"); both.operation = 'MULTIPLY'; nt.links.new(m1.outputs[0], both.inputs[0]); nt.links.new(iz, both.inputs[1])
+        else:
+            dist = nt.nodes.new("ShaderNodeVectorMath"); dist.operation = 'DISTANCE'; dist.inputs[1].default_value = tuple(eye)
+            nt.links.new(geo.outputs["Position"], dist.inputs[0])
+            both = nt.nodes.new("ShaderNodeMath"); both.operation = 'LESS_THAN'; both.inputs[1].default_value = near
+            nt.links.new(dist.outputs["Value"], both.inputs[0])
         clear = nt.nodes.new("ShaderNodeBsdfTransparent")
         mix = nt.nodes.new("ShaderNodeMixShader")
         nt.links.new(both.outputs[0], mix.inputs[0])
@@ -691,7 +710,9 @@ def panorama(at, aim, path, res=(6144, 3072), samples=96):
         cam.panorama_type = 'EQUIRECTANGULAR'
     except Exception:
         cam.cycles.panorama_type = 'EQUIRECTANGULAR'
-    see_through_near(float(os.environ.get("PANO_NEAR", "1.0")), P(*at))
+    seat = os.environ.get("PANO_SEAT")
+    see_through_near(float(os.environ.get("PANO_NEAR", "1.0")), P(*at),
+                     tuple(float(v) for v in seat.split(",")) if seat else None)
     o = bpy.data.objects.new("pano", cam); bpy.context.collection.objects.link(o)
     o.location = P(*at)
     d = Vector(P(*aim)) - Vector(P(*at)); d.z = 0

@@ -313,6 +313,11 @@ class LumiereSpace : AppSystemActivity() {
             resources.getIdentifier("pano_" + p.name.lowercase(), "drawable", packageName).takeIf { it != 0 }?.let { p to it }
         }.toMap()
         Sky.objects = sceneObjects
+        fun seats(suffix: String) = Stage.Place.entries.flatMap { p -> (0 until Stage.SCREEN_SIZES).mapNotNull { k ->
+            resources.getIdentifier("pano_" + p.name.lowercase() + "_s" + k + suffix, "drawable", packageName).takeIf { it != 0 }?.let { (p to k) to it }
+        } }.toMap()
+        Sky.seatPanoramas = seats("")
+        Sky.darkSeatPanoramas = seats("_dark")
         Sky.darkPanoramas = Stage.Place.entries.mapNotNull { p ->
             resources.getIdentifier("pano_" + p.name.lowercase() + "_dark", "drawable", packageName).takeIf { it != 0 }?.let { p to it }
         }.toMap()

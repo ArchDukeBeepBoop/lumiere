@@ -280,7 +280,9 @@ def main(name="cabin", restyle=None, extra=None, with_sofa=True):
         return eye, look or (0, SCREEN_MID - 0.3, 0)
 
     if mode == "preview":
-        for k in (0, 2, 4):
+        for k in ((int(os.environ["PANO_SIZE"]),) if os.environ.get("PANO_SIZE") else (0, 2, 4)):
+            # The sofa (and its table) where you sit at this size: it comes with you.
+            sofa_obj.data.transform(Matrix.Translation(P(0, 0, -DISTANCES[k] - sofa_at)))
             at, aim = view(k)
             preview(at, aim, os.path.join(out, "size%d.png" % k), res=RES, samples=24 if QUICK else 64, lens=15)
         at, _ = view(2)

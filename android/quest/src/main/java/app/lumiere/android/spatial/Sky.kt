@@ -104,6 +104,25 @@ class Sky {
         var panoramas: Map<Stage.Place, Int> = emptyMap()
         /** The same with the house lights down, for while a film plays (pano_<place>_dark). */
         var darkPanoramas: Map<Stage.Place, Int> = emptyMap()
+        /** A room drawn from each of its seats, one per screen size (pano_<place>_s<size>, and _dark). */
+        var seatPanoramas: Map<Pair<Stage.Place, Int>, Int> = emptyMap()
+        var darkSeatPanoramas: Map<Pair<Stage.Place, Int>, Int> = emptyMap()
+
+        fun hasPanorama(place: Stage.Place) = panoramas[place] != null || seatPanoramas.keys.any { it.first == place }
+
+        /** [place]'s picture from the seat for [size], lights down when [dark]: the nearest one there is. */
+        fun panoramaFor(place: Stage.Place, size: Int, dark: Boolean): Int? {
+            val seat = place to size
+            return (if (dark) darkSeatPanoramas[seat] ?: darkPanoramas[place] else null)
+                ?: seatPanoramas[seat] ?: panoramas[place]
+        }
+
+        /**
+         * How much further away the screen is put in a 360° place, and how much larger, so it looks the same
+         * size: the picture round you is drawn as if far off, and a screen at its true distance stood a few
+         * paces in front of the one drawn there. This far, the two are at one depth to your eyes.
+         */
+        const val FAR = 6f
 
         /** The picture round you in [place]: stars in space, the lake at the lakeside and outside the cabin; none elsewhere. */
         fun pictureFor(place: Stage.Place): Int? = when (place) {
