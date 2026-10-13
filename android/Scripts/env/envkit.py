@@ -722,6 +722,8 @@ def panorama(at, aim, path, res=(6144, 3072), samples=96):
     s.camera = o
     s.render.resolution_x, s.render.resolution_y = res
     s.cycles.samples = samples
+    s.cycles.use_adaptive_sampling = True
+    s.cycles.adaptive_threshold = float(os.environ.get("PANO_NOISE", "0.03"))
     s.render.image_settings.file_format = 'JPEG'; s.render.image_settings.quality = 90
     s.render.filepath = path
     t = time.time()

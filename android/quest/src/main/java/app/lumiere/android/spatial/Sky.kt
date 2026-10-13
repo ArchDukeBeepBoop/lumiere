@@ -48,30 +48,46 @@ class Sky {
      * To [picture] with a fade, as house lights go down and up: the one shown dims nearly to black, the
      * other takes its place there and comes up. Call [step] each frame until [fading] is false.
      */
-    fun fadeTo(picture: Int?, now: Long) {
-        if (phase == 0 && picture == shown) return
-        if (phase != 0 && picture == pending) return
-        pending = picture; phase = 1; since = now
+    fun fadeTo(picture: Int?, now: Long, level: Float = 1f) {
+        if (phase == 0 && picture == shown) {
+            // The same picture, only dimmer or brighter (lights down where there's no dark picture).
+            if (level != end) { from = current; end = level; phase = 3; since = now }
+            return
+        }
+        if (phase != 0 && picture == pending && level == end) return
+        pending = picture; end = level; from = current; phase = 1; since = now
     }
+
+    /** Where the brightness is now, where it's going, and where a glide set out from. */
+    private var current = 1f
+    private var end = 1f
+    private var from = 1f
 
     /** One frame of a fade; true while there's more. */
     fun step(now: Long): Boolean {
         if (phase == 0) return false
         val t = (now - since).toFloat()
-        if (phase == 1) {
-            if (t >= OUT_MS) { show(pending); phase = 2; since = now; light(LOW); return true }
-            val k = t / OUT_MS
-            light(1f - (1f - LOW) * k * k * (3 - 2 * k))
-        } else {
-            if (t >= IN_MS) { phase = 0; light(1f); return false }
-            val k = t / IN_MS
-            light(LOW + (1f - LOW) * k * k * (3 - 2 * k))
+        fun ease(k: Float) = k * k * (3 - 2 * k)
+        when (phase) {
+            1 -> {
+                if (t >= OUT_MS) { show(pending); phase = 2; since = now; light(LOW); return true }
+                light(from + (LOW - from) * ease(t / OUT_MS))
+            }
+            2 -> {
+                if (t >= IN_MS) { phase = 0; light(end); return false }
+                light(LOW + (end - LOW) * ease(t / IN_MS))
+            }
+            else -> {
+                if (t >= IN_MS) { phase = 0; light(end); return false }
+                light(from + (end - from) * ease(t / IN_MS))
+            }
         }
         return true
     }
 
     /** The shown sky's picture at [level] of its own brightness. */
     private fun light(level: Float) {
+        current = level
         val e = shown?.let { made[it] } ?: return
         val obj = runCatching { objects?.invoke(e)?.getNow(null) }.getOrNull() ?: return
         runCatching { obj.mesh?.materials?.forEach { it.setAlbedoColor(android.graphics.Color.valueOf(level, level, level, 1f)) } }
@@ -108,12 +124,19 @@ class Sky {
         var seatPanoramas: Map<Pair<Stage.Place, Int>, Int> = emptyMap()
         var darkSeatPanoramas: Map<Pair<Stage.Place, Int>, Int> = emptyMap()
 
+        /** How bright a lit picture is kept for a film where there's no dark one of that seat: the house lights down. */
+        const val DIMMED = 0.32f
+
+        /** Whether [place]'s seat for [size] has its own lights-down picture (else the lit one is [DIMMED]). */
+        fun hasDark(place: Stage.Place, size: Int) = darkSeatPanoramas[place to size] != null ||
+            (seatPanoramas[place to size] == null && darkPanoramas[place] != null)
+
         fun hasPanorama(place: Stage.Place) = panoramas[place] != null || seatPanoramas.keys.any { it.first == place }
 
         /** [place]'s picture from the seat for [size], lights down when [dark]: the nearest one there is. */
         fun panoramaFor(place: Stage.Place, size: Int, dark: Boolean): Int? {
             val seat = place to size
-            return (if (dark) darkSeatPanoramas[seat] ?: darkPanoramas[place] else null)
+            return (if (dark) darkSeatPanoramas[seat] ?: darkPanoramas[place]?.takeIf { seatPanoramas[seat] == null } else null)
                 ?: seatPanoramas[seat] ?: panoramas[place]
         }
 

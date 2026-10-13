@@ -283,7 +283,8 @@ class Director(
 
         // A film starting or ending in a 360° place: the lights go down (its dark picture) and up again.
         // And a different seat (another size) fades to its own picture.
-        if (!sphere && Sky.hasPanorama(place)) sky.fadeTo(Sky.panoramaFor(place, Stage.screenSize, on), System.currentTimeMillis())
+        if (!sphere && Sky.hasPanorama(place)) sky.fadeTo(Sky.panoramaFor(place, Stage.screenSize, on), System.currentTimeMillis(),
+            if (on && !Sky.hasDark(place, Stage.screenSize)) Sky.DIMMED else 1f)
         val skyFading = sky.step(System.currentTimeMillis())
 
         // Away from your room the handset chooses what plays, and the window stays as it is for your room,
