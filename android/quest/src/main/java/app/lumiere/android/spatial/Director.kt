@@ -212,7 +212,7 @@ class Director(
         if (!away) browseSeat = null
         if (on) {
             val s = seat ?: seatHere().also { seat = it }
-            val spec = TheaterGeometry.spec(request!!, place, Stage.screenSize, Stage.curved, Stage.scopeFill, s.eye.y)
+            val spec = TheaterGeometry.spec(request!!, place, sizeIn(place), Stage.curved, Stage.scopeFill, s.eye.y)
             val hung = if (place == Stage.Place.ROOM && request.projection == Projection.FLAT) onYourWall(request, s) else null
             if (hung != null) { if (screen.follow(hung.first, s, movable = false, on = hung.second)) shownPlace = null }
             else if (screen.follow(spec, s, movable = !TheaterGeometry.fixedScreen(place)) || fellBack) {
@@ -282,7 +282,8 @@ class Director(
         }
 
         // A film starting or ending in a 360° place: the lights go down (its dark picture) and up again.
-        if (!sphere) Sky.panoramas[place]?.let { lit -> sky.show(if (on) Sky.darkPanoramas[place] ?: lit else lit) }
+        if (!sphere) Sky.panoramas[place]?.let { lit -> sky.fadeTo(if (on) Sky.darkPanoramas[place] ?: lit else lit, System.currentTimeMillis()) }
+        val skyFading = sky.step(System.currentTimeMillis())
 
         // Away from your room the handset chooses what plays, and the window stays as it is for your room,
         // unless you've asked for it (search, settings, everything else). Somewhere new, the handset again.
@@ -397,7 +398,7 @@ class Director(
         FrontCurtain.target = if (!curtained || app.lumiere.android.Motion.reduced) 0f
             else FrontCurtain.targetFor(waiting, on, now - endedAt)
         if (!curtained) FrontCurtain.closed = 0f
-        return brightness != target || left != wantLeft || right != wantRight || FrontCurtain.closed != FrontCurtain.target || handBusy
+        return skyFading || brightness != target || left != wantLeft || right != wantRight || FrontCurtain.closed != FrontCurtain.target || handBusy
     }
 
     /**
@@ -612,7 +613,15 @@ class Director(
     /** The big screen while no film plays: the chosen size and curve, a 16:9 picture, for eyes [eyeY] over the floor. */
     private fun browseSpec(place: Stage.Place, eyeY: Float) = TheaterGeometry.spec(
         Theater.Request(Projection.FLAT, app.lumiere.android.api.StereoLayout.MONO, 1920, 1080),
-        place, Stage.screenSize, Stage.curved, eyeY = eyeY)
+        place, sizeIn(place), Stage.curved, eyeY = eyeY)
+
+    /**
+     * The screen's size in [place]: in a room drawn round its screen as a 360° picture (the cinema, the
+     * cabin, the station) the size it was drawn at, so the film fills the screen you see there;
+     * elsewhere the size you chose.
+     */
+    private fun sizeIn(place: Stage.Place): Int =
+        if (TheaterGeometry.fixedScreen(place) && Sky.panoramas[place] != null) PANORAMA_SIZE else Stage.screenSize
 
     /** The baked scene for [place], unless it never loaded. */
     private fun bakedFor(place: Stage.Place): BakedScene? = baked.firstOrNull { it.place == place && it.usable }
@@ -772,3 +781,6 @@ class Director(
         runCatching { scene.setPassthroughLUT(table) }
     }
 }
+
+/** The size a 360° room was drawn at: the cinema's row 4, the cabin's middle sofa (Scripts/env, PANO). */
+private const val PANORAMA_SIZE = 2

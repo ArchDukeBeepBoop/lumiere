@@ -312,6 +312,7 @@ class LumiereSpace : AppSystemActivity() {
         Sky.panoramas = Stage.Place.entries.mapNotNull { p ->
             resources.getIdentifier("pano_" + p.name.lowercase(), "drawable", packageName).takeIf { it != 0 }?.let { p to it }
         }.toMap()
+        Sky.objects = sceneObjects
         Sky.darkPanoramas = Stage.Place.entries.mapNotNull { p ->
             resources.getIdentifier("pano_" + p.name.lowercase() + "_dark", "drawable", packageName).takeIf { it != 0 }?.let { p to it }
         }.toMap()

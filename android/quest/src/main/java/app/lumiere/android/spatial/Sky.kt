@@ -29,10 +29,52 @@ class Sky {
     private var facing = com.meta.spatial.core.Quaternion()
 
     /** The shown picture turned so its middle is [q]'s ahead (a room's screen side). */
-    fun face(q: com.meta.spatial.core.Quaternion) {
+    fun face(seat: com.meta.spatial.core.Quaternion) {
+        // The skybox's picture faces the other way from a seat's ahead: turned half round, its middle is ahead.
+        val q = seat * com.meta.spatial.core.Quaternion(0f, 1f, 0f, 0f)
         if (q == facing) return
         facing = q
         shown?.let { made[it]?.setComponent(Transform(Pose(Vector3(0f), q))) }
+    }
+
+    /** A change of picture under way: dimming the old one, then brightening the new (0 none, 1 out, 2 in). */
+    private var phase = 0
+    private var pending: Int? = null
+    private var since = 0L
+    /** True while fading. */
+    val fading: Boolean get() = phase != 0
+
+    /**
+     * To [picture] with a fade, as house lights go down and up: the one shown dims nearly to black, the
+     * other takes its place there and comes up. Call [step] each frame until [fading] is false.
+     */
+    fun fadeTo(picture: Int?, now: Long) {
+        if (phase == 0 && picture == shown) return
+        if (phase != 0 && picture == pending) return
+        pending = picture; phase = 1; since = now
+    }
+
+    /** One frame of a fade; true while there's more. */
+    fun step(now: Long): Boolean {
+        if (phase == 0) return false
+        val t = (now - since).toFloat()
+        if (phase == 1) {
+            if (t >= OUT_MS) { show(pending); phase = 2; since = now; light(LOW); return true }
+            val k = t / OUT_MS
+            light(1f - (1f - LOW) * k * k * (3 - 2 * k))
+        } else {
+            if (t >= IN_MS) { phase = 0; light(1f); return false }
+            val k = t / IN_MS
+            light(LOW + (1f - LOW) * k * k * (3 - 2 * k))
+        }
+        return true
+    }
+
+    /** The shown sky's picture at [level] of its own brightness. */
+    private fun light(level: Float) {
+        val e = shown?.let { made[it] } ?: return
+        val obj = runCatching { objects?.invoke(e)?.getNow(null) }.getOrNull() ?: return
+        runCatching { obj.mesh?.materials?.forEach { it.setAlbedoColor(android.graphics.Color.valueOf(level, level, level, 1f)) } }
     }
 
     /** The sky with [picture] (a drawable) round you; none for null. */
@@ -52,6 +94,12 @@ class Sky {
     }
 
     companion object {
+        /** The SDK's scene object for an entity (LumiereSpace), for the fade to dim a sky's material. */
+        var objects: ((Entity) -> java.util.concurrent.CompletableFuture<com.meta.spatial.runtime.SceneObject>?)? = null
+        const val OUT_MS = 1400f
+        const val IN_MS = 1800f
+        const val LOW = 0.08f
+
         /** Each place's 360° picture rendered from its seat (pano_<place>), as LumiereSpace finds them. */
         var panoramas: Map<Stage.Place, Int> = emptyMap()
         /** The same with the house lights down, for while a film plays (pano_<place>_dark). */

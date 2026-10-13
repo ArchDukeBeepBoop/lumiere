@@ -657,6 +657,32 @@ def lights_down(level):
         if n.type == 'BACKGROUND': n.inputs[1].default_value *= max(level * 3, 0.25)
 
 
+def see_through_near(near, eye):
+    """Everything within [near] of the eyes ([eye], world) gone, for light and camera alike: your own seat
+    and its arms, which a picture from inside them draws huge at your feet, and the shadow they cast;
+    the floor below (further than [near]) shows as if the seat weren't there."""
+    for m in bpy.data.materials:
+        if not m.node_tree: continue
+        nt = m.node_tree
+        out = next((n for n in nt.nodes if n.type == 'OUTPUT_MATERIAL'), None)
+        if out is None or not out.inputs["Surface"].links: continue
+        src = out.inputs["Surface"].links[0].from_socket
+        geo = nt.nodes.new("ShaderNodeNewGeometry")
+        dist = nt.nodes.new("ShaderNodeVectorMath"); dist.operation = 'DISTANCE'; dist.inputs[1].default_value = tuple(eye)
+        nt.links.new(geo.outputs["Position"], dist.inputs[0])
+        both = nt.nodes.new("ShaderNodeMath"); both.operation = 'LESS_THAN'; both.inputs[1].default_value = near
+        nt.links.new(dist.outputs["Value"], both.inputs[0])
+        clear = nt.nodes.new("ShaderNodeBsdfTransparent")
+        mix = nt.nodes.new("ShaderNodeMixShader")
+        nt.links.new(both.outputs[0], mix.inputs[0])
+        if src.type == 'SHADER': nt.links.new(src, mix.inputs[1])
+        else:
+            em = nt.nodes.new("ShaderNodeEmission"); nt.links.new(src, em.inputs[0]); nt.links.new(em.outputs[0], mix.inputs[1])
+        nt.links.new(clear.outputs[0], mix.inputs[2])
+        nt.links.new(mix.outputs[0], out.inputs["Surface"])
+    bpy.context.scene.cycles.transparent_max_bounces = 16
+
+
 def panorama(at, aim, path, res=(6144, 3072), samples=96):
     """A 360° picture from [at] (equirect, its middle toward [aim] levelled), as the Quest shows a room round you."""
     from mathutils import Vector
@@ -665,6 +691,7 @@ def panorama(at, aim, path, res=(6144, 3072), samples=96):
         cam.panorama_type = 'EQUIRECTANGULAR'
     except Exception:
         cam.cycles.panorama_type = 'EQUIRECTANGULAR'
+    see_through_near(float(os.environ.get("PANO_NEAR", "1.0")), P(*at))
     o = bpy.data.objects.new("pano", cam); bpy.context.collection.objects.link(o)
     o.location = P(*at)
     d = Vector(P(*aim)) - Vector(P(*at)); d.z = 0
