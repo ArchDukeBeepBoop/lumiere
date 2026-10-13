@@ -7,18 +7,17 @@ import org.junit.Test
 class StageTest {
     @Test fun placesComeRoundInTurn() {
         val start = Stage.place
-        val seen = (0 until Stage.Place.entries.size).map { Stage.nextPlace(); Stage.place }
-        assertEquals(Stage.Place.entries.toSet(), seen.toSet())
+        val seen = (0 until Stage.offered.size).map { Stage.nextPlace(); Stage.place }
+        assertEquals(Stage.offered.toSet(), seen.toSet())
         assertEquals(start, Stage.place)
     }
 
     @Test fun thePlacesComeInAnOrderThatReadsNaturally() {
-        repeat(Stage.Place.entries.size) { if (Stage.place != Stage.Place.ROOM) Stage.nextPlace() }
+        repeat(Stage.offered.size) { if (Stage.place != Stage.Place.ROOM) Stage.nextPlace() }
         assertEquals(Stage.Place.ROOM, Stage.place)
-        val seen = (0 until Stage.Place.entries.size).map { Stage.nextPlace(); Stage.place }
+        val seen = (0 until Stage.offered.size).map { Stage.nextPlace(); Stage.place }
         assertEquals(listOf(Stage.Place.CINEMA, Stage.Place.CABIN, Stage.Place.LAKE, Stage.Place.CLOUDS, Stage.Place.MOON,
-            Stage.Place.STATION, Stage.Place.VOID, Stage.Place.SPACE, Stage.Place.DRIVE_IN, Stage.Place.PALACE, Stage.Place.ROOFTOP,
-            Stage.Place.WINTER, Stage.Place.SEA, Stage.Place.ROOM), seen)
+            Stage.Place.STATION, Stage.Place.SPACE, Stage.Place.VOID, Stage.Place.ROOM), seen)
     }
 
     @Test fun placesSavedByEarlierVersionsStillLoad() {

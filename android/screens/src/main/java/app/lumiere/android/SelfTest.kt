@@ -137,24 +137,14 @@ object SelfTest {
     }
 
     private fun assets(context: Context) {
-        val am = context.assets
-        val present = runCatching { am.list("environments")?.toSet() }.getOrNull().orEmpty()
-        for (m in MODELS) {
-            if ("$m.glb" !in present) { Probe.fail("assets", "$m.glb", "missing from this build: that place shows its plain blocks"); continue }
-            val size = runCatching { am.openFd("environments/$m.glb").use { it.length } }.getOrElse { runCatching { am.open("environments/$m.glb").use { it.available().toLong() } }.getOrDefault(-1) }
-            // The atlases are drawables now (atlas_<model>_<material>), loaded the SDK's own way.
-            // cinema's are atlas_cinema_*, but not cinema_curtain's (atlas_cinema_curtain_*).
-            val longer = MODELS.filter { it != m && it.startsWith("${m}_") }
-            val atlases = drawables(context).filter { d -> d.startsWith("atlas_${m}_") && longer.none { d.startsWith("atlas_${it}_") } }
-            val broken = atlases.filter { a ->
-                val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                runCatching { android.graphics.BitmapFactory.decodeResource(context.resources, context.resources.getIdentifier(a, "drawable", context.packageName), o) }
-                o.outWidth <= 0
-            }
-            Probe.report("assets", "$m.glb", when { atlases.isEmpty() -> Status.FAIL; broken.isNotEmpty() -> Status.FAIL; else -> Status.OK },
-                "${size / 1024} KB, ${atlases.size} baked atlas(es)" +
-                    (if (atlases.isEmpty()) " — none: the place would show white" else "") +
-                    (if (broken.isNotEmpty()) "; unreadable: ${broken.joinToString()}" else ""))
+        // The places as 360° pictures from their seats (pano_<place>), shown as the skies are.
+        for (place in listOf("cinema", "cabin", "lake", "clouds", "moon", "station")) {
+            val id = context.resources.getIdentifier("pano_$place", "drawable", context.packageName)
+            if (id == 0) { Probe.fail("assets", "$place 360", "missing from this build: that place shows only its sky"); continue }
+            val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            runCatching { android.graphics.BitmapFactory.decodeResource(context.resources, id, o) }
+            Probe.report("assets", "$place 360", if (o.outWidth > 0) Status.OK else Status.FAIL,
+                if (o.outWidth > 0) "${o.outWidth}×${o.outHeight}" else "unreadable")
         }
         val skies = SKIES.map { it to context.resources.getIdentifier(it, "drawable", context.packageName) }
         val missing = skies.filter { it.second == 0 }.map { it.first }

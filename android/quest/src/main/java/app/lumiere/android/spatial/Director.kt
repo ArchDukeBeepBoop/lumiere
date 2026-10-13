@@ -255,19 +255,20 @@ class Director(
             app.lumiere.android.Breadcrumbs.mark("showing $place (seated $seated)")
             scene.enablePassthrough(place == Stage.Place.ROOM && !sphere)
             // The place baked in Blender if it has one (and it loads); its modelled blocks otherwise.
-            val bakedHere = bakedFor(place)?.takeIf { seated }
+            val pano = Sky.panoramas[place]
+            val bakedHere = bakedFor(place)?.takeIf { seated && pano == null }
             baked.forEach { it.show(it === bakedHere) }
             // The places you've left are let go (the winter cabin shares the cabin's sofa: not while either is here).
             baked.filter { it !== bakedHere && it.place != place && !(bakedHere != null && it.withYou != null && it.withYou === bakedHere.withYou) }
                 .forEach { it.release() }
-            val modelled = bakedHere == null
+            val modelled = bakedHere == null && pano == null
             if (theatreMade.isInitialized() || (hall && modelled)) theatre.show(hall && modelled)
             if (cabinMade.isInitialized() || (inCabin && modelled)) cabin.show(inCabin && modelled)
             if (dockMade.isInitialized() || (onDock && modelled)) dock.show(onDock && modelled)
             if (terraceMade.isInitialized() || (onTerrace && modelled)) terrace.show(onTerrace && modelled)
             if (moonMade.isInitialized() || (onMoon && modelled)) moonBase.show(onMoon && modelled)
             if (stationMade.isInitialized() || (aboard && modelled)) station.show(aboard && modelled)
-            sky.show(if (sphere) null else Sky.pictureFor(place))
+            sky.show(if (sphere) null else pano ?: Sky.pictureFor(place))
             shownBrightness = -1f; shownTint = null
             val bakedThere = baked.firstOrNull { it.place == place }
             app.lumiere.android.Probe.info("theater", "place shown", "$place, ${if (seated) "seated (a film or the place chosen)" else "browsing"}; " +
@@ -582,6 +583,8 @@ class Director(
         val eye = s.eye.y
         val middle = eye + spec.aboveEyesM
         val slope = TheaterGeometry.footSlope(spec)
+        // A 360° picture from the seat: turned so its screen side is ahead of you.
+        if (Sky.panoramas[place] != null) { sky.face(s.floor.q); return }
         // Made in Blender: its model where it belongs, and what comes with you at your feet.
         bakedFor(place)?.let { it.place(s.floor, Stage.screenSize); return }
         when (place) {

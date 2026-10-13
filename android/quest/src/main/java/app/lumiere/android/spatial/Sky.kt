@@ -25,6 +25,16 @@ class Sky {
     private val made = HashMap<Int, Entity>()
     private var shown: Int? = null
 
+    /** Which way the shown picture's middle faces: ahead of your seat, for a place's 360° picture. */
+    private var facing = com.meta.spatial.core.Quaternion()
+
+    /** The shown picture turned so its middle is [q]'s ahead (a room's screen side). */
+    fun face(q: com.meta.spatial.core.Quaternion) {
+        if (q == facing) return
+        facing = q
+        shown?.let { made[it]?.setComponent(Transform(Pose(Vector3(0f), q))) }
+    }
+
     /** The sky with [picture] (a drawable) round you; none for null. */
     fun show(picture: Int?) {
         if (picture == shown) return
@@ -32,16 +42,19 @@ class Sky {
         shown = picture
         if (picture == null) return
         val sky = made[picture]
-        if (sky != null) { sky.setComponent(Visible(true)); return }
+        if (sky != null) { sky.setComponent(Transform(Pose(Vector3(0f), facing))); sky.setComponent(Visible(true)); return }
         made[picture] = Entity.create(listOf(
             Mesh("mesh://skybox".toUri(), hittable = MeshCollision.NoCollision),
             Material().apply { baseTextureAndroidResourceId = picture; unlit = true },
-            Transform(Pose(Vector3(0f))),
+            Transform(Pose(Vector3(0f), facing)),
             Visible(true),
         ))
     }
 
     companion object {
+        /** Each place's 360° picture rendered from its seat (pano_<place>), as LumiereSpace finds them. */
+        var panoramas: Map<Stage.Place, Int> = emptyMap()
+
         /** The picture round you in [place]: stars in space, the lake at the lakeside and outside the cabin; none elsewhere. */
         fun pictureFor(place: Stage.Place): Int? = when (place) {
             Stage.Place.SPACE -> R.drawable.lumiere_starfield

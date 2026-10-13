@@ -26,8 +26,15 @@ object Stage {
         DRIVE_IN("the drive-in"), PALACE("the picture palace"), ROOFTOP("a city rooftop"), WINTER("the winter cabin"), SEA("under the sea")
     }
 
-    /** A saved place by its name; a missing or unknown one (from another version) is the cinema, where everyone starts. */
-    fun placeNamed(name: String?): Place = Place.entries.firstOrNull { it.name == name } ?: Place.CINEMA
+    /**
+     * The places offered, in the order the place button comes round to them: those shown as a 360° picture
+     * rendered from the seat (Panorama), and your room, the dark and space. The drive-in, picture palace,
+     * rooftop, winter cabin and sea are kept out until they're as good.
+     */
+    val offered = listOf(Place.ROOM, Place.CINEMA, Place.CABIN, Place.LAKE, Place.CLOUDS, Place.MOON, Place.STATION, Place.SPACE, Place.VOID)
+
+    /** A saved place by its name; a missing, unknown or withdrawn one is the cinema, where everyone starts. */
+    fun placeNamed(name: String?): Place = offered.firstOrNull { it.name == name } ?: Place.CINEMA
 
     var place by mutableStateOf(Place.CINEMA)
         private set
@@ -156,7 +163,7 @@ object Stage {
         private set
     const val PICTURE_STEPS = 4
     /** Room, cinema, cabin, lakeside, above the clouds, the Moon, the space station, the dark, space, round again. */
-    fun nextPlace() { place = Place.entries[(place.ordinal + 1) % Place.entries.size]; save() }
+    fun nextPlace() { place = offered[(offered.indexOf(place) + 1).mod(offered.size)]; save() }
     /** Straight to [p] (the handset's places). */
     fun goTo(p: Place) { place = p; save() }
 

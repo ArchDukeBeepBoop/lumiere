@@ -338,7 +338,7 @@ private fun Episodes(state: AppState, server: Server, userId: String, show: Stri
 @Composable
 private fun Places(go: (Stage.Place) -> Unit) {
     Text("Where would you like to watch?", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 12.dp))
-    val places = Stage.Place.entries
+    val places = Stage.offered
     for (row in places.chunked(3)) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(bottom = 10.dp)) {
             row.forEach { p ->

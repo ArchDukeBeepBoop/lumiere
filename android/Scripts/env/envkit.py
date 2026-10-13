@@ -627,8 +627,57 @@ def plain_materials(path):
     open(path, 'wb').write(struct.pack('<4sII', magic, ver, 20 + len(js) + len(rest)) + struct.pack('<II', len(js), ctype) + js + rest)
 
 
+def pano_sky(sky, yaw_deg=0.0):
+    """The world seen by the camera as [sky] (an equirect picture, its middle ahead); the light stays the scene's own."""
+    w = bpy.context.scene.world
+    nt = w.node_tree
+    bg = nt.nodes["Background"]
+    out = nt.nodes["World Output"]
+    tex = nt.nodes.new("ShaderNodeTexEnvironment"); tex.image = bpy.data.images.load(sky)
+    co = nt.nodes.new("ShaderNodeTexCoord"); mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Rotation"].default_value[2] = math.radians(yaw_deg)
+    nt.links.new(co.outputs["Generated"], mp.inputs["Vector"]); nt.links.new(mp.outputs["Vector"], tex.inputs["Vector"])
+    seen = nt.nodes.new("ShaderNodeBackground"); nt.links.new(tex.outputs["Color"], seen.inputs["Color"])
+    lp = nt.nodes.new("ShaderNodeLightPath"); mix = nt.nodes.new("ShaderNodeMixShader")
+    nt.links.new(lp.outputs["Is Camera Ray"], mix.inputs[0])
+    nt.links.new(bg.outputs[0], mix.inputs[1]); nt.links.new(seen.outputs[0], mix.inputs[2])
+    nt.links.new(mix.outputs[0], out.inputs["Surface"])
+
+
+def panorama(at, aim, path, res=(6144, 3072), samples=96):
+    """A 360° picture from [at] (equirect, its middle toward [aim] levelled), as the Quest shows a room round you."""
+    from mathutils import Vector
+    cam = bpy.data.cameras.new("pano"); cam.type = 'PANO'
+    try:
+        cam.panorama_type = 'EQUIRECTANGULAR'
+    except Exception:
+        cam.cycles.panorama_type = 'EQUIRECTANGULAR'
+    o = bpy.data.objects.new("pano", cam); bpy.context.collection.objects.link(o)
+    o.location = P(*at)
+    d = Vector(P(*aim)) - Vector(P(*at)); d.z = 0
+    o.rotation_mode = 'QUATERNION'
+    o.rotation_quaternion = d.normalized().to_track_quat('-Z', 'Y')
+    s = bpy.context.scene
+    s.camera = o
+    s.render.resolution_x, s.render.resolution_y = res
+    s.cycles.samples = samples
+    s.render.image_settings.file_format = 'JPEG'; s.render.image_settings.quality = 90
+    s.render.filepath = path
+    t = time.time()
+    bpy.ops.render.render(write_still=True)
+    log("panorama", os.path.basename(path), "in %.0fs" % (time.time() - t))
+
+
 def preview(at, aim, path, res=(1280, 720), samples=48, lens=18):
-    """A Cycles picture from [at] looking at [aim] (seat frame): how the place looks before baking."""
+    """A Cycles picture from [at] looking at [aim] (seat frame): how the place looks before baking.
+    With PANO=<view> set, that one view is made a 360° picture instead (PANO_OUT, PANO_SKY) and the script ends."""
+    want = os.environ.get("PANO")
+    if want:
+        if not os.path.basename(path).startswith(want): return
+        if os.environ.get("PANO_SKY"): pano_sky(os.environ["PANO_SKY"], float(os.environ.get("PANO_SKY_YAW", "0")))
+        w, h = (int(v) for v in os.environ.get("PANO_RES", "6144x3072").split("x"))
+        panorama(at, aim, os.environ["PANO_OUT"], (w, h), int(os.environ.get("PANO_SAMPLES", "96")))
+        import sys as _s; _s.exit(0)
     from mathutils import Vector
     cam = bpy.data.cameras.new("preview"); cam.lens = lens
     o = bpy.data.objects.new("preview", cam)

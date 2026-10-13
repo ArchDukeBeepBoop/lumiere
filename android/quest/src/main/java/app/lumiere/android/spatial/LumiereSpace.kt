@@ -305,33 +305,14 @@ class LumiereSpace : AppSystemActivity() {
         }
         fun model(path: String, curtain: String? = null, rise: Float = 0f) = if (has(path)) BakedPlace(path, curtain, rise, sceneObjects, picture, atlas)
             else null.also { app.lumiere.android.Probe.fail("places", path, "not in this build's assets: the place falls back to its plain blocks") }
-        val baked = listOfNotNull(
-            model(CINEMA_MODEL, CINEMA_CURTAIN, CinemaHall.CURTAIN_RISE)?.let { m ->
-                BakedScene(Stage.Place.CINEMA, m) { floor, size -> BakedScene.ahead(floor, CinemaHall.origin(size)) }
-            },
-            model("environments/cabin.glb")?.let { m ->
-                model("environments/cabin_sofa.glb")?.let { sofa ->
-                    BakedScene(Stage.Place.CABIN, m, sofa) { floor, size -> BakedScene.ahead(floor, CabinRoom.origin(size)) }
-                }
-            },
-            model("environments/lakeside.glb")?.let { BakedScene(Stage.Place.LAKE, it) },
-            model("environments/terrace.glb")?.let { BakedScene(Stage.Place.CLOUDS, it) },
-            model("environments/moonbase.glb")?.let { BakedScene(Stage.Place.MOON, it) },
-            model("environments/palace.glb", "environments/palace_curtain.glb", CinemaHall.CURTAIN_RISE)?.let { m ->
-                BakedScene(Stage.Place.PALACE, m) { floor, size -> BakedScene.ahead(floor, CinemaHall.origin(size)) }
-            },
-            model("environments/winter.glb")?.let { m ->
-                model("environments/cabin_sofa.glb")?.let { sofa ->
-                    BakedScene(Stage.Place.WINTER, m, sofa) { floor, size -> BakedScene.ahead(floor, CabinRoom.origin(size)) }
-                }
-            },
-            model("environments/drivein.glb")?.let { BakedScene(Stage.Place.DRIVE_IN, it) },
-            model("environments/rooftop.glb")?.let { BakedScene(Stage.Place.ROOFTOP, it) },
-            model("environments/sea.glb")?.let { BakedScene(Stage.Place.SEA, it) },
-            model("environments/station.glb")?.let { m ->
-                BakedScene(Stage.Place.STATION, m) { floor, size -> BakedScene.ahead(floor, StationRoom.origin(size)) }
-            },
-        )
+        // The places are 360° pictures rendered from the seat now (Sky.panoramas), shown as the skies are:
+        // the baked models' textures reached the headset's GPU white, whatever was tried.
+        @Suppress("UNUSED_VARIABLE") val unused = ::model
+        val baked = emptyList<BakedScene>()
+        Sky.panoramas = Stage.Place.entries.mapNotNull { p ->
+            resources.getIdentifier("pano_" + p.name.lowercase(), "drawable", packageName).takeIf { it != 0 }?.let { p to it }
+        }.toMap()
+        app.lumiere.android.Probe.info("places", "360 pictures", "${Sky.panoramas.size} in this build: ${Sky.panoramas.keys.joinToString { it.label }}")
         app.lumiere.android.Breadcrumbs.mark("baked places listed: ${baked.size}; starting the director")
         runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset, handMenu, baked).also { director = it }.start(scope) }
             .onFailure { android.util.Log.e("Lumiere", "director unavailable", it) }
