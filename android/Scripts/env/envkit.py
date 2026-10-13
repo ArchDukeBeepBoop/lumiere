@@ -644,6 +644,19 @@ def pano_sky(sky, yaw_deg=0.0):
     nt.links.new(mix.outputs[0], out.inputs["Surface"])
 
 
+def lights_down(level):
+    """The house lights down to [level] for a film: every light and lamp face dimmed, the sky with them;
+    what stays lit (glow: — an exit sign, a step light) stays as it is."""
+    for l in bpy.data.lights: l.energy *= level
+    for m in bpy.data.materials:
+        if m.name.startswith("lamp:") and m.node_tree:
+            for n in m.node_tree.nodes:
+                if n.type == 'RGB': n.outputs[0].default_value = tuple(c * level for c in n.outputs[0].default_value[:3]) + (1,)
+    nt = bpy.context.scene.world.node_tree
+    for n in nt.nodes:
+        if n.type == 'BACKGROUND': n.inputs[1].default_value *= max(level * 3, 0.25)
+
+
 def panorama(at, aim, path, res=(6144, 3072), samples=96):
     """A 360° picture from [at] (equirect, its middle toward [aim] levelled), as the Quest shows a room round you."""
     from mathutils import Vector
@@ -675,6 +688,7 @@ def preview(at, aim, path, res=(1280, 720), samples=48, lens=18):
     if want:
         if not os.path.basename(path).startswith(want): return
         if os.environ.get("PANO_SKY"): pano_sky(os.environ["PANO_SKY"], float(os.environ.get("PANO_SKY_YAW", "0")))
+        if os.environ.get("PANO_DARK"): lights_down(float(os.environ["PANO_DARK"]))
         w, h = (int(v) for v in os.environ.get("PANO_RES", "6144x3072").split("x"))
         panorama(at, aim, os.environ["PANO_OUT"], (w, h), int(os.environ.get("PANO_SAMPLES", "96")))
         import sys as _s; _s.exit(0)

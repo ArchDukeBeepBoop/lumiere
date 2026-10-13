@@ -54,6 +54,8 @@ class Sky {
     companion object {
         /** Each place's 360° picture rendered from its seat (pano_<place>), as LumiereSpace finds them. */
         var panoramas: Map<Stage.Place, Int> = emptyMap()
+        /** The same with the house lights down, for while a film plays (pano_<place>_dark). */
+        var darkPanoramas: Map<Stage.Place, Int> = emptyMap()
 
         /** The picture round you in [place]: stars in space, the lake at the lakeside and outside the cabin; none elsewhere. */
         fun pictureFor(place: Stage.Place): Int? = when (place) {

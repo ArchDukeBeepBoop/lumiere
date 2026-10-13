@@ -268,7 +268,7 @@ class Director(
             if (terraceMade.isInitialized() || (onTerrace && modelled)) terrace.show(onTerrace && modelled)
             if (moonMade.isInitialized() || (onMoon && modelled)) moonBase.show(onMoon && modelled)
             if (stationMade.isInitialized() || (aboard && modelled)) station.show(aboard && modelled)
-            sky.show(if (sphere) null else pano ?: Sky.pictureFor(place))
+            sky.show(if (sphere) null else (if (on) Sky.darkPanoramas[place] else null) ?: pano ?: Sky.pictureFor(place))
             shownBrightness = -1f; shownTint = null
             val bakedThere = baked.firstOrNull { it.place == place }
             app.lumiere.android.Probe.info("theater", "place shown", "$place, ${if (seated) "seated (a film or the place chosen)" else "browsing"}; " +
@@ -280,6 +280,9 @@ class Director(
                 } + (if (sphere) "; a 180/360 film's sphere" else "; sky ${Sky.pictureFor(place) ?: "none"}") +
                 (if (place == Stage.Place.ROOM) "; passthrough on" else ""))
         }
+
+        // A film starting or ending in a 360° place: the lights go down (its dark picture) and up again.
+        if (!sphere) Sky.panoramas[place]?.let { lit -> sky.show(if (on) Sky.darkPanoramas[place] ?: lit else lit) }
 
         // Away from your room the handset chooses what plays, and the window stays as it is for your room,
         // unless you've asked for it (search, settings, everything else). Somewhere new, the handset again.

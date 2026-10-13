@@ -312,6 +312,9 @@ class LumiereSpace : AppSystemActivity() {
         Sky.panoramas = Stage.Place.entries.mapNotNull { p ->
             resources.getIdentifier("pano_" + p.name.lowercase(), "drawable", packageName).takeIf { it != 0 }?.let { p to it }
         }.toMap()
+        Sky.darkPanoramas = Stage.Place.entries.mapNotNull { p ->
+            resources.getIdentifier("pano_" + p.name.lowercase() + "_dark", "drawable", packageName).takeIf { it != 0 }?.let { p to it }
+        }.toMap()
         app.lumiere.android.Probe.info("places", "360 pictures", "${Sky.panoramas.size} in this build: ${Sky.panoramas.keys.joinToString { it.label }}")
         app.lumiere.android.Breadcrumbs.mark("baked places listed: ${baked.size}; starting the director")
         runCatching { Director(scene, window, sidebar, ornament, wall, transport, ambience, roomWalls, handset, handMenu, baked).also { director = it }.start(scope) }
