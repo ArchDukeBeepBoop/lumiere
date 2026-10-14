@@ -139,7 +139,8 @@ object SelfTest {
     private fun assets(context: Context) {
         // The places as 360° pictures from their seats (pano_<place>), shown as the skies are.
         for (place in listOf("cinema", "cabin", "lake", "clouds", "moon", "station")) {
-            val id = context.resources.getIdentifier("pano_$place", "drawable", context.packageName)
+            val id = context.resources.getIdentifier("pano_$place", "drawable", context.packageName).takeIf { it != 0 }
+                ?: context.resources.getIdentifier("pano_${place}_s2", "drawable", context.packageName)
             if (id == 0) { Probe.fail("assets", "$place 360", "missing from this build: that place shows only its sky"); continue }
             val o = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
             runCatching { android.graphics.BitmapFactory.decodeResource(context.resources, id, o) }
