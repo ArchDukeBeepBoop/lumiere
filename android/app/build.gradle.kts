@@ -43,6 +43,23 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { compose = true; buildConfig = true }
+    // Phone and TV as before, and Meta Quest: the TV layout in a Horizon OS
+    // window (docs/quest/PLAN.md, v0.5). Its own id, so it never takes, or
+    // is taken by, the phone's update from the Mac.
+    flavorDimensions += "device"
+    productFlavors {
+        create("standard") {
+            dimension = "device"
+            isDefault = true
+            buildConfigField("boolean", "QUEST", "false")
+        }
+        create("quest") {
+            dimension = "device"
+            applicationIdSuffix = ".quest"
+            versionNameSuffix = "-quest"
+            buildConfigField("boolean", "QUEST", "true")
+        }
+    }
 }
 
 kotlin {
@@ -50,6 +67,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(project(":screens"))
     val composeBom = platform("androidx.compose:compose-bom:2024.09.03")
     implementation(composeBom)
     implementation("androidx.activity:activity-compose:1.9.2")

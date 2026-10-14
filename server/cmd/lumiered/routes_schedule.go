@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -135,4 +136,5 @@ func startNetwork(handler http.Handler, cfg config.Config, db *store.Store, iden
 	fmt.Sscan(port, &n.Port)
 	api.NetworkOnChange = n.Apply
 	n.Apply(db.Settings().ListensOnNetwork)
+	go n.Watch(context.Background(), 20*time.Second)
 }

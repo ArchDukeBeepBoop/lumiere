@@ -36,13 +36,29 @@ network.
    cd mac && ./Scripts/install.sh
    ```
 3. **Open Lumiere.** It finds the server, asks you to create your account, and walks you through adding your libraries.
-4. **Phone and TV:** in the Mac app, turn on Settings › Library › Server Schedule › *Share on my home network*, then build the Android app (`cd android && ./gradlew assembleRelease`) and install it. It finds the server on your Wi-Fi, and the same guide runs there.
+4. **Phone and TV:** in the Mac app, turn on Settings › Library › Server Schedule › *Share on my home network*, then build the Android app (`cd android && ./gradlew assembleStandardRelease`) and install it. It finds the server on your Wi-Fi, and the same guide runs there.
 
 ### Posters and details
 
 Lumiere looks titles up on [The Movie Database](https://www.themoviedb.org). Make a free account, request an API key, and paste the *API Read Access Token* into the setup guide (or Settings). The key is kept on your server only. Without one, everything still works: titles come from filenames and pictures from the videos themselves.
 
 Subtitle search uses [OpenSubtitles](https://www.opensubtitles.com) with your own key, set in Settings › Playback.
+
+### Meta Quest 3
+
+The Quest build is the TV layout in a Horizon OS window, while a full spatial app is planned in [docs/quest/PLAN.md](docs/quest/PLAN.md). With the headset in developer mode and plugged in, one command builds and installs both Quest apps and opens the spatial one: `android/Scripts/install-quest.sh` (pass `2d` or `spatial` for just one). By hand:
+```bash
+cd android && ./gradlew assembleQuestRelease
+adb install -r app/build/outputs/apk/quest/release/app-quest-release.apk
+```
+It appears under Unknown Sources in the app library. It doesn't update itself; install a newer build the same way.
+
+**In your room (in development):** `:quest` is the spatial app. It turns on passthrough and places Lumiere's window in front of you, curved and movable: pinch its edge, or grip it with a controller. It installs beside the 2D build as *app.lumiere.android.spatial*:
+```bash
+cd android && ./gradlew :quest:assembleRelease
+adb install -r quest/build/outputs/apk/release/quest-release.apk
+```
+On a Quest the private room asks for Lumiere's own PIN, since the headset has no fingerprint or face to ask for. You choose the PIN the first time you open the room. Five wrong PINs in a row make the pad wait 30 seconds, and the wait doubles each time after that.
 
 ## Development
 
@@ -52,7 +68,7 @@ Each folder has its own check script, and all must be green before a commit:
 (cd server && go vet ./... && go test ./...)
 (cd mac && ./Scripts/check.sh)
 (cd control && ./Scripts/check.sh)
-(cd android && ./gradlew testDebugUnitTest)
+(cd android && ./gradlew :core:testDebugUnitTest :screens:testDebugUnitTest testStandardDebugUnitTest testQuestDebugUnitTest :quest:assembleRelease)
 ```
 
 `mac/Scripts/ship-all.sh` runs every check, builds both Mac apps, and installs them. Source files are kept under 300 lines.
