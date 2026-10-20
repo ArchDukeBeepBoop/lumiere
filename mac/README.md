@@ -7,7 +7,7 @@ see the [top-level README](../README.md) for the whole picture.
 
 ## Requirements
 
-- macOS 14 or later
+- macOS 15 or later
 - Homebrew's mpv to build (`brew install mpv`); the bundled app carries its own copy
 
 ## Building
