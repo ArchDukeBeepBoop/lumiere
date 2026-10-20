@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"lumiere-server/internal/safefs"
 	"path/filepath"
 	"strings"
 )
@@ -62,6 +63,8 @@ func (s *Store) AddExternalSubtitle(itemID, path, language, title string) (int, 
 // together and so a later scan reads them the way it reads any sidecar.
 func ExternalSubtitlePath(videoPath, language, extension string) string {
 	base := strings.TrimSuffix(videoPath, filepath.Ext(videoPath))
+	// Both arrive from a request or a provider; neither may carry a path.
+	language, extension = safefs.Token(language, 16), strings.ToLower(safefs.Token(extension, 5))
 	if language == "" {
 		language = "und"
 	}

@@ -119,5 +119,10 @@ codesign --force --deep --sign "$IDENTITY" "$APP"
 codesign --force --sign "$IDENTITY" --entitlements "$ROOT/Widget/Widget.entitlements" "$APPEX"
 codesign --force --sign "$IDENTITY" "$APP"
 
+# A release must prove it launches. See verify-bundle.sh.
+if [ "$CONFIG" = "release" ]; then
+	"$ROOT/Scripts/verify-bundle.sh" "$APP"
+fi
+
 echo "==> Done: $APP"
 du -sh "$APP" | awk '{print "    bundle size: " $1}'

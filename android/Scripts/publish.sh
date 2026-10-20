@@ -12,5 +12,7 @@ AAPT=$(ls -d "$HOME/Library/Android/sdk/build-tools/"*/aapt | tail -1)
 CODE=$("$AAPT" dump badging "$APK" | sed -n "s/.*versionCode='\([0-9]*\)'.*/\1/p")
 NAME=$("$AAPT" dump badging "$APK" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p")
 cp "$APK" "$DEST/lumiere.apk"
-printf '{"VersionCode": %d, "VersionName": "%s"}\n' "$CODE" "$NAME" > "$DEST/version.json"
+# The fingerprint the app checks the download against before installing.
+SHA=$(shasum -a 256 "$DEST/lumiere.apk" | awk '{print $1}')
+printf '{"VersionCode": %d, "VersionName": "%s", "Sha256": "%s"}\n' "$CODE" "$NAME" "$SHA" > "$DEST/version.json"
 echo "==> Published $NAME ($CODE) for the Android app to find"

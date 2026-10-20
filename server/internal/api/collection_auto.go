@@ -144,7 +144,7 @@ func (h CollectionSuggestHandler) CreateFromSeries(w http.ResponseWriter, r *htt
 		ItemIds []string
 		Private bool
 	}
-	if json.NewDecoder(r.Body).Decode(&body) != nil || len(body.ItemIds) == 0 {
+	if json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20)).Decode(&body) != nil || len(body.ItemIds) == 0 {
 		writeJSON(w, http.StatusBadRequest, errorBody{"expected {\"ItemIds\": [...]}"})
 		return
 	}

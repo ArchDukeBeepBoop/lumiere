@@ -110,7 +110,7 @@ func registerSchedule(authed *http.ServeMux, db *store.Store, cfg config.Config,
 	})
 	authed.HandleFunc("POST /Lumiere/Server", func(w http.ResponseWriter, r *http.Request) {
 		v := db.Settings()
-		if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
+		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&v); err != nil {
 			http.Error(w, "expected the settings as JSON", http.StatusBadRequest)
 			return
 		}

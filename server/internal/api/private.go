@@ -40,7 +40,7 @@ func (h PrivateHandler) SkipLookups(w http.ResponseWriter, r *http.Request) {
 
 func (h PrivateHandler) saveList(w http.ResponseWriter, r *http.Request, key string) {
 	var body struct{ Libraries []string }
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 64<<10)).Decode(&body); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorBody{"expected {\"Libraries\": [...]}"})
 		return
 	}

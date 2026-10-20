@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"lumiere-server/internal/safefs"
 	"math"
 	"net/http"
-	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -156,7 +157,7 @@ func (h SubtitleHandler) fetchQueued(client *subs.Client, q store.QueuedSubtitle
 		return "failed", "download: " + err.Error()
 	}
 	path := store.ExternalSubtitlePath(item.Path, q.Language, extension)
-	if err := os.WriteFile(path, text, 0o644); err != nil {
+	if err := safefs.WriteFile(filepath.Dir(item.Path), path, text, 0o644); err != nil {
 		return "failed", "could not save beside the video"
 	}
 
@@ -174,7 +175,7 @@ func (h SubtitleHandler) fetchQueued(client *subs.Client, q store.QueuedSubtitle
 			note = "saved; already in time"
 		default:
 			if shifted, err := subs.Shift(text, extension, offset); err == nil &&
-				os.WriteFile(path, shifted, 0o644) == nil {
+				safefs.WriteFile(filepath.Dir(item.Path), path, shifted, 0o644) == nil {
 				note = fmt.Sprintf("saved; shifted %+.1f s to the audio", offset)
 			}
 		}

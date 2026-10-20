@@ -28,6 +28,13 @@ echo "==> Lumiere checks";        (cd "$HERE/mac" && ./Scripts/check.sh > /tmp/s
     || { tail -20 /tmp/ship-app.log; exit 1; }
 echo "==> Server tests";          (cd "$HERE/server" && go vet ./... && go test -count=1 ./... > /tmp/ship-server.log 2>&1) \
     || { grep -v "^ok\|no test files" /tmp/ship-server.log | head -20; exit 1; }
+# Known vulnerabilities in the server's dependencies stop the ship.
+VULNCHECK="$(go env GOPATH)/bin/govulncheck"
+if [ -x "$VULNCHECK" ]; then
+	echo "==> Dependency vulnerabilities"
+	(cd "$HERE/server" && "$VULNCHECK" ./... > /tmp/ship-vuln.log 2>&1) \
+		|| { echo "    govulncheck found something — see /tmp/ship-vuln.log" >&2; exit 1; }
+fi
 echo "==> LumiereControl checks"; (cd "$HERE/control" && ./Scripts/check.sh > /tmp/ship-ctl.log 2>&1) \
     || { tail -20 /tmp/ship-ctl.log; exit 1; }
 if [ -f "$DB" ]; then

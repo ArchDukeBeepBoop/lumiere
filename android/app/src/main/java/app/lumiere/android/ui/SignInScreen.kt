@@ -34,7 +34,6 @@ import app.lumiere.android.AppState
 import app.lumiere.android.api.Discovery
 import app.lumiere.android.api.FoundServer
 import app.lumiere.android.api.Server
-import app.lumiere.android.api.createFirstAccount
 import app.lumiere.android.api.needsFirstAccount
 import kotlinx.coroutines.launch
 
@@ -54,7 +53,6 @@ fun SignInScreen(state: AppState) {
     var password by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
-    var confirm by remember { mutableStateOf("") }
     // A brand-new server answers that it has no account yet: make the first one.
     var needsAccount by remember { mutableStateOf(false) }
     LaunchedEffect(address) {
@@ -74,7 +72,7 @@ fun SignInScreen(state: AppState) {
             message = null
             val url = normalise(address)
             val server = Server(url, state.deviceId)
-            runCatching { if (needsAccount) server.createFirstAccount(user.trim(), password) else server.signIn(user.trim(), password) }
+            runCatching { server.signIn(user.trim(), password) }
                 .onSuccess { state.signedIn(it, server) }
                 .onFailure {
                     message = it.message?.takeIf { m -> m.isNotBlank() && !m.startsWith("Failed to connect") }
@@ -119,13 +117,9 @@ fun SignInScreen(state: AppState) {
                 modifier = Modifier.fillMaxWidth(),
             )
             if (needsAccount) {
-                OutlinedTextField(
-                    value = confirm, onValueChange = { confirm = it }, label = { Text("Password again") },
-                    singleLine = true, visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Text("This server is new. Choose the name and password you'll use on every device.",
+                // For safety the server only lets its own Mac make the first
+                // account; otherwise anyone on the Wi-Fi could claim it.
+                Text("This server is new. Open Lumiere on the Mac that runs it and create your account there, then sign in here with it.",
                     style = MaterialTheme.typography.bodyMedium)
             }
             message?.let {
@@ -134,9 +128,9 @@ fun SignInScreen(state: AppState) {
             }
             Spacer(Modifier.height(4.dp))
             LButton(onClick = ::signIn,
-                enabled = !busy && user.isNotBlank() && (!needsAccount || (password.length >= 4 && password == confirm)),
+                enabled = !busy && user.isNotBlank() && !needsAccount,
                 modifier = Modifier.fillMaxWidth()) {
-                Text(if (busy) "Signing in…" else if (needsAccount) "Create Account" else "Sign In")
+                Text(if (busy) "Signing in…" else "Sign In")
             }
         }
     }

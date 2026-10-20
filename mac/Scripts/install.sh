@@ -59,8 +59,19 @@ if pgrep -x Lumiere >/dev/null 2>&1; then
 	exit 1
 fi
 
+# The bundle about to be installed must launch. Checked before anything in
+# /Applications is touched: 1.1.0 installed and shipped a bundle missing a
+# library, and Lumiere would not open at all.
+"$ROOT/Scripts/verify-bundle.sh" "$APP"
+
+# The copy that works is kept, outside /Applications so Launch Services and
+# the widget picker never see two Lumieres, and put back if the new one fails.
+BACKUP="$HOME/Library/Application Support/Lumiere/Previous/Lumiere.app"
 if [ -d "$DEST" ]; then
-	echo "==> Replacing $DEST"
+	echo "==> Replacing $DEST (previous copy kept)"
+	rm -rf "$BACKUP"
+	mkdir -p "$(dirname "$BACKUP")"
+	ditto "$DEST" "$BACKUP"
 	rm -rf "$DEST"
 else
 	echo "==> Installing to $DEST"
@@ -113,3 +124,13 @@ fi
 echo "==> Done"
 echo "    $DEST ($(du -sh "$DEST" | awk '{print $1}'))"
 echo "    open -a Lumiere"
+
+# And once more where it now lives: a copy can lose what the build had.
+if ! "$ROOT/Scripts/verify-bundle.sh" "$DEST"; then
+	if [ -d "$BACKUP" ]; then
+		echo "==> The installed copy failed; putting the previous one back" >&2
+		rm -rf "$DEST"
+		ditto "$BACKUP" "$DEST"
+	fi
+	exit 1
+fi

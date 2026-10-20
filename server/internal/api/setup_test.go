@@ -22,17 +22,19 @@ func TestFirstAccountOnlyOnceAndThenSignsIn(t *testing.T) {
 	h := AuthHandler{Store: s, Identity: Identity{ServerID: "srv"}, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
 	post := func(body string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()
-		h.CreateAccount(rec, httptest.NewRequest("POST", "/", strings.NewReader(body)))
+		req := httptest.NewRequest("POST", "/", strings.NewReader(body))
+		req.RemoteAddr = "127.0.0.1:5000"
+		h.CreateAccount(rec, req)
 		return rec
 	}
-	if rec := post(`{"Username":"me","Password":"secret"}`); rec.Code != 200 {
+	if rec := post(`{"Username":"me","Password":"secret-pass"}`); rec.Code != 200 {
 		t.Fatalf("first account: %d %s", rec.Code, rec.Body)
 	}
-	if rec := post(`{"Username":"two","Password":"secret"}`); rec.Code != http.StatusConflict {
+	if rec := post(`{"Username":"two","Password":"secret-pass"}`); rec.Code != http.StatusConflict {
 		t.Fatalf("second account allowed: %d", rec.Code)
 	}
 	account, _ := s.AccountByName("ME")
-	if !verifyPassword(account.PasswordHash, "secret") || verifyPassword(account.PasswordHash, "wrong") {
+	if !verifyPassword(account.PasswordHash, "secret-pass") || verifyPassword(account.PasswordHash, "wrong") {
 		t.Fatal("hash does not verify")
 	}
 }
@@ -82,5 +84,20 @@ func TestLibrariesCreateListAndRemoveFolders(t *testing.T) {
 	}
 	if rec := call("GET", "/Lumiere/Browse?path="+dir, ""); !strings.Contains(rec.Body.String(), "Films") {
 		t.Fatalf("browse: %s", rec.Body)
+	}
+}
+
+func TestFirstAccountOnlyFromThisMac(t *testing.T) {
+	s, err := store.Open(filepath.Join(t.TempDir(), "data"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := AuthHandler{Store: s, Identity: Identity{ServerID: "srv"}, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
+	req := httptest.NewRequest("POST", "/", strings.NewReader(`{"Username":"me","Password":"secret-pass"}`))
+	req.RemoteAddr = "192.168.50.20:5000"
+	rec := httptest.NewRecorder()
+	h.CreateAccount(rec, req)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("a device on the network made the first account: %d", rec.Code)
 	}
 }

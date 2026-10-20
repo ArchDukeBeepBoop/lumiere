@@ -64,6 +64,7 @@ struct AccountCard: View {
     @State private var current = ""
     @State private var new = ""
     @State private var message: String?
+    @State private var devices: [SignedInDevice] = []
 
     var body: some View {
         SettingsCard(title: "Account", icon: "person.crop.circle") {
@@ -75,10 +76,44 @@ struct AccountCard: View {
             SecureField("New password", text: $new)
             HStack {
                 Button("Change Password") { Task { await change() } }
-                    .disabled(current.isEmpty || new.count < 4)
+                    .disabled(current.isEmpty || new.count < 8)
                 if let message { Text(message).font(Theme.Font.caption).foregroundStyle(Theme.Palette.textSecondary) }
             }
+            if !new.isEmpty, new.count < 8 {
+                Text("At least 8 characters.").font(Theme.Font.caption).foregroundStyle(Theme.Palette.textMuted)
+            }
+            Divider()
+            Text("Signed-in devices").font(Theme.Font.body.weight(.semibold))
+            SettingsNote("Sign out anything you no longer use, or have lost. A device unused for 90 days is signed out by itself.")
+            ForEach(devices) { device in
+                HStack {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(device.device.isEmpty ? device.client : device.device)
+                        Text(device.current ? "This Mac" : "\(device.client) · last used \(Self.when(device.lastSeen))")
+                            .font(Theme.Font.caption).foregroundStyle(Theme.Palette.textMuted)
+                    }
+                    Spacer()
+                    if !device.current {
+                        Button("Sign Out") {
+                            Task {
+                                try? await app.client?.signOutDevice(device.id)
+                                await loadDevices()
+                            }
+                        }
+                    }
+                }
+            }
         }
+        .task { await loadDevices() }
+    }
+
+    private func loadDevices() async {
+        devices = (try? await app.client?.signedInDevices()) ?? []
+    }
+
+    private static func when(_ stamp: String) -> String {
+        guard let date = ISO8601DateFormatter().date(from: stamp) else { return "—" }
+        return date.formatted(.relative(presentation: .named))
     }
 
     private func change() async {

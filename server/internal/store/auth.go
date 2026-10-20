@@ -110,21 +110,34 @@ type SessionInfo struct {
 
 // LookupToken resolves a token to its account, or ErrNoAccount.
 //
-// last_seen is deliberately not written here. This runs on every request
+// last_seen is written at most once a day per token, never per request. This runs on every request
 // including every range request of a playing film — four per playback in the
 // capture — and a write per request would turn a read-only path into a stream of
 // transactions competing with the import for the same file.
 func (s *Store) LookupToken(token string) (Session, error) {
 	var sess Session
-	var device sql.NullString
+	var device, lastSeen sql.NullString
+	hash := HashToken(token)
 	// The column holds a hash, so the presented token is hashed to look it up.
 	// Nothing is compared in Go: the index does the work, and there is no
 	// timing signal worth chasing in an indexed lookup of a 256-bit key.
 	err := s.DB.QueryRow(
-		`SELECT account_id, device_id FROM token WHERE token = ?`, HashToken(token),
-	).Scan(&sess.AccountID, &device)
+		`SELECT account_id, device_id, last_seen FROM token WHERE token = ?`, hash,
+	).Scan(&sess.AccountID, &device, &lastSeen)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Session{}, ErrNoAccount
+	}
+	// A sign-in unused for 90 days is over: a lost phone or a sold TV keeps
+	// no lasting key to the library. Used, it is touched at most once a day,
+	// so a playing film's range requests stay reads.
+	if seen, perr := time.Parse(time.RFC3339, lastSeen.String); perr == nil {
+		switch age := time.Since(seen); {
+		case age > TokenIdleLimit:
+			s.DB.Exec(`DELETE FROM token WHERE token = ?`, hash)
+			return Session{}, ErrNoAccount
+		case age > 24*time.Hour:
+			s.DB.Exec(`UPDATE token SET last_seen = ? WHERE token = ?`, time.Now().UTC().Format(time.RFC3339), hash)
+		}
 	}
 	// The token the caller authenticated with, not the row's hash — the field
 	// means "the credential this session is using", and handing back a hash
@@ -133,6 +146,9 @@ func (s *Store) LookupToken(token string) (Session, error) {
 	sess.DeviceID = device.String
 	return sess, err
 }
+
+// TokenIdleLimit is how long a sign-in may go unused before it expires.
+const TokenIdleLimit = 90 * 24 * time.Hour
 
 func nullable(s string) any {
 	if s == "" {

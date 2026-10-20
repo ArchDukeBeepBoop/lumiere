@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"io"
 	"log/slog"
+	"lumiere-server/internal/safefs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -109,6 +110,12 @@ func (h ArtworkHandler) Download(w http.ResponseWriter, r *http.Request) {
 	raw, kind := get("imageurl"), get("type")
 	if kind == "" {
 		kind = "Primary"
+	}
+	// Named by the request, and part of the file name it is saved under: only
+	// the kinds there are, as the upload routes already insist.
+	if kind = imageKind(kind); kind == "" {
+		writeJSON(w, http.StatusBadRequest, errorBody{"unknown image kind"})
+		return
 	}
 	if itemID == "" || raw == "" {
 		writeJSON(w, http.StatusBadRequest, errorBody{"no image named"})
@@ -237,7 +244,7 @@ func (h ArtworkHandler) store(itemID, kind string, body []byte, extension string
 		return err
 	}
 	path := filepath.Join(dir, itemID+"-"+strings.ToLower(kind)+extension)
-	if err := os.WriteFile(path, body, 0o600); err != nil {
+	if err := safefs.WriteFile(dir, path, body, 0o600); err != nil {
 		return err
 	}
 	// A content hash for the tag, so the client's artwork cache — which keys on

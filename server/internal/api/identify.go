@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"lumiere-server/internal/metadata"
+	"lumiere-server/internal/safefs"
 	"net/http"
 	"net/url"
 	"os"
@@ -212,7 +213,7 @@ func (h IdentifyHandler) fetchPoster(itemID, raw string) error {
 		return err
 	}
 	path := filepath.Join(dir, itemID+"-primary"+extensionFor(resp.Header.Get("Content-Type")))
-	if err := os.WriteFile(path, body, 0o600); err != nil {
+	if err := safefs.WriteFile(dir, path, body, 0o600); err != nil {
 		return err
 	}
 	// The tag is the content hash, so the client's artwork cache — which keys on

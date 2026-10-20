@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"strings"
 
@@ -32,14 +33,21 @@ func (h AuthHandler) Setup(w http.ResponseWriter, r *http.Request) {
 // CreateAccount is POST /Lumiere/Setup/Account {"Username", "Password"}: the
 // first account, answered as a sign-in so the app is signed in at once.
 func (h AuthHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
+	// Only from the Mac the server runs on. Unauthenticated by necessity, so
+	// with sharing on, anyone on the Wi-Fi could otherwise claim a new server
+	// before its owner did.
+	if !fromLoopback(r) {
+		writeJSON(w, http.StatusForbidden, errorBody{"make the first account in Lumiere on the Mac that runs the server"})
+		return
+	}
 	var req struct{ Username, Password string }
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, errorBody{"invalid request body"})
 		return
 	}
 	req.Username = strings.TrimSpace(req.Username)
-	if req.Username == "" || len(req.Password) < 4 {
-		writeJSON(w, http.StatusBadRequest, errorBody{"choose a name and a password of at least 4 characters"})
+	if req.Username == "" || len(req.Password) < minPasswordLength {
+		writeJSON(w, http.StatusBadRequest, errorBody{"choose a name and a password of at least 8 characters"})
 		return
 	}
 	hash, err := hashPassword(req.Password)
@@ -73,12 +81,18 @@ func (h AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct{ Current, New string }
-	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&req); err != nil || len(req.New) < 4 {
-		writeJSON(w, http.StatusBadRequest, errorBody{"a new password of at least 4 characters"})
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&req); err != nil || len(req.New) < minPasswordLength {
+		writeJSON(w, http.StatusBadRequest, errorBody{"a new password of at least 8 characters"})
 		return
 	}
 	account, err := h.Store.AccountByID(sess.AccountID)
+	if err == nil && h.Throttle != nil && refuseThrottled(w, h.Throttle.Blocked(r, account.Username)) {
+		return
+	}
 	if err != nil || !verifyPassword(account.PasswordHash, req.Current) {
+		if err == nil && h.Throttle != nil {
+			h.Throttle.Failed(r, account.Username)
+		}
 		writeJSON(w, http.StatusForbidden, errorBody{"the current password is wrong"})
 		return
 	}
@@ -91,4 +105,13 @@ func (h AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func fromLoopback(r *http.Request) bool {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return false
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }

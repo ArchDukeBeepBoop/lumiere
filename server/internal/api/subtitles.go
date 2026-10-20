@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"log/slog"
+	"lumiere-server/internal/safefs"
 	"net/http"
-	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -109,7 +110,7 @@ func (h SubtitleHandler) Download(w http.ResponseWriter, r *http.Request) {
 	}
 
 	path := store.ExternalSubtitlePath(item.Path, language, extension)
-	if err := os.WriteFile(path, text, 0o644); err != nil {
+	if err := safefs.WriteFile(filepath.Dir(item.Path), path, text, 0o644); err != nil {
 		h.Log.Error("subtitles: could not save", "path", path, "error", err)
 		writeJSON(w, http.StatusInternalServerError, errorBody{"could not save the subtitle"})
 		return

@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 
 	"lumiere-server/internal/store"
@@ -30,8 +29,7 @@ func (h WidgetHandler) Register(public, authed *http.ServeMux) {
 
 func (h WidgetHandler) loopback(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		host, _, _ := net.SplitHostPort(r.RemoteAddr)
-		if ip := net.ParseIP(host); ip == nil || !ip.IsLoopback() {
+		if !fromLoopback(r) {
 			writeJSON(w, http.StatusForbidden, errorBody{"this Mac only"})
 			return
 		}

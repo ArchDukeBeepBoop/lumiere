@@ -16,6 +16,9 @@ struct LumiereApp: App {
     @State private var bridge = PlayerBridge()
 
     init() {
+        // `--smoke-test`: the release gate's proof that the bundle launches.
+        // See Scripts/verify-bundle.sh.
+        SmokeTest.runIfAsked()
         // Quit from inside the private room, its settings are still in place.
         // See `RoomPreferences`.
         RoomPreferences.recoverAtLaunch()

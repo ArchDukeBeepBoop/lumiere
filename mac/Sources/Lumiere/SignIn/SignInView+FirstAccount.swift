@@ -20,6 +20,11 @@ extension SignInView {
             secureField("Password again", text: $model.confirmPassword)
                 .onSubmit { Task { await model.createAccount() } }
 
+            if !model.password.isEmpty, model.password.count < 8 {
+                Text("At least 8 characters.")
+                    .font(Theme.Font.caption)
+                    .foregroundStyle(Theme.Palette.textMuted)
+            }
             if !model.confirmPassword.isEmpty, model.password != model.confirmPassword {
                 Text("The two passwords differ.")
                     .font(Theme.Font.caption)

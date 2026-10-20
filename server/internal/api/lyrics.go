@@ -2,6 +2,7 @@ package api
 
 import (
 	"io"
+	"lumiere-server/internal/safefs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -77,7 +78,7 @@ func (h LyricsHandler) Post(w http.ResponseWriter, r *http.Request) {
 	if _, lines := ParseLRC(string(body)); len(lines) > 0 && lines[0].Start == nil {
 		path = strings.TrimSuffix(path, filepath.Ext(path)) + ".txt"
 	}
-	if err := os.WriteFile(path, body, 0o644); err != nil {
+	if err := safefs.WriteFile(filepath.Dir(item.Path), path, body, 0o644); err != nil {
 		writeJSON(w, http.StatusInternalServerError, errorBody{"could not save beside the track"})
 		return
 	}

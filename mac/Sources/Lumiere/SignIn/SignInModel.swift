@@ -185,7 +185,7 @@ final class SignInModel {
     // MARK: - Step 2, first run: make the account
 
     var canCreateAccount: Bool {
-        !username.trimmingCharacters(in: .whitespaces).isEmpty && password.count >= 4
+        !username.trimmingCharacters(in: .whitespaces).isEmpty && password.count >= 8
             && password == confirmPassword && !isBusy
     }
 

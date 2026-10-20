@@ -78,9 +78,9 @@ private fun Account(state: AppState) {
     state.session?.let { Text("${it.userName} on ${it.serverName}", style = MaterialTheme.typography.bodyMedium) }
     OutlinedTextField(current, { current = it }, label = { Text("Current password") }, singleLine = true,
         visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(new, { new = it }, label = { Text("New password") }, singleLine = true,
+    OutlinedTextField(new, { new = it }, label = { Text("New password (8 or more characters)") }, singleLine = true,
         visualTransformation = PasswordVisualTransformation(), modifier = Modifier.fillMaxWidth())
-    LButton(enabled = current.isNotEmpty() && new.length >= 4, onClick = {
+    LButton(enabled = current.isNotEmpty() && new.length >= 8, onClick = {
         scope.launch {
             note = runCatching { state.server!!.changePassword(current, new) }
                 .fold({ current = ""; new = ""; "Changed." }, { "Not changed — check the current password." })

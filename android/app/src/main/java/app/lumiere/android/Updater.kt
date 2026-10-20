@@ -18,7 +18,7 @@ import org.json.JSONObject
  * before installing. The projector has no other way to be updated.
  */
 object Updater {
-    data class Available(val code: Int, val name: String)
+    data class Available(val code: Int, val name: String, val sha256: String = "")
 
     /**
      * Each app fetches only its own build: the TV's where the Mac has always
@@ -30,10 +30,16 @@ object Updater {
     suspend fun check(server: Server): Available? = runCatching {
         val o = JSONObject(server.get("Lumiere/Android/${channel}Latest"))
         val code = o.optInt("VersionCode")
-        if (code > BuildConfig.VERSION_CODE) Available(code, o.optString("VersionName")) else null
+        if (code > BuildConfig.VERSION_CODE) Available(code, o.optString("VersionName"), o.optString("Sha256")) else null
     }.getOrNull()
 
+    /**
+     * Fetches and installs the update. The download is checked against the
+     * SHA-256 the Mac published with it before Android is handed anything: a
+     * cut-off or altered file is refused here, not half-installed.
+     */
     suspend fun install(context: Context, server: Server): String? = withContext(Dispatchers.IO) {
+        val expected = check(server)?.sha256.orEmpty().lowercase()
         runCatching {
             val installer = context.packageManager.packageInstaller
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
@@ -42,7 +48,16 @@ object Updater {
                 server.http.newCall(Request.Builder().url(server.url("Lumiere/Android/${channel}lumiere.apk")).build())
                     .execute().use { r ->
                         if (!r.isSuccessful) error("the server answered ${r.code}")
-                        session.openWrite("lumiere.apk", 0, -1).use { out -> r.body!!.byteStream().copyTo(out); session.fsync(out) }
+                        val digest = java.security.MessageDigest.getInstance("SHA-256")
+                        session.openWrite("lumiere.apk", 0, -1).use { out ->
+                            java.security.DigestInputStream(r.body!!.byteStream(), digest).copyTo(out)
+                            session.fsync(out)
+                        }
+                        val got = digest.digest().joinToString("") { "%02x".format(it) }
+                        if (expected.isNotEmpty() && got != expected) {
+                            session.abandon()
+                            error("the download did not match the Mac's copy; nothing was installed")
+                        }
                     }
                 val done = PendingIntent.getBroadcast(context, 0, Intent(context, InstallResult::class.java),
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)

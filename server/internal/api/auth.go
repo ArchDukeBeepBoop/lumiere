@@ -14,6 +14,8 @@ type AuthHandler struct {
 	Store    *store.Store
 	Identity Identity
 	Log      *slog.Logger
+	// Slows password guessing; nil turns it off (tests). See Throttle.
+	Throttle *Throttle
 }
 
 // authenticateRequest is what Lumiere posts. Two fields, and `Pw` rather than
@@ -60,8 +62,15 @@ func (h AuthHandler) AuthenticateByName(w http.ResponseWriter, r *http.Request) 
 		pw = req.Password
 	}
 
+	if h.Throttle != nil && refuseThrottled(w, h.Throttle.Blocked(r, req.Username)) {
+		h.Log.Info("sign-in refused", "reason", "too many wrong passwords", "user", req.Username)
+		return
+	}
 	account, err := h.Store.AccountByName(req.Username)
 	if errors.Is(err, store.ErrNoAccount) {
+		if h.Throttle != nil {
+			h.Throttle.Failed(r, req.Username)
+		}
 		// The log distinguishes what the response deliberately does not. A client
 		// learning whether the username exists is a small leak; whoever is
 		// reading the log needs to know, especially for the case below.
@@ -81,10 +90,16 @@ func (h AuthHandler) AuthenticateByName(w http.ResponseWriter, r *http.Request) 
 
 	if !verifyPassword(account.PasswordHash, pw) {
 		h.Log.Info("sign-in rejected", "reason", "password", "user", account.Username)
+		if h.Throttle != nil {
+			h.Throttle.Failed(r, req.Username)
+		}
 		unauthorized(w)
 		return
 	}
 
+	if h.Throttle != nil {
+		h.Throttle.Succeeded(r, req.Username)
+	}
 	h.signIn(w, r, account)
 }
 

@@ -51,7 +51,7 @@ func main() {
 	log.Info("identity", "id", identity.ServerID, "name", identity.ServerName)
 
 	system := api.SystemHandler{Identity: identity}
-	auth := api.AuthHandler{Store: db, Identity: identity, Log: log}
+	auth := api.AuthHandler{Store: db, Identity: identity, Log: log, Throttle: api.NewThrottle()}
 	guard := api.Auth{Store: db}
 
 	mux := http.NewServeMux()
@@ -145,6 +145,8 @@ func main() {
 	api.LibrariesHandler{Store: db, Refresh: refresh, Log: log}.Register(authed)
 	api.WidgetHandler{Store: db, Images: images.Image}.Register(mux, authed)
 	authed.HandleFunc("POST /Lumiere/Account/Password", auth.ChangePassword)
+	authed.HandleFunc("GET /Lumiere/Devices", auth.Devices)
+	authed.HandleFunc("DELETE /Lumiere/Devices/{id}", auth.SignOutDevice)
 	registerChanges(authed, db, log)
 
 	authed.HandleFunc("GET /Artists", items.Artists)
@@ -253,7 +255,9 @@ func main() {
 		// Outermost after the log, so a rebound name is refused before any
 		// handler — auth included — gets to look at the request. See
 		// `api.LocalOnly`.
-		Handler: logging(log, api.LocalOnly(cfg.Addr, mux)),
+		// No request body over 64 MB anywhere: routes cap their own lower,
+		// this is the floor for any that forgets (OWASP API4:2023).
+		Handler: logging(log, api.LocalOnly(cfg.Addr, http.MaxBytesHandler(mux, 64<<20))),
 		// Deliberately no WriteTimeout: this server streams films. A write
 		// deadline is the standard advice and it would cut every playback at the
 		// deadline. Read and idle timeouts still bound the cheap failure modes.
@@ -274,7 +278,7 @@ func main() {
 		os.Exit(1)
 	}
 	log.Info("listening", "addr", cfg.Addr)
-	startNetwork(logging(log, mux), cfg, db, identity, log)
+	startNetwork(logging(log, http.MaxBytesHandler(mux, 64<<20)), cfg, db, identity, log)
 
 	go func() {
 		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {

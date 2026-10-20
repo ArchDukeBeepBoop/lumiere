@@ -131,3 +131,30 @@ public extension JellyfinClient {
                            body: try JSONSerialization.data(withJSONObject: ["Current": current, "New": new]))
     }
 }
+
+/// One sign-in on the server, for Settings' device list.
+public struct SignedInDevice: Decodable, Sendable, Identifiable, Hashable {
+    public let id: String
+    public let device: String
+    public let client: String
+    public let lastSeen: String
+    public let current: Bool
+    enum CodingKeys: String, CodingKey {
+        case id = "Id", device = "Device", client = "Client", lastSeen = "LastSeen", current = "Current"
+    }
+}
+
+public extension JellyfinClient {
+    private struct DeviceList: Decodable, Sendable {
+        let devices: [SignedInDevice]
+        enum CodingKeys: String, CodingKey { case devices = "Devices" }
+    }
+
+    func signedInDevices() async throws -> [SignedInDevice] {
+        try await send(DeviceList.self, path: "Lumiere/Devices").devices
+    }
+
+    func signOutDevice(_ id: String) async throws {
+        try await sendVoid(path: "Lumiere/Devices/\(id)", method: "DELETE")
+    }
+}

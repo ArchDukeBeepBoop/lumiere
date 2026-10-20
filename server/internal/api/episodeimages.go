@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"lumiere-server/internal/safefs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -177,7 +178,7 @@ func (h EpisodeImagesHandler) fetchStill(itemID, raw string) error {
 		return err
 	}
 	path := filepath.Join(dir, itemID+"-primary"+extensionFor(resp.Header.Get("Content-Type")))
-	if err := os.WriteFile(path, body, 0o600); err != nil {
+	if err := safefs.WriteFile(dir, path, body, 0o600); err != nil {
 		return err
 	}
 	return h.Store.SetPrimaryImage(itemID, path, tag, len(body))
