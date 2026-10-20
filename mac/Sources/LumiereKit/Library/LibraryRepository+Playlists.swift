@@ -61,3 +61,13 @@ public extension LibraryRepository {
         try await favouriteAudioPage(limit: limit).entries
     }
 }
+
+public extension LibraryRepository {
+    /// A playlist's contents, in its order, as cached entries — for playing it.
+    func playlistEntries(id: String) async throws -> [LibraryEntry] {
+        let fetched = try await client.playlistItems(playlistId: id).items
+        try await cache(items: fetched)
+        let byId = Dictionary(uniqueKeysWithValues: try await entriesById(fetched.map(\.id)).map { ($0.id, $0) })
+        return await visible(fetched.compactMap { byId[$0.id] })
+    }
+}

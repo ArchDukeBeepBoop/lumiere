@@ -48,6 +48,7 @@ import kotlinx.coroutines.launch
 /** An album: its cover, Play and Shuffle, and its tracks by disc and number. */
 @Composable
 fun AlbumScreen(state: AppState, id: String) {
+    if (!LocalFormFactor.current.isTv) { PhoneAlbumScreen(state, id); return }
     val server = state.server ?: return
     val userId = state.session?.userId ?: return
     val form = LocalFormFactor.current
@@ -120,6 +121,7 @@ fun AlbumScreen(state: AppState, id: String) {
 /** An artist: their albums, then every track they are on. */
 @Composable
 fun ArtistScreen(state: AppState, artist: Item, libraryId: String) {
+    if (!LocalFormFactor.current.isTv) { PhoneArtistScreen(state, artist, libraryId); return }
     val server = state.server ?: return
     val userId = state.session?.userId ?: return
     val form = LocalFormFactor.current

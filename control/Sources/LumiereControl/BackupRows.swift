@@ -7,37 +7,59 @@ struct BackupRows: View {
     @Bindable var backups: BackupRestorer
     let server: ServerProcess
 
+    @State private var isHovering = false
+
     var body: some View {
         Group {
             if let newest = backups.backups.first {
+                // A pop-up of dates behind a row that looks like every other
+                // row, with the chevron system menus use for "more inside".
                 SwiftUI.Menu {
-                    ForEach(backups.backups) { backup in
-                        Button(backup.date.formatted(date: .abbreviated, time: .shortened)) {
-                            Task { await backups.restore(backup, server: server) }
+                    Section("Restore the library as it was on…") {
+                        ForEach(backups.backups) { backup in
+                            Button(backup.date.formatted(date: .complete, time: .shortened)) {
+                                Task { await backups.restore(backup, server: server) }
+                            }
                         }
                     }
                 } label: {
-                    Label("Restore Backup…", systemImage: "clock.arrow.circlepath")
+                    HStack(spacing: 10) {
+                        IconCircle(symbol: "clock.arrow.circlepath")
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text("Restore Backup").font(Menu.body)
+                            Text("\(backups.backups.count) daily copies · newest "
+                                 + newest.date.formatted(.relative(presentation: .named)))
+                                .font(Menu.caption).foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: 8)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.tertiary)
+                    }
+                    .padding(.horizontal, 6)
+                    .frame(minHeight: Menu.rowHeight + 6)
+                    .background(Hover(isOn: isHovering))
+                    .contentShape(Rectangle())
                 }
-                .menuStyle(.borderlessButton)
-                .padding(.horizontal, Menu.gutter)
-                .padding(.vertical, 4)
-                MenuNote(symbol: nil, text: "\(backups.backups.count) daily copies; newest "
-                         + newest.date.formatted(date: .abbreviated, time: .shortened) + ".")
+                .menuStyle(.button)
+                .buttonStyle(.plain)
+                .menuIndicator(.hidden)
+                .onHover { isHovering = $0 }
+                .padding(.horizontal, Menu.gutter - 6)
             } else {
-                MenuNote(symbol: nil, text: "No backups yet — the server takes one a day.")
+                MenuNote(text: "No backups yet — the server makes one each day.")
             }
             let old = OldCopies.list(in: BackupRestorer.dataDir)
             if !old.isEmpty {
                 let total = ByteCountFormatter.string(
                     fromByteCount: old.reduce(0) { $0 + $1.bytes }, countStyle: .file)
                 MenuRow(symbol: "trash", title: "Move Old Copies to Trash…",
-                        detail: "\(old.count), \(total)") {
+                        detail: "\(old.count) · \(total)") {
                     confirmTrash(old, total: total)
                 }
             }
             if let message = backups.message {
-                MenuNote(symbol: nil, text: message)
+                MenuNote(text: message)
             }
         }
         .onAppear { backups.refresh() }
@@ -51,7 +73,6 @@ struct BackupRows: View {
         alert.informativeText = old.map(\.url.lastPathComponent).joined(separator: "\n")
             + "\n\nThese were made by hand before changes. The live library and the "
             + "daily backups are not touched, and the Trash can give these back."
-        MenuLook.style(alert)
         alert.addButton(withTitle: "Move to Trash")
         alert.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)

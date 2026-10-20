@@ -67,6 +67,7 @@ extension AppModel {
 
     func setShowingPrivateLibraries(_ showing: Bool) async {
         isShowingPrivateLibraries = showing
+        homeModel?.clearForRoomChange(inRoom: showing)
         await applyPrivacy()
         // The home screen is built from queries that have just changed their
         // answers, and nothing else would tell it.

@@ -30,6 +30,30 @@ android {
             keyPassword = "android"
         }
     }
+    // Three apps from one codebase — the phone's, the TV's and the Quest's —
+    // each its own install, each knowing what it is rather than guessing. The
+    // TV keeps the first ID, so the projector, which updates only through the
+    // Mac, carries on in place.
+    flavorDimensions += "device"
+    productFlavors {
+        create("phone") {
+            dimension = "device"
+            applicationIdSuffix = ".phone"
+            manifestPlaceholders["appLabel"] = "Lumiere"
+            buildConfigField("String", "DEVICE", "\"phone\"")
+        }
+        create("tv") {
+            dimension = "device"
+            manifestPlaceholders["appLabel"] = "Lumiere TV"
+            buildConfigField("String", "DEVICE", "\"tv\"")
+        }
+        create("quest") {
+            dimension = "device"
+            applicationIdSuffix = ".quest"
+            manifestPlaceholders["appLabel"] = "Lumiere for Quest"
+            buildConfigField("String", "DEVICE", "\"quest\"")
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -74,4 +98,10 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+}
+
+// The familiar `./gradlew assembleRelease testDebugUnitTest` still works with
+// three apps: this runs each app's unit tests.
+tasks.register("testDebugUnitTest") {
+    dependsOn("testPhoneDebugUnitTest", "testTvDebugUnitTest", "testQuestDebugUnitTest")
 }

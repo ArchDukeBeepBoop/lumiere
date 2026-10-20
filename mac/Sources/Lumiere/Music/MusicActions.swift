@@ -45,7 +45,7 @@ struct AddToPlaylistSheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 420, height: 480)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .task {
             playlists = (try? await repository.audioPlaylists()) ?? []
             isLoading = false

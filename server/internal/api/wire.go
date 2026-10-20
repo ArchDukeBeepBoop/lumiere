@@ -80,6 +80,8 @@ func ToWire(it store.Item, serverID string) jellyfin.BaseItem {
 		ProviderIds:             it.ProviderIDs,
 		RecursiveItemCnt:        it.RecursiveItemCount,
 		SeriesPrimaryImageTag:   it.SeriesPrimaryImageTag,
+		ParentLogoItemId:        it.ParentLogoItemID,
+		ParentLogoImageTag:      it.ParentLogoTag,
 		ParentBackdropItemId:    it.ParentBackdropItemID,
 		ParentBackdropImageTags: it.ParentBackdropTags,
 		TopParentId:             LibraryView(it.LibraryID),

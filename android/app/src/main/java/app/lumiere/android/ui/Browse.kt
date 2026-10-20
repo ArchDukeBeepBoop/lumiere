@@ -1,5 +1,8 @@
 package app.lumiere.android.ui
 
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.outlined.Inbox
 import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -74,20 +77,31 @@ fun GridScreen(state: AppState, title: String, empty: String, header: @Composabl
                 color = Palette.textPrimary))
             items?.size?.takeIf { it > 0 }?.let { Text("   $it ${if (it == 1) "title" else "titles"}", style = MaterialTheme.typography.labelLarge,
                 color = Palette.textSecondary, modifier = Modifier.padding(bottom = 6.dp)) }
-        } else Text(title, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(form.gutter.dp))
+        } else IosLargeTitle(title)
         header()
         val list = items
         when {
             list == null -> SkeletonGrid()
+            // On a TV, Apple's empty page: a large soft symbol over one quiet line, centred.
+            list.isEmpty() && form.isTv -> androidx.compose.foundation.layout.Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Inbox, null, tint = Palette.textMuted,
+                        modifier = Modifier.size(72.dp))
+                    Text(empty, style = MaterialTheme.typography.titleMedium, color = Palette.textSecondary,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.widthIn(max = 520.dp))
+                }
+            }
             list.isEmpty() -> Text(empty, style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = form.gutter.dp))
             else -> LazyVerticalGrid(
-                columns = GridCells.Adaptive(if (shape == CardShape.Wide) form.wideWidth.dp else form.posterWidth.dp),
+                // Three posters across on a phone, as iOS's grids; sized by width on a TV.
+                columns = if (!form.isTv) GridCells.Fixed(if (shape == CardShape.Wide) (phoneColumns() - 1).coerceAtLeast(2) else phoneColumns())
+                    else GridCells.Adaptive(if (shape == CardShape.Wide) form.wideWidth.dp else form.posterWidth.dp),
                 contentPadding = PaddingValues(start = form.gutter.dp, end = form.gutter.dp, bottom = 96.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                horizontalArrangement = Arrangement.spacedBy(if (form.isTv) 14.dp else 10.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                items(list, key = { it.id }) { item -> ItemCard(item, server, shape) { open(state, item, context) } }
+                items(list, key = { it.id }) { item -> ItemCard(item, server, shape, fill = !form.isTv) { open(state, item, context) } }
             }
         }
     }

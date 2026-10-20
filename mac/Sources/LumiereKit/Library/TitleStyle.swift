@@ -84,7 +84,9 @@ public enum TitleFormatter {
     /// Taken from the real path where one is cached. Guessing a container would
     /// print `.mkv` beside an mp4 and undermine the whole feature.
     private static func fileExtension(for item: ItemRecord) -> String {
-        guard let path = item.path, !path.isEmpty else { return "" }
+        // Only a file has one. A show's or season's path is its folder, and
+        // "Dr. Stone" read as a folder named "Dr" with the extension " Stone".
+        guard !item.isFolder, let path = item.path, !path.isEmpty else { return "" }
         let ext = (path as NSString).pathExtension
         return ext.isEmpty ? "" : ".\(ext)"
     }

@@ -68,7 +68,7 @@ struct IdentifySheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 640, height: 560)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .onAppear {
             query = initialQuery
             Task { await search() }

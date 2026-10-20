@@ -19,6 +19,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import app.lumiere.android.AppState
 import kotlinx.coroutines.launch
@@ -32,13 +35,34 @@ fun SettingsScreen(state: AppState) {
     val p = state.settings
     val session = state.session
     val tv = LocalFormFactor.current.isTv
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(Palette.canvas)) {
     LazyColumn(
-        Modifier.fillMaxSize().background(Palette.canvas),
+        Modifier.fillMaxSize(), state = list,
         contentPadding = PaddingValues(horizontal = form.gutter.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        item { Text("Settings", style = MaterialTheme.typography.headlineLarge) }
-        item { YourSetupSection(state) }
+        item { Text("Settings", style = IosType.largeTitle, color = Palette.textPrimary) }
+        // On a phone, folded behind one row as iOS would: the library cards are long.
+        if (tv) item { YourSetupSection(state) } else {
+            item {
+                var open by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+                Column {
+                    Row(Modifier.fillMaxWidth().padding(top = 14.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
+                        .background(Palette.surface).focusCard { open = !open }.padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Your Setup", style = IosType.headline, color = Palette.textPrimary)
+                            Text("Libraries, folders, the private room's libraries, the setup guide", style = IosType.footnote,
+                                color = Palette.textSecondary)
+                        }
+                        androidx.compose.material3.Icon(if (open) androidx.compose.material.icons.Icons.Default.KeyboardArrowDown
+                            else androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = Palette.textMuted)
+                    }
+                    if (open) YourSetupSection(state)
+                }
+            }
+        }
 
         item { Section("Playback") }
         item { Toggle("Play the next episode automatically", p.playsNext) { p.playsNext = it } }
@@ -46,11 +70,11 @@ fun SettingsScreen(state: AppState) {
             Toggle("Keep a video's sound playing with the screen off", p.videoInBackground) { p.videoInBackground = it }
         }
         if (p.playsNext) item {
-            Text("Ask \u201CStill watching?\u201D", style = MaterialTheme.typography.titleMedium)
+            Text("Ask \u201CStill watching?\u201D", style = IosType.body, color = Palette.textPrimary,
+                modifier = Modifier.padding(top = 6.dp, bottom = 8.dp))
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(listOf(0, 2, 3, 4, 5, 8)) { n ->
-                    LChip(p.stillWatchingAfter == n, { p.stillWatchingAfter = n },
-                        { Text(if (n == 0) "Never" else "After $n") })
+                    IosChip(p.stillWatchingAfter == n, if (n == 0) "Never" else "After $n") { p.stillWatchingAfter = n }
                 }
             }
         }
@@ -132,9 +156,9 @@ fun SettingsScreen(state: AppState) {
             Text("Shut the room after leaving the app", style = MaterialTheme.typography.titleMedium)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(listOf(0, 1, 5, 15, 60, -1)) { m ->
-                    LChip(p.roomLockMinutes == m, { p.roomLockMinutes = m }, {
-                        Text(when (m) { 0 -> "At once"; -1 -> "Never"; 60 -> "1 hour"; else -> "$m min" })
-                    })
+                    IosChip(p.roomLockMinutes == m, when (m) { 0 -> "At once"; -1 -> "Never"; 60 -> "1 hour"; else -> "$m min" }) {
+                        p.roomLockMinutes = m
+                    }
                 }
             }
         }
@@ -158,11 +182,23 @@ fun SettingsScreen(state: AppState) {
         }
 
         if (!tv) {
+            if (app.lumiere.android.Flavor.isRemote) {
+                item { Section("TV Remote") }
+                item {
+                    LButton(primary = false, onClick = { state.push(app.lumiere.android.Screen.Remote) }) {
+                        Text("Use this phone as the TV's remote")
+                    }
+                }
+                item { Toggle("Swipe pad instead of arrows", p.remoteTouchpad, "As Apple's remote on an iPhone: swipe to move, tap to choose.") {
+                    p.remoteTouchpad = it } }
+            }
             item { Section("Appearance") }
             if (android.os.Build.VERSION.SDK_INT >= 31) item {
                 Toggle("Colours from my wallpaper", p.wallpaperColours) { p.wallpaperColours = it }
             }
             item { Toggle("Reduce motion", p.reduceMotion) { p.reduceMotion = it } }
+            item { Toggle("One Up Next row on Home", p.phoneUpNextMerged) { p.phoneUpNextMerged = it } }
+            item { Toggle("Hide spoilers", p.hidesSpoilers) { p.hidesSpoilers = it } }
         }
         item { Section("Downloads") }
         item { Toggle("Download on Wi-Fi only", p.downloadsWifiOnly) { p.downloadsWifiOnly = it } }
@@ -187,28 +223,40 @@ fun SettingsScreen(state: AppState) {
         }
         item { LButton(primary = false, onClick = { state.signOut() }) { Text("Sign Out") } }
     }
+    if (!tv) IosCollapsedTitle(list, "Settings")
+    }
 }
 
 private fun Set<String>.toggle(id: String) = if (id in this) this - id else this + id
 
 @Composable
 private fun Section(title: String) {
-    Text(title, style = MaterialTheme.typography.titleLarge, color = Palette.accent,
-        modifier = Modifier.padding(top = 18.dp, bottom = 4.dp))
+    // iOS's grouped-list heading: grey small capitals above the rows.
+    IosCaption(title, Modifier.padding(top = 26.dp, bottom = 2.dp), color = Palette.textSecondary)
 }
 
 @Composable
-private fun Note(text: String) = Text(text, style = MaterialTheme.typography.bodyMedium)
+private fun Note(text: String) = Text(text, style = IosType.footnote, color = Palette.textSecondary)
 
 @Composable
 private fun Toggle(label: String, on: Boolean, note: String? = null, set: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().focusCard { set(!on) }.padding(vertical = 6.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Text(label, style = MaterialTheme.typography.titleMedium)
-            note?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
+    Column {
+        Row(Modifier.fillMaxWidth().focusCard { set(!on) }.padding(vertical = 8.dp, horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f).padding(end = 12.dp)) {
+                Text(label, style = IosType.body, color = Palette.textPrimary)
+                note?.let { Text(it, style = IosType.footnote, color = Palette.textSecondary) }
+            }
+            // iOS's switch: green when on, white thumb, no outline.
+            Switch(on, set, colors = androidx.compose.material3.SwitchDefaults.colors(
+                checkedThumbColor = androidx.compose.ui.graphics.Color.White,
+                checkedTrackColor = androidx.compose.ui.graphics.Color(0xFF30D158),
+                checkedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+                uncheckedThumbColor = androidx.compose.ui.graphics.Color.White,
+                uncheckedTrackColor = androidx.compose.ui.graphics.Color(0xFF39393D),
+                uncheckedBorderColor = androidx.compose.ui.graphics.Color.Transparent))
         }
-        Switch(on, set)
+        androidx.compose.material3.HorizontalDivider(thickness = 0.5.dp, color = Palette.border)
     }
 }
 
@@ -246,11 +294,12 @@ private fun DeviceCare(state: AppState) {
 
 @Composable
 private fun Choice(label: String, options: List<String>, selected: Int, pick: (Int) -> Unit) {
-    Column(Modifier.padding(vertical = 4.dp)) {
-        Text(label, style = MaterialTheme.typography.titleMedium)
+    Column(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, style = IosType.body, color = Palette.textPrimary)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(options.size) { i -> LChip(i == selected, { pick(i) }, { Text(options[i]) }) }
+            items(options.size) { i -> IosChip(i == selected, options[i]) { pick(i) } }
         }
+        androidx.compose.material3.HorizontalDivider(thickness = 0.5.dp, color = Palette.border)
     }
 }
 

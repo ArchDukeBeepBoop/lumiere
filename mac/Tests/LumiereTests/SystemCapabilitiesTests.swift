@@ -48,6 +48,17 @@ func registerSystemCapabilitiesTests(_ t: TestRunner) {
             t.expect(caps.summary.contains("tone-mapped"))
         }
 
+        t.test("mpv is asked to use hardware only for what the Mac decodes in hardware") {
+            let caps = SystemCapabilities(
+                hardwareH264: true, hardwareHEVC: true, hardwareHEVC10Bit: true,
+                hardwareVP9: false, hardwareAV1: false, dolbyVision: false,
+                maxDecodeWidth: 4096, architecture: "x86_64"
+            )
+            let codecs = caps.hardwareDecodeCodecs.split(separator: ",").map(String.init)
+            t.expect(codecs.contains("h264") && codecs.contains("hevc"))
+            t.expect(!codecs.contains("av1") && !codecs.contains("vp9"), "AV1 and VP9 go straight to software")
+        }
+
         t.test("summary reports none when nothing is supported") {
             let caps = SystemCapabilities(
                 hardwareH264: false,

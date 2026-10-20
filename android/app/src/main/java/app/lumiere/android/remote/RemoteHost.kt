@@ -1,5 +1,6 @@
 package app.lumiere.android.remote
 
+import androidx.compose.material.icons.filled.PhoneIphone
 import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
@@ -98,7 +99,11 @@ object RemoteHost {
 
     private fun advertise(context: Context, name: String, port: Int) {
         val nsd = context.getSystemService(Context.NSD_SERVICE) as NsdManager
-        val info = NsdServiceInfo().apply { serviceName = name; serviceType = Remote.SERVICE_TYPE; this.port = port }
+        val info = NsdServiceInfo().apply {
+            serviceName = name; serviceType = Remote.SERVICE_TYPE; this.port = port
+            // Marked as a TV's: a phone lists only these.
+            setAttribute("kind", "tv")
+        }
         val listener = object : NsdManager.RegistrationListener {
             override fun onServiceRegistered(info: NsdServiceInfo) {}
             override fun onRegistrationFailed(info: NsdServiceInfo, error: Int) {}
@@ -171,9 +176,8 @@ object RemoteHost {
         out.println(JSONObject().put("t", "welcome").put("name", name))
         // A word on the TV that a phone has taken hold — who it is, never silent.
         val phone = prefs(context).getString("$device.name", null) ?: "A phone"
-        android.os.Handler(android.os.Looper.getMainLooper()).post {
-            android.widget.Toast.makeText(context, "$phone is connected as a remote", android.widget.Toast.LENGTH_SHORT).show()
-        }
+        app.lumiere.android.ui.Notice.show(phone, "Connected as a remote",
+            androidx.compose.material.icons.Icons.Default.PhoneIphone, androidx.compose.ui.graphics.Color(0xFF007AFF))
         return true
     }
 

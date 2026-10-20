@@ -44,6 +44,8 @@ extension MPVEngine {
         // video surface rather than an option change. Until then the log line
         // `[playback] decode:` and the HUD's Decode row both say Software, honestly.
         setOption("hwdec", "videotoolbox")
+        // Only where this Mac has the hardware. See `hardwareDecodeCodecs`.
+        setOption("hwdec-codecs", SystemCapabilities.detect().hardwareDecodeCodecs)
 
         // No direct rendering. This is the freeze.
         //

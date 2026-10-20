@@ -90,7 +90,7 @@ internal fun LazyListScope.phoneGenres(state: AppState, extras: PhoneExtras) {
     if (extras.genres.isEmpty()) return
     item(key = "genres") {
         PhoneShelf("Genres") {
-            items(extras.genres, key = { it.first }) { (name, pic) -> PictureCard(name, pic, state) { state.push(Screen.Search) } }
+            items(extras.genres, key = { it.first }) { (name, pic) -> PictureCard(name, pic, state) { state.push(Screen.Genre(name)) } }
         }
     }
 }
@@ -109,15 +109,7 @@ internal fun PhoneLibraries(views: List<Item>, extras: PhoneExtras, state: AppSt
 }
 
 @Composable
-private fun PhoneShelf(title: String, content: LazyListScope.() -> Unit) {
-    val form = LocalFormFactor.current
-    Column(Modifier.padding(vertical = 10.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(horizontal = form.gutter.dp))
-        Spacer(Modifier.height(10.dp))
-        LazyRow(contentPadding = PaddingValues(horizontal = form.gutter.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp), content = content)
-    }
-}
+private fun PhoneShelf(title: String, content: LazyListScope.() -> Unit) = PhoneRow(title, content = content)
 
 /** A poster with the Top 10's big number beside it. */
 @Composable
@@ -128,7 +120,7 @@ private fun RankedPoster(item: Item, state: AppState, rank: Int, onClick: () -> 
         Text("$rank", style = TextStyle(fontSize = 72.sp, lineHeight = 72.sp, fontWeight = FontWeight.Black,
             color = Palette.textPrimary.copy(alpha = 0.2f)), modifier = Modifier.padding(end = 2.dp))
         Column(Modifier.width(width.dp)) {
-            Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).focusCard(onClick).background(Palette.surface)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(2f / 3f).pressScale().focusCard({}, onClick) { PhoneMenu.item = item }.background(Palette.surface)) {
                 AsyncImage(imageFor(item, server, CardShape.Poster, width * 2), item.name,
                     contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
             }
@@ -142,7 +134,7 @@ private fun RankedPoster(item: Item, state: AppState, rank: Int, onClick: () -> 
 @Composable
 private fun PictureCard(name: String, picture: Item?, state: AppState, onClick: () -> Unit) {
     val server = state.server ?: return
-    Box(Modifier.width(200.dp).aspectRatio(16f / 9f).focusCard(onClick).background(Palette.surfaceRaised),
+    Box(Modifier.width(200.dp).aspectRatio(16f / 9f).pressScale().focusCard(onClick).background(Palette.surfaceRaised),
         contentAlignment = Alignment.Center) {
         picture?.let {
             AsyncImage(server.imageUrl(it.id, "Backdrop", it.backdropTag, 420), null, contentScale = ContentScale.Crop,

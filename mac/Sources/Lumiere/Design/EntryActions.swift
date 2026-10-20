@@ -105,8 +105,9 @@ extension EntryActionState {
             hideFromShelves: extras.hideFromShelves.map { hide in
                 { await hide(id) }
             },
-            addToCollection: !extras.allowsMetadata
-                || entry.item.itemType == .boxSet ? nil : {
+            // Files in the folder libraries too: a collection on this server
+            // holds anything, and only scraping needs a provider.
+            addToCollection: entry.item.itemType == .boxSet ? nil : {
                 guard !offline else { return app.refuseOffline("Collections") }
                 self.collectionEntry = entry
             },
@@ -149,6 +150,16 @@ extension EntryActionState {
                 guard !offline else { return app.refuseOffline("Playlists") }
                 self.playlistEntry = entry
             },
+            playNext: PlayQueue.isPlayable(entry) ? {
+                // Nothing playing: next is now.
+                guard app.nowPlayingItemId != nil else { app.nowPlayingItemId = entry.id; return }
+                PlayQueue.shared.playNext(entry)
+                app.report("\(entry.item.name) plays next.")
+            } : nil,
+            addToQueue: PlayQueue.isPlayable(entry) ? {
+                PlayQueue.shared.add([entry])
+                app.report("\(entry.item.name) added to the queue.")
+            } : nil,
             beginSelection: extras.beginSelection.map { begin in { begin(id) } },
             generateThumbnail: extras.generateThumbnail.map { make in { make(id) } },
             deleteCollection: entry.item.itemType == .boxSet

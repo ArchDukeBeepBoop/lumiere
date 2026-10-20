@@ -202,6 +202,11 @@ class Prefs(context: Context) {
     var libraryColumns: Int get() = _cols.value
         set(v) { _cols.value = v; putInt("libraryColumns", v) }
 
+    private val _homeRows = intPref("homeRows", 0)
+    /** Rows on TV Home: 0 for all, otherwise the most shown. */
+    var homeRows: Int get() = _homeRows.value
+        set(v) { _homeRows.value = v; putInt("homeRows", v) }
+
     private val _epPage = flag("episodesOpenPage", false)
     /** An episode chosen on a show's page opens its own page first, rather than playing at once. */
     var episodesOpenPage: Boolean get() = _epPage.value
@@ -211,6 +216,11 @@ class Prefs(context: Context) {
     /** Unwatched episodes show their number only, not their name or story. */
     var hidesSpoilers: Boolean get() = _spoilers.value
         set(v) { _spoilers.value = v; put("hidesSpoilers", v) }
+
+    private val _touchpad = flag("remoteTouchpad", true)
+    /** The phone's remote as Apple's: a surface to swipe and tap, rather than arrows. */
+    var remoteTouchpad: Boolean get() = _touchpad.value
+        set(v) { _touchpad.value = v; put("remoteTouchpad", v) }
 
     private val _remote = flag("phoneRemote", true)
     /** Phones on the home Wi-Fi may pair and act as this TV's remote. */
@@ -282,6 +292,11 @@ class Prefs(context: Context) {
     var reduceMotion: Boolean get() = _calm.value
         set(v) { _calm.value = v; put("reduceMotion", v) }
 
+    private val _phoneMerged = flag("phoneUpNextMerged", true)
+    /** On a phone: Continue Watching, Up Next additions and Next Up as one Up Next row, as Apple's app on an iPhone. */
+    var phoneUpNextMerged: Boolean get() = _phoneMerged.value
+        set(v) { _phoneMerged.value = v; put("phoneUpNextMerged", v) }
+
     private val _merged = flag("tvUpNextMerged", true)
     /** Continue Watching, Next Up and Finish the Season as one Up Next row, as the Apple TV app shows them. */
     var tvUpNextMerged: Boolean get() = _merged.value
@@ -311,7 +326,11 @@ class Prefs(context: Context) {
     var filmsWarm: Boolean get() = _filmWarm.value
         set(v) { _filmWarm.value = v; put("filmsWarm", v) }
 
-    private val _compact = flag("compactHome", Device.lowMemory)
+    // Off by default: rows arriving late pushed earlier ones past the limit, so a row
+    // showed and then vanished. Turned off once for everyone who had it by default.
+    private val _compact = flag("compactHome", false).also {
+        if (!store.getBoolean("compactHomeOffOnce", false)) { it.value = false; store.edit().putBoolean("compactHome", false).putBoolean("compactHomeOffOnce", true).apply() }
+    }
     /** TV Home keeps its first six rows; the rest wait in Library and Settings › Rows. */
     var compactHome: Boolean get() = _compact.value
         set(v) { _compact.value = v; put("compactHome", v) }
@@ -423,9 +442,9 @@ class Prefs(context: Context) {
             "burnsInSubtitles" to "Burn in subtitles", "subtitleSize" to "Subtitle size", "subtitleStyle" to "Subtitle style",
             "fillsScreen" to "Fill the screen", "dialogueBoost" to "Dialogue boost", "nightSound" to "Night sound",
             "focusSound" to "Sound on focus", "libraryColumns" to "Library columns", "episodesOpenPage" to "Episodes open their page",
-            "hidesSpoilers" to "Hide spoilers", "phoneRemote" to "Phone as a remote", "nightAuto" to "Night mode by itself",
+            "hidesSpoilers" to "Hide spoilers", "phoneRemote" to "Phone as a remote", "remoteTouchpad" to "Swipe pad on the phone's remote", "nightAuto" to "Night mode by itself",
             "keepNextReady" to "Keep the next episode ready", "skipCountdown" to "Countdown on Skip", "screensaverMinutes" to "Screensaver after (minutes)",
-            "dimsAtNight" to "Dim at night", "reduceMotion" to "Reduce motion", "tvUpNextMerged" to "One Up Next row",
+            "dimsAtNight" to "Dim at night", "reduceMotion" to "Reduce motion", "tvUpNextMerged" to "One Up Next row", "phoneUpNextMerged" to "One Up Next row on the phone",
             "bannerPreviews" to "Moving previews", "tvTopBar" to "Top bar on TV", "textScale" to "Text size", "showsClock" to "Clock",
             "filmsWarm" to "Warm picture for films", "compactHome" to "Compact Home", "pictureTone" to "Picture tone",
             "lampBright" to "Bright lamp", "stillWatchingAfter" to "Ask \u201CStill watching?\u201D after",

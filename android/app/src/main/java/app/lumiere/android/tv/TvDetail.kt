@@ -2,6 +2,10 @@
 
 package app.lumiere.android.tv
 
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import app.lumiere.android.ui.frosted
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
@@ -110,13 +114,13 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
         item = found
         if (found.isSeries) {
             // Specials always last, so a show never opens on them; newest first when asked for this show.
-            seasons = state.seasonsOrSaved(id).sortedWith(compareBy { (it.indexNumber ?: 0) == 0 || it.name.contains("Special", true) })
+            seasons = runCatching { state.seasonsOrSaved(id) }.getOrDefault(emptyList()).sortedWith(compareBy { (it.indexNumber ?: 0) == 0 || it.name.contains("Special", true) })
                 .let { all -> if (state.settings.seasonsNewestFirst(id)) all.filter { (it.indexNumber ?: 0) != 0 }.reversed() + all.filter { (it.indexNumber ?: 0) == 0 } else all }
             season = season?.let { s -> seasons.firstOrNull { it.id == s.id } }
                 ?: startSeason?.let { s -> seasons.firstOrNull { it.id == s } }
                 ?: seasons.firstOrNull { (it.unplayedCount ?: 0) > 0 } ?: seasons.firstOrNull()
             nextUp = runCatching { server.nextUp(userId).firstOrNull { it.seriesId == id } }.getOrNull()
-        } else if (found.isFolder) children = state.childrenOrSaved(id)
+        } else if (found.isFolder) children = runCatching { state.childrenOrSaved(id) }.getOrDefault(emptyList())
         similar = state.visible(runCatching { server.similar(userId, id) }.getOrDefault(emptyList()))
         extras = server.extras(userId, id)
     }
@@ -255,6 +259,7 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                 if (current.people.isNotEmpty()) "Cast & Crew" to { Cast(current, state) } else null,
                 if (extras.isNotEmpty()) "Extras" to { Row("Extras", extras, state, play = true) } else null,
                 if (similar.isNotEmpty()) "More Like This" to { Row("More Like This", similar, state) } else null,
+                "Information" to { Information(current) },
             )
             if (sections.isNotEmpty()) {
                 val tabsAt = next++
@@ -272,7 +277,6 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                     Box(Modifier.onFocusChanged { if (it.hasFocus) below = blockAt }) { sections.getOrNull(section)?.second?.invoke() }
                 }
             }
-            item(key = "info") { Information(current) }
         }
         }
     }
@@ -298,8 +302,23 @@ private fun Top(state: AppState, item: Item, nextUp: Item?, modifier: Modifier, 
                 item.runtimeTicks?.let { val m = it / TICKS_PER_SECOND / 60; if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m" },
                 item.officialRating, listOfNotNull(item.genres.take(3).joinToString(", ").ifEmpty { null },
                     item.communityRating?.let { "★ %.1f".format(it) }))
-            item.overview?.let { Text(it, maxLines = 4, overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, lineHeight = 23.sp, color = Color.White.copy(alpha = 0.85f))) }
+            // tvOS's summary: when it runs long, it can be chosen, says MORE, and opens in full.
+            item.overview?.let { story ->
+                var cut by remember(item.id) { mutableStateOf(false) }
+                var on by remember { mutableStateOf(false) }
+                var open by remember { mutableStateOf(false) }
+                Box(Modifier.onFocusChanged { on = it.isFocused }
+                    .then(if (cut) Modifier.clickable { open = true } else Modifier)
+                    .background(if (on) Color.White.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(10.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)) {
+                    Text(story, maxLines = 4, overflow = TextOverflow.Ellipsis, onTextLayout = { cut = it.hasVisualOverflow },
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, lineHeight = 23.sp, color = Color.White.copy(alpha = 0.85f)))
+                    if (cut) Text("MORE", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White, modifier = Modifier.align(Alignment.BottomEnd)
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp))
+                }
+                if (open) StorySheet(item) { open = false }
+            }
             val target = if (item.isSeries) nextUp else item
             // A collection: its titles in release order, the first not yet watched.
             if (inOrder != null) {
@@ -374,6 +393,17 @@ private fun Top(state: AppState, item: Item, nextUp: Item?, modifier: Modifier, 
                     Round(if (item.favorite) androidx.compose.material.icons.Icons.Default.Star else androidx.compose.material.icons.Icons.Default.StarBorder,
                         "Favourite") { onFavourite(!item.favorite) }
                 }
+                // tvOS's "+": into Up Next before it is started; a tick once it is there.
+                if (!state.roomOpen && item.positionTicks == 0L && (item.isPlayable || item.isSeries)) item {
+                    val queued = item.id in state.settings.watchlist
+                    Round(if (queued) androidx.compose.material.icons.Icons.Default.Check else androidx.compose.material.icons.Icons.Default.Add,
+                        if (queued) "In Up Next" else "Up Next") {
+                        val w = state.settings.watchlist
+                        state.settings.watchlist = if (queued) w - item.id else listOf(item.id) + w
+                        state.undo = (if (queued) "Removed from Up Next" else "Added to Up Next") to {
+                            state.settings.watchlist = if (queued) listOf(item.id) + state.settings.watchlist else state.settings.watchlist - item.id }
+                    }
+                }
                 item { Round(androidx.compose.material.icons.Icons.Default.MoreHoriz, "More") { state.actionsFor = item } }
             }
         }
@@ -385,7 +415,8 @@ private fun Episode(e: Item, state: AppState, next: Boolean = false) {
     val server = state.server ?: return
     // Apple TV's episode: a wide still, then its number, name, length and a
     // few lines of what happens, so a season reads without opening each one.
-    Column(Modifier.width(320.dp)) {
+    var chosen by remember { mutableStateOf(false) }
+    Column(Modifier.width(320.dp).onFocusChanged { chosen = it.hasFocus }) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).focusCard({}, {
             state.push(if (state.settings.episodesOpenPage) Screen.Detail(e.id) else Screen.Player(e.id, null)) }) { state.actionsFor = e }
             // The one to watch next, outlined in gold so it is found at a glance.
@@ -399,12 +430,20 @@ private fun Episode(e: Item, state: AppState, next: Boolean = false) {
             }
             if (e.played) Text("✓", color = Palette.onAccent, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
                 .background(Palette.accent, CircleShape).padding(horizontal = 6.dp))
+            // Selected: a play symbol on a dark disc over the still, as the Apple TV app shows.
+            if (chosen) Box(Modifier.align(Alignment.Center).size(46.dp).background(Color.Black.copy(alpha = 0.55f), CircleShape),
+                contentAlignment = Alignment.Center) {
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Default.PlayArrow, null, tint = Color.White, modifier = Modifier.size(28.dp))
+            }
         }
         Spacer(Modifier.height(8.dp))
         val hidden = state.settings.hidesSpoilers && !e.played && e.positionTicks == 0L
-        Text(if (hidden) "Episode ${e.indexNumber ?: ""}" else listOfNotNull(e.indexNumber?.let { "$it." }, e.name).joinToString(" "), maxLines = 1, overflow = TextOverflow.Ellipsis,
-            style = TextStyle(fontSize = 15.sp, fontWeight = FontWeight.Medium, color = Palette.textPrimary))
-        e.runtimeTicks?.let { Text("${it / TICKS_PER_SECOND / 60} min", style = MaterialTheme.typography.labelMedium) }
+        // "EPISODE 4 · 24 MIN" in small grey capitals, then the name — the Apple TV app's episode caption.
+        Text(listOfNotNull(e.indexNumber?.let { "Episode $it" }, e.runtimeTicks?.let { "${it / TICKS_PER_SECOND / 60} min" },
+            e.progress?.let { "${((e.runtimeTicks ?: 0) - e.positionTicks) / TICKS_PER_SECOND / 60} min left" }).joinToString(" · ").uppercase(),
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.sp, fontWeight = FontWeight.SemiBold), color = Palette.textMuted, maxLines = 1)
+        Text(if (hidden) "Episode ${e.indexNumber ?: ""}" else e.name, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            style = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary))
         if (!hidden) e.overview?.let { Text(it, maxLines = 3, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall,
             color = Palette.textSecondary, modifier = Modifier.padding(top = 4.dp)) }
     }
@@ -501,14 +540,19 @@ private fun Information(item: Item) {
         subs.takeIf { it.isNotEmpty() }?.let { "Subtitles" to it.mapNotNull { s -> lang(s.language) ?: s.title }.distinct().joinToString(", ") },
     )
     if (facts.isEmpty()) return
-    Column(Modifier.padding(start = 56.dp, end = 56.dp, top = 28.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Information", style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary))
+    // The Apple TV app's Information: small grey capitals over white values, in even columns.
+    // Selectable as a whole, so Down from its tab brings it onto the screen.
+    var on by remember { mutableStateOf(false) }
+    Column(Modifier.padding(start = 56.dp, end = 56.dp, top = 18.dp, bottom = 28.dp).onFocusChanged { on = it.isFocused }.focusable()
+        .background(if (on) Color.White.copy(alpha = 0.05f) else Color.Transparent, RoundedCornerShape(14.dp)).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)) {
         facts.chunked(3).forEach { row ->
             androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(40.dp)) {
                 row.forEach { (k, v) ->
-                    Column(Modifier.width(300.dp)) {
-                        Text(k, style = MaterialTheme.typography.labelMedium)
-                        Text(v, style = MaterialTheme.typography.bodyMedium.copy(color = Palette.textSecondary), maxLines = 2)
+                    Column(Modifier.width(280.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(k.uppercase(), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp,
+                            fontWeight = FontWeight.SemiBold), color = Palette.textMuted)
+                        Text(v, style = MaterialTheme.typography.bodyMedium, color = Palette.textPrimary, maxLines = 2)
                     }
                 }
             }
@@ -527,6 +571,26 @@ private fun MissingTitle(state: AppState) {
         androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             app.lumiere.android.ui.TvPill({ state.pop() }, Modifier.focusRequester(back), selected = true) { Text("Back") }
             app.lumiere.android.ui.TvPill({ state.tab(Screen.Search) }) { Text("Search for it") }
+        }
+    }
+}
+
+/** The whole summary on a frosted sheet over the page, as tvOS opens MORE; Back closes it. */
+@Composable
+private fun StorySheet(item: Item, onClose: () -> Unit) {
+    androidx.activity.compose.BackHandler(onBack = onClose)
+    val hold = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { hold.requestFocus() } }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onClose,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f)).focusRequester(hold).focusable()
+            .clickable { onClose() }, contentAlignment = Alignment.Center) {
+            Column(Modifier.widthIn(max = 760.dp).frosted(22).padding(32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(if (item.isEpisode) "${item.seriesName} · ${item.episodeLabel ?: ""} · ${item.name}" else item.name,
+                    style = MaterialTheme.typography.headlineSmall)
+                Text(item.overview.orEmpty(), style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 28.sp), color = Palette.textPrimary)
+            }
         }
     }
 }

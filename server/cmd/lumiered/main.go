@@ -143,6 +143,7 @@ func main() {
 	authed.HandleFunc("GET /Library/Refresh/Status", refresh.Status)
 	registerSchedule(authed, db, cfg, refresh, log)
 	api.LibrariesHandler{Store: db, Refresh: refresh, Log: log}.Register(authed)
+	api.WidgetHandler{Store: db, Images: images.Image}.Register(mux, authed)
 	authed.HandleFunc("POST /Lumiere/Account/Password", auth.ChangePassword)
 	registerChanges(authed, db, log)
 

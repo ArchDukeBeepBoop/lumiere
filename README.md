@@ -21,7 +21,10 @@ network.
 - **Libraries the way you keep them.** Films, TV & anime, music (with synced lyrics), home videos, or plain folders. Several folders can feed one library.
 - **Two rooms.** A Main Room, and a Private Room for libraries you'd rather keep to yourself — off Home, search and Continue Watching until you open it, with Touch ID, blurred covers and its own settings.
 - **Collections that make themselves.** Film series are gathered into collections room by room, with posters and overviews; identify, scan or discover more by hand.
-- **A player worth using.** Direct play whenever possible (AVPlayer or libmpv), chapter thumbnails, skip intro and recap, Up Next at the credits, dialogue enhancement, picture in picture, and subtitle search with automatic sync.
+- **Theme collections.** Immortality, Time Loops, Cop Dramas and more, built from the movie database's keywords with designed posters and backdrops — and your own themes from any keywords.
+- **A player worth using.** Direct play whenever possible (AVPlayer or libmpv), an Apple TV–style audio and subtitles menu, chapter thumbnails, skip intro and recap, Up Next at the credits, dialogue enhancement, picture in picture, and subtitle search with automatic sync.
+- **Queues and playlists.** Play Next and Add to Queue from any title; save a queue as a playlist the phone and TV can play too.
+- **At home on macOS.** Control Center's Now Playing and the media keys, Continue Watching on the Dock menu and in a desktop widget.
 - **Live everywhere.** A change feed keeps every device current within a second; watched state and favourites made offline are delivered later.
 
 ## Getting started

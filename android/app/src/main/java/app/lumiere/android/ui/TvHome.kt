@@ -2,6 +2,9 @@
 
 package app.lumiere.android.ui
 
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.graphicsLayer
 import app.lumiere.android.api.isNew
@@ -135,7 +138,9 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
         // The rows below the first few wait until those are on screen — Home
         // appears sooner, and the Top 10s and genres follow a moment later.
         delay(if (app.lumiere.android.Device.lowMemory) 1500 else 600)
-        extras = coroutineScope {
+        // The Mac away mid-load: these rows stay as they were, the app stays open.
+        // (Unguarded, a timeout here once closed the whole app.)
+        extras = try { coroutineScope {
             val films = rows.libraries.filter { it.collectionType == "movies" && !it.name.contains("anime", true) }
             val shows = rows.libraries.filter { it.collectionType == "tvshows" && !it.name.contains("anime", true) }
             val anime = rows.libraries.filter { it.name.contains("anime", true) }
@@ -184,6 +189,8 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
             TvExtras(state.visible(f.await()).wanted(), state.visible(s.await()).wanted(), state.visible(a.await()).wanted(),
                 g.await().filter { it.second == null || !state.hides(it.second!!.libraryId) }, fin.await().wanted(), cont.wanted(),
                 bec.await().map { (t, l) -> t to l.wanted() }.filter { it.second.isNotEmpty() }, l.await(), runCatching { col.await() }.getOrDefault(emptyList()).wanted())
+        } } catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) {
+            app.lumiere.android.Diagnostics.note("home extras: ${e.message}"); extras
         }
     }
 
@@ -224,6 +231,12 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
         while (heroFocused && pages.size > 1) { delay(9_000); if (!bannerHeld) page = (page + 1) % pages.size }
     }
     val hero = pages.getOrNull(page)
+    // The menu bar and panels take the banner's colour, as tvOS's frosted bars take what lies behind.
+    LaunchedEffect(hero?.id) {
+        val h = hero ?: return@LaunchedEffect
+        delay(400)
+        runCatching { app.lumiere.android.ui.Ambient.learn(context, imageFor(h, server, CardShape.Wide, 64)) }
+    }
     // The picture settles a moment after the selection, so sweeping a row
     // does not load every backdrop on the way past.
     var shown by remember { mutableStateOf<Item?>(null) }
@@ -309,6 +322,10 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                 }
                 var index = 0
                 fun shelf(key: String, block: @Composable () -> Unit) {
+                    // Compact Home counts rows actually shown, not row kinds — several kinds
+                    // show nothing on their own, and counting those left only three rows.
+                    val limit = state.settings.homeRows.takeIf { it > 0 } ?: if (state.settings.compactHome) 6 else 0
+                    if (limit > 0 && index >= limit) return
                     val mine = ++index
                     item(key = key) {
                         Box(Modifier.onFocusChanged { if (it.hasFocus) row = mine }) {
@@ -318,7 +335,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                 }
                 // In the order Settings gives, each row on or off — the Mac's Home Order.
                 for (key in state.settings.tvRowOrder.filter { it !in state.settings.tvRowsHidden }
-                    .let { if (state.settings.compactHome) it.take(6) else it }) when (key) {
+) when (key) {
                     // One Up Next row, as the Apple TV app shows it: what is in
                     // progress, then what comes next, then seasons nearly done.
                     "continue" -> if (state.settings.tvUpNextMerged) {
@@ -458,9 +475,22 @@ private fun Hero(state: AppState, item: Item?, pages: Int, page: Int, onPage: (I
                     Text(if (item.positionTicks > 0) "▶  Resume" + (item.episodeLabel?.let { " $it" } ?: "") +
                         " · ${((item.runtimeTicks ?: 0) - item.positionTicks) / TICKS_PER_SECOND / 60} min left" else "▶  Play")
                 }
-                LButton(primary = false, modifier = Modifier.onFocusChanged { onInfo = it.isFocused; onHold(it.isFocused) }, onClick = {
+                // Apple's banner: round "+" for Up Next and ⓘ for the title's page beside Play.
+                if (!state.roomOpen && item.positionTicks == 0L) {
+                    val queued = item.id in state.settings.watchlist
+                    app.lumiere.android.ui.LIconButton(onClick = {
+                        state.settings.watchlist = if (queued) state.settings.watchlist - item.id else listOf(item.id) + state.settings.watchlist
+                    }, modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.16f), CircleShape)) {
+                        androidx.compose.material3.Icon(if (queued) androidx.compose.material.icons.Icons.Default.Check else androidx.compose.material.icons.Icons.Default.Add,
+                            if (queued) "In Up Next" else "Add to Up Next", tint = app.lumiere.android.ui.pillTint(Color.White))
+                    }
+                }
+                app.lumiere.android.ui.LIconButton(onClick = {
                     state.push(if (item.isEpisode && item.seriesId != null) Screen.Detail(item.seriesId, item.seasonId) else Screen.Detail(item.id))
-                }) { Text("More Info") }
+                }, modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.16f), CircleShape)
+                    .onFocusChanged { onInfo = it.isFocused; onHold(it.isFocused) }) {
+                    androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Info, "More Info", tint = app.lumiere.android.ui.pillTint(Color.White))
+                }
                 Spacer(Modifier.width(18.dp))
                 repeat(pages) { i ->
                     Box(Modifier.padding(horizontal = 3.dp).size(if (i == page) 8.dp else 6.dp).clip(CircleShape)
@@ -503,16 +533,18 @@ private fun TvShelf(title: String, subtitle: String? = null, content: androidx.c
 @Composable
 private fun WideCard(item: Item, state: AppState, onFocus: () -> Unit, large: Boolean = false, onClick: () -> Unit) {
     val server = state.server ?: return
-    Column(Modifier.width(if (large) LocalTvSizes.current.large else LocalTvSizes.current.wide)) {
+    // The show's logo grows on the chosen card, as the Apple TV app's Up Next lifts it.
+    var chosen by remember { mutableStateOf(false) }
+    Column(Modifier.width(if (large) LocalTvSizes.current.large else LocalTvSizes.current.wide).onFocusChanged { chosen = it.hasFocus }) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).focusCard(onFocus, onClick) { state.actionsFor = item }.background(Palette.surface)) {
             AsyncImage(imageFor(item, server, CardShape.Wide, 600), item.name, contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize())
             // The show's logo on its still, low on the left, as the Apple TV app does.
-            if (item.isEpisode && item.seriesId != null) {
+            if (item.isEpisode && item.seriesId != null && item.seriesLogoTag != null) {
                 Box(Modifier.matchParentSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
-                AsyncImage(server.imageUrl(item.seriesId, "Logo", null, 300), null, contentScale = ContentScale.Fit,
+                AsyncImage(server.imageUrl(item.seriesId, "Logo", item.seriesLogoTag, 300), null, contentScale = ContentScale.Fit,
                     alignment = Alignment.BottomStart,
-                    modifier = Modifier.align(Alignment.BottomStart).padding(10.dp).height(34.dp).fillMaxWidth(0.55f))
+                    modifier = Modifier.align(Alignment.BottomStart).padding(10.dp).height(if (chosen) 46.dp else 34.dp).fillMaxWidth(if (chosen) 0.65f else 0.55f))
             }
             app.lumiere.android.ui.WatchedMark(item, Modifier.align(Alignment.TopEnd))
             item.progress?.let { p ->

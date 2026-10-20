@@ -116,14 +116,18 @@ extension PlayerModel {
 
     /// Called on stop and on window close. This is what writes the resume
     /// position, so it must run even when the user just closes the window.
-    func finish(markPlayed: Bool = false) async {
+    ///
+    /// `stopEngine: false` at the natural end of a file: watched and reported,
+    /// but the file stays loaded. Stopping it there left nothing to show when
+    /// you skipped back from the end — a black picture until reopened.
+    func finish(markPlayed: Bool = false, stopEngine: Bool = true) async {
         guard didStart, let mediaSourceId else {
-            await engine?.stop()
+            if stopEngine { await engine?.stop() }
             return
         }
 
         let finalPosition = position
-        await engine?.stop()
+        if stopEngine { await engine?.stop() }
 
         // Stopped in the credits: watched, here and on the server. See
         // `WatchedAtCredits`.
@@ -154,6 +158,8 @@ extension PlayerModel {
             playSessionId: playSessionId,
             positionSeconds: finalPosition
         )
-        didStart = false
+        // Still open at the end: closing the window later must save again,
+        // in case you went back and watched on.
+        if stopEngine { didStart = false }
     }
 }

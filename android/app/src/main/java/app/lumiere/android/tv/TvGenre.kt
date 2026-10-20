@@ -40,14 +40,20 @@ fun GenreScreen(state: AppState, genre: String) {
                     .getOrDefault(emptyList())).firstOrNull { it.backdropTag != null }
             }
             lead?.let { l -> androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = LocalFormFactor.current.gutter.dp)
-                .fillMaxWidth().height(180.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))) {
+                .fillMaxWidth().height(250.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))) {
                 coil.compose.AsyncImage(app.lumiere.android.ui.imageFor(l, server, app.lumiere.android.ui.CardShape.Wide, 1200), null,
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.horizontalGradient(
                     listOf(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.7f), androidx.compose.ui.graphics.Color.Transparent))))
-                Text("Top rated in $genre · ${l.name}", color = androidx.compose.ui.graphics.Color.White,
-                    style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(18.dp))
+                // Apple's featured banner: the title's own logo where it has one, a quiet line above.
+                androidx.compose.foundation.layout.Column(Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(22.dp)) {
+                    Text("TOP RATED IN ${genre.uppercase()}", color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.75f),
+                        style = androidx.compose.material3.MaterialTheme.typography.labelMedium.copy(letterSpacing = androidx.compose.ui.unit.TextUnit(1.2f, androidx.compose.ui.unit.TextUnitType.Sp)))
+                    if (l.logoTag != null) coil.compose.AsyncImage(server.imageUrl(l.id, "Logo", l.logoTag, 600), l.name,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit, alignment = androidx.compose.ui.Alignment.BottomStart,
+                        modifier = Modifier.padding(top = 6.dp).height(70.dp).fillMaxWidth(0.4f))
+                    else Text(l.name, color = androidx.compose.ui.graphics.Color.White, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall)
+                }
             } }
             Row(Modifier.padding(horizontal = LocalFormFactor.current.gutter.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf("Newest", "Best rated", "A–Z").forEachIndexed { i, l -> LChip(sort == i, { sort = i }, { Text(l) }) }

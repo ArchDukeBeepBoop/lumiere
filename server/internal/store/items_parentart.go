@@ -26,7 +26,7 @@ func (s *Store) hydrateParentArt(items []Item) error {
 	rows, err := s.DB.Query(
 		`SELECT item_id, kind, tag FROM image
 		 WHERE item_id IN (`+placeholders(len(ids))+`)
-		   AND kind IN ('Primary','Backdrop')
+		   AND kind IN ('Primary','Backdrop','Logo')
 		 ORDER BY idx`, ids...)
 	if err != nil {
 		return err
@@ -34,11 +34,18 @@ func (s *Store) hydrateParentArt(items []Item) error {
 	defer rows.Close()
 
 	primary := map[string]string{}
+	logos := map[string]string{}
 	backdrops := map[string][]string{}
 	for rows.Next() {
 		var id, kind, tag string
 		if err := rows.Scan(&id, &kind, &tag); err != nil {
 			return err
+		}
+		if kind == "Logo" {
+			if _, seen := logos[id]; !seen {
+				logos[id] = tag
+			}
+			continue
 		}
 		if kind == "Backdrop" {
 			backdrops[id] = append(backdrops[id], tag)
@@ -58,6 +65,12 @@ func (s *Store) hydrateParentArt(items []Item) error {
 			continue
 		}
 		it.SeriesPrimaryImageTag = primary[it.SeriesID]
+		// The show's logo, so a client draws it only where there is one —
+		// the TV's episode cards asked for every show's and got 222 404s.
+		if tag := logos[it.SeriesID]; tag != "" {
+			it.ParentLogoItemID = it.SeriesID
+			it.ParentLogoTag = tag
+		}
 		if tags := backdrops[it.SeriesID]; len(tags) > 0 {
 			// The id travels with the tags: the client builds an image URL from
 			// both, and a tag without the item it belongs to is unusable.

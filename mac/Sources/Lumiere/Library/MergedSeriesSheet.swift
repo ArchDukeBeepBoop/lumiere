@@ -49,7 +49,7 @@ struct MergedSeriesSheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 720, height: 640)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .task {
             let model = MergedSeriesModel(repository: repository, client: client)
             self.model = model

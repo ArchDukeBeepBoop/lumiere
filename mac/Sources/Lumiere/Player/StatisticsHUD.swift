@@ -32,7 +32,7 @@ struct StatisticsHUD: View {
         .padding(Theme.Space.md)
         // The same plate the transport bar sits on, so the two overlays read as
         // parts of one player rather than as two separate widgets.
-        .playerSurface(cornerRadius: Theme.Radius.playerPanel)
+        .playerSurface(cornerRadius: Theme.Radius.playerGlass)
         .padding(.horizontal, Theme.Space.shelfInset)
         // Below the Close button rather than under it: the HUD opens in the same
         // corner, and at the old inset the two overlapped.

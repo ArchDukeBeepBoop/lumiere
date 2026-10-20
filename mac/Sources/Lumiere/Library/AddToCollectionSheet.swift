@@ -42,7 +42,7 @@ struct AddToCollectionSheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 420, height: 480)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .task {
             collections = (try? await repository.allCollections()) ?? []
             isLoading = false

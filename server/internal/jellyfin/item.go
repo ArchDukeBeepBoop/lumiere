@@ -72,6 +72,8 @@ type BaseItem struct {
 	ParentBackdropItemId    string            `json:"ParentBackdropItemId,omitempty"`
 	ParentBackdropImageTags []string          `json:"ParentBackdropImageTags,omitempty"`
 	SeriesPrimaryImageTag   string            `json:"SeriesPrimaryImageTag,omitempty"`
+	ParentLogoItemId        string            `json:"ParentLogoItemId,omitempty"`
+	ParentLogoImageTag      string            `json:"ParentLogoImageTag,omitempty"`
 
 	Album       string   `json:"Album,omitempty"`
 	AlbumId     string   `json:"AlbumId,omitempty"`

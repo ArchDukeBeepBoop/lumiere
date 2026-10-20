@@ -48,7 +48,6 @@ final class BackupRestorer {
         alert.informativeText = "Watch history and changes since then will be undone. "
             + "Today's database is kept beside it as library.db.before-restore, so this "
             + "can be reversed by hand. The server restarts."
-        MenuLook.style(alert)
         alert.addButton(withTitle: "Restore")
         alert.addButton(withTitle: "Cancel")
         NSApp.activate(ignoringOtherApps: true)

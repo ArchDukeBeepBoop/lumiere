@@ -22,7 +22,7 @@ extension PlayerView {
         // The same plate the transport sits on. A bare spinner on black is the
         // one screen that looked like nothing had loaded at all rather than like
         // the app was working.
-        .playerSurface(cornerRadius: Theme.Radius.playerPanel)
+        .playerSurface(cornerRadius: Theme.Radius.playerGlass)
     }
 
     func engineMissing(_ decision: PlaybackDecision) -> some View {
@@ -90,6 +90,6 @@ extension PlayerView {
         .frame(maxWidth: 460)
         .padding(.horizontal, Theme.Space.xxxl)
         .padding(.vertical, Theme.Space.xxl)
-        .playerSurface(cornerRadius: Theme.Radius.playerPanel)
+        .playerSurface(cornerRadius: Theme.Radius.playerGlass)
     }
 }

@@ -93,3 +93,21 @@ public struct SystemCapabilities: Sendable, Equatable {
         return "\(architecture) · hardware decode: \(list) · Dolby Vision: \(dolbyVision ? "yes" : "tone-mapped")"
     }
 }
+
+public extension SystemCapabilities {
+    /// mpv's `hwdec-codecs`: only the codecs this Mac decodes in hardware.
+    ///
+    /// mpv tried VideoToolbox for everything, so an AV1 file on this Intel
+    /// Mac logged four errors and paused while hardware decode failed before
+    /// software took over. Asking only where the answer is yes skips that.
+    var hardwareDecodeCodecs: String {
+        var codecs: [String] = []
+        if hardwareH264 { codecs.append("h264") }
+        if hardwareHEVC { codecs.append("hevc") }
+        if hardwareVP9 { codecs.append("vp9") }
+        if hardwareAV1 { codecs.append("av1") }
+        // VideoToolbox's older formats, decoded in hardware on every Mac.
+        codecs += ["mpeg2video", "mpeg4", "prores"]
+        return codecs.joined(separator: ",")
+    }
+}

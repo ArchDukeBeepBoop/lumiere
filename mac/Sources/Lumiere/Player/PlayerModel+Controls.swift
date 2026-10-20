@@ -88,11 +88,18 @@ extension PlayerModel {
     /// readiness in completely different ways and neither exposes it through
     /// `PlayerEngine`. Bounded, so a genuinely track-less file costs a moment rather
     /// than hanging.
-    func waitForTracks(timeout: Duration = .seconds(4)) async {
+    ///
+    /// Until the tracks are there or the file is visibly playing — not four
+    /// seconds. A file on a drive still spinning up took 46 s to show its
+    /// first frame, the four-second wait had long given up, and the menus
+    /// stayed empty with the remembered languages never applied.
+    func waitForTracks(timeout: Duration = .seconds(90)) async {
         let deadline = ContinuousClock.now.advanced(by: timeout)
         while ContinuousClock.now < deadline {
             await refreshTracks()
             if !audioTracks.isEmpty { return }
+            // Playing with no audio track at all: a silent file, not a slow one.
+            if duration > 0, position > 1 { return }
             try? await Task.sleep(for: .milliseconds(120))
             if Task.isCancelled { return }
         }

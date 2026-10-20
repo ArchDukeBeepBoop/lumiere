@@ -56,6 +56,9 @@ func (h CollectionSuggestHandler) tmdb(w http.ResponseWriter) *metadata.TMDB {
 // belong to, else one named like it — then dress and fill it.
 func (h CollectionSuggestHandler) Scan(w http.ResponseWriter, r *http.Request) {
 	id := store.NormalizeID(r.PathValue("id"))
+	if h.isTheme(w, id) {
+		return
+	}
 	tmdb := h.tmdb(w)
 	if tmdb == nil {
 		return

@@ -22,7 +22,10 @@ extension SearchView {
         entryState.actions(
             for: entry,
             in: entryContext,
-            extras: EntryActionExtras(deleteCollection: { deleteCollectionTarget = $0 })
+            extras: EntryActionExtras(
+                beginSelection: { selection.begin(with: $0) },
+                deleteCollection: { deleteCollectionTarget = $0 }
+            )
         )
     }
 }

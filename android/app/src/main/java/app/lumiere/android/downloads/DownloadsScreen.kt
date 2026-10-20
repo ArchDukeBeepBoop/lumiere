@@ -42,12 +42,15 @@ import kotlinx.coroutines.delay
 @Composable
 fun DownloadsScreen(state: AppState) {
     val form = LocalFormFactor.current
+    // The phone's and the Quest's: Apple's Downloaded page.
+    if (!form.isTv) { PhoneDownloads(state); return }
     val downloads = state.downloads
     var tick by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { while (true) { delay(1000); tick++ } }
     val shown = downloads.all.filter { !state.hides(it.item.libraryId) }
     Column(Modifier.fillMaxSize().background(Palette.canvas)) {
-        Text("Downloads", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(form.gutter.dp))
+        if (form.isTv) Text("Downloads", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(form.gutter.dp))
+        else app.lumiere.android.ui.IosLargeTitle("Downloads")
         if (downloads.all.isNotEmpty()) {
             tick.let { }
             val used = downloads.usedBytes() / 1e9

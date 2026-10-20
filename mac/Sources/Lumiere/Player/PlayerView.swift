@@ -45,7 +45,9 @@ struct PlayerView: View {
     @State var showsQueue = false
     @State var idleTask: Task<Void, Never>?
     /// Throttles the hover-driven wake, which otherwise fires per pointer sample.
-    @State var lastWake = Date.distantPast
+    /// Not view state: written five times a second while the pointer moves,
+    /// and as `@State` each write re-rendered the whole player over the film.
+    @State var wake = WakeClock()
     /// Movement does not summon the chrome again until this moment passes.
     ///
     /// Set when the pointer leaves the bar. Without it, "hide the moment the mouse
@@ -157,6 +159,9 @@ struct PlayerView: View {
         .onChange(of: model?.endedCount) {
             // "Stop after this episode" wins over going on. See SleepTimer.
             if SleepTimer.takeEndOfEpisode() { onClose(); return }
+            // Something you queued plays on, whatever the autoplay setting:
+            // queuing it was the asking.
+            if let model, !PlayQueue.shared.isEmpty, StillWatching.mayAdvance() { playNextEpisode(model); return }
             if Preference.playsNextAutomatically.value, let model, StillWatching.mayAdvance() {
                 playNextEpisode(model)
             }
@@ -196,6 +201,7 @@ struct PlayerView: View {
             idleTask?.cancel()
             statsTask?.cancel()
             publishTask?.cancel()
+            NowPlaying.shared.detach()
             // Leaving the player with the pointer still hidden would strand it
             // invisible over the library.
             NSCursor.unhide()
@@ -213,8 +219,12 @@ struct PlayerView: View {
         Group {
             if let engine = model.avEngine {
                 VideoSurface(player: engine.player, pip: pip).ignoresSafeArea()
+                    .id(ObjectIdentifier(engine))
             } else if let engine = model.mpvEngine {
+                // One view per engine. Reused, the next episode played into a
+                // view that was never put on screen: its sound, no picture.
                 MPVSurface(view: engine.view).ignoresSafeArea()
+                    .id(ObjectIdentifier(engine))
             }
         }
         // Double-click the picture to enter full screen, and again to leave — what
@@ -230,9 +240,12 @@ struct PlayerView: View {
         .gesture(SpatialTapGesture(count: 2).onEnded { tap in
             let width = max(1, playerSize.width)
             let step = Double(Preference.seekStepSeconds.value)
-            if tap.location.x < width / 3 {
+            // The sides skip only where Settings says so; off, a double-click
+            // anywhere is full screen.
+            let sides = Preference.doubleClickSidesSkip.value
+            if sides, tap.location.x < width / 3 {
                 Task { await model.keyStep(by: -step, isRepeat: false) }
-            } else if tap.location.x > width * 2 / 3 {
+            } else if sides, tap.location.x > width * 2 / 3 {
                 Task { await model.keyStep(by: step, isRepeat: false) }
             } else {
                 toggleFullScreen()

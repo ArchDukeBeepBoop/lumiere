@@ -1,5 +1,7 @@
 package app.lumiere.android.tv
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.height
 import kotlinx.coroutines.launch
 import android.view.KeyEvent
@@ -79,7 +81,7 @@ fun TvMenuBar(tabs: List<BarTab>, top: Screen, state: AppState) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
         Row(Modifier.clip(RoundedCornerShape(50))
-            .background(Palette.surface.copy(alpha = 0.72f)).padding(6.dp),
+            .background(androidx.compose.ui.graphics.lerp(Palette.surface, app.lumiere.android.ui.Ambient.colour ?: Palette.surface, 0.35f).copy(alpha = 0.72f)).padding(6.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             tabs.forEachIndexed { i, t ->
                 val here = t.owns(top) || (i == 0 && tabs.none { it.owns(top) })
@@ -121,7 +123,12 @@ fun TvMenuBar(tabs: List<BarTab>, top: Screen, state: AppState) {
 /** The bar's capsule; only reachable once the bar is opened, so moving right past More Info stays put. */
 @Composable
 private fun Pill(label: String, selected: Boolean, modifier: Modifier, open: Boolean, icon: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
-    app.lumiere.android.ui.TvPill(onClick, modifier.focusProperties { canFocus = open }, selected,
+    // A soft glow behind the current tab, as tvOS lights the tab you are on.
+    app.lumiere.android.ui.TvPill(onClick, modifier.focusProperties { canFocus = open }
+        .then(if (selected) Modifier.drawBehind {
+            drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(listOf(Color.White.copy(alpha = 0.16f), Color.Transparent),
+                center = center, radius = size.width * 0.75f), radius = size.width * 0.75f)
+        } else Modifier), selected,
         if (selected) Palette.textPrimary else Palette.textSecondary) {
         if (icon != null) { icon(); Spacer(Modifier.width(6.dp)) }
         androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {

@@ -14,6 +14,14 @@ import java.util.UUID
 /** Where the app is: one screen on top of a stack, Back pops it. */
 sealed interface Screen {
     data object Home : Screen
+    /** The phone's Library tab: its libraries, Downloads, Favourites, Collections, Playlists. */
+    data object PhoneLibrary : Screen
+    /** Videos and songs kept on the phone itself, played without the Mac. */
+    data object OnThisPhone : Screen
+    /** One file from the phone, by its content address. */
+    data class LocalFile(val uri: String, val name: String) : Screen
+    /** The phone as the TV's remote. */
+    data object Remote : Screen
     data class Library(val view: Item) : Screen
     /** [seasonId]: open a show on this season, as an episode card on TV does. */
     data class Detail(val id: String, val seasonId: String? = null) : Screen

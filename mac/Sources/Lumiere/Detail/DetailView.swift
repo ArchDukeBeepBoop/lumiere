@@ -197,6 +197,7 @@ struct DetailView: View {
             }
         }
         .polishedScrolling()
+        .background { AmbientGlow(pipeline: pipeline, request: glowRequest) }
         // Deliberately no canvas fill: the root supplies the background — glass or
         // flat — and repainting it here is what hid it.
         .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -228,5 +229,11 @@ struct DetailView: View {
             // A collection's members come from the server, not the cache.
             if let model, model.isCollection, change.itemId == model.itemId { await model.loadCollectionItems() }
         }
+    }
+
+    /// The art the room's glow is taken from. See `AmbientGlow`.
+    private var glowRequest: ImageRequest? {
+        guard let entry = model?.entry else { return nil }
+        return ImageRequest.backdrop(for: entry, serverURL: serverURL, width: 300, scale: 1)
     }
 }

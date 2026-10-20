@@ -165,7 +165,7 @@ struct PlayerControls: View {
             // bigger question than which subtitle track to play it with. Hidden
             // where there is nothing to switch to — a film — rather than present
             // and inert.
-            if model.queue.count > 1, onPlayEpisode != nil {
+            if model.queue.count > 1 || !PlayQueue.shared.isEmpty, onPlayEpisode != nil {
                 PlayerIconButton(
                     systemName: "list.and.film",
                     help: "Up Next",
@@ -184,9 +184,10 @@ struct PlayerControls: View {
             PlayerIconButton(systemName: "gearshape.fill", help: "Playback settings") {
                 // The sheet covers the panel anyway; leaving it open would put it
                 // back underneath when the sheet is dismissed.
+                // A second click closes it, as every other button on the bar does.
                 openTab = nil
                 showsQueue = false
-                showsSettings = true
+                showsSettings.toggle()
             }
             // Picture in Picture on every file: AVKit's own on the AVPlayer
             // path, and on mpv — whose GL surface AVKit cannot take — the

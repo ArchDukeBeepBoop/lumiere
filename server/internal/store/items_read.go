@@ -45,6 +45,8 @@ type Item struct {
 	// Artwork inherited from the series, for episodes that have none of their
 	// own — which is nearly all of them.
 	SeriesPrimaryImageTag string
+	ParentLogoItemID      string
+	ParentLogoTag         string
 	ParentBackdropItemID  string
 	ParentBackdropTags    []string
 	UserData              *UserData

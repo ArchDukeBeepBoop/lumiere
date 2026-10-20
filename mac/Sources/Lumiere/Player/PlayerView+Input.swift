@@ -26,8 +26,8 @@ extension PlayerView {
         // rebuilding it each time would churn a Task per frame. Once the chrome is
         // already up, restarting the timer a few times a second is plenty.
         let now = Date()
-        if showsChrome, now.timeIntervalSince(lastWake) < 0.2 { return }
-        lastWake = now
+        if showsChrome, now.timeIntervalSince(wake.last) < 0.2 { return }
+        wake.last = now
 
         showsChrome = true
         showsGlance = false
@@ -79,7 +79,7 @@ extension PlayerView {
         // list, or a paused film all mean the person is not done, and the panels are
         // drawn inside this chrome so hiding it takes them with it.
         guard !showsSettings, openTab == nil, !showsQueue, model?.isPlaying == true else {
-            lastWake = .distantPast
+            wake.last = .distantPast
             wakeChrome()
             return
         }
@@ -120,6 +120,7 @@ extension PlayerView {
         publishTask = Task {
             while !Task.isCancelled {
                 if let model {
+                    attachNowPlaying(model)
                     let snapshot = PlayerMenuState(model)
                     // Only assign on a real change: a new value re-evaluates the
                     // whole scene, menus included, and doing that four times a
@@ -290,10 +291,5 @@ extension PlayerView {
             await fresh.start(mpvAvailable: mpvAvailable)
             wakeChrome()
         }
-    }
-
-    func playNextEpisode(_ model: PlayerModel) {
-        guard let next = model.nextEpisode else { return }
-        play(next)
     }
 }

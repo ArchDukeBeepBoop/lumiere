@@ -59,3 +59,21 @@ func (s *Store) ItemValue(id, kind string) string {
 	s.DB.QueryRow(`SELECT value FROM item_value WHERE item_id = ? AND kind = ?`, id, kind).Scan(&v)
 	return v
 }
+
+// PreviewTarget is one file to make previews for now, or false when it has
+// them already, has failed before, or is not a video worth previewing.
+func (s *Store) PreviewTarget(id string) (PreviewCandidate, bool) {
+	var c PreviewCandidate
+	var ticks int64
+	err := s.DB.QueryRow(`
+		SELECT id, path, runtime_ticks FROM item
+		WHERE id = ? AND is_folder = 0 AND path IS NOT NULL AND path <> ''
+		  AND type IN ('Movie', 'Episode', 'Video') AND runtime_ticks > 600000000
+		  AND NOT EXISTS (SELECT 1 FROM item_value v WHERE v.item_id = item.id
+		                  AND v.kind IN ('trickplay', '`+metaPreviewFailed+`'))`, id).Scan(&c.ID, &c.Path, &ticks)
+	if err != nil {
+		return c, false
+	}
+	c.RuntimeSeconds = float64(ticks) / 1e7
+	return c, true
+}

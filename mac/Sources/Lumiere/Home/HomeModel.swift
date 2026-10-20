@@ -46,7 +46,7 @@ final class HomeModel {
     var topOffsets: [LibraryKinds.Kind: Int] = [:]
     /// Libraries kept out of the charts whatever the privacy toggle says. See
     /// `LibraryKinds.libraryIds`.
-    var privateLibraryIds: Set<String> = []
+    var privateLibraryIds: Set<String> = []; var inRoom = false  // See `clearForRoomChange`.
 
     /// Which `load` owns the screen.
     ///

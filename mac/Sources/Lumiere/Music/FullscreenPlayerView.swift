@@ -139,6 +139,7 @@ struct FullscreenPlayerView: View {
 
                 scrubber
                 transport
+                volumeRow
             }
         }
     }

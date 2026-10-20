@@ -31,7 +31,7 @@ struct AddCollectionItemsSheet: View {
             content
         }
         .frame(width: 640, height: 560)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
     }
 
     private var header: some View {

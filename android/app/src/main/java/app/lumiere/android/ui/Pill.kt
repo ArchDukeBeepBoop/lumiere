@@ -29,12 +29,12 @@ import androidx.tv.material3.Surface
  */
 @Composable
 fun TvPill(onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean = false,
-           tint: Color = Palette.textPrimary, shape: Shape = RoundedCornerShape(50),
+           tint: Color = Palette.textPrimary, shape: Shape = RoundedCornerShape(50), focusedScale: Float = 1.04f,
            content: @Composable RowScope.() -> Unit) {
     var focused by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     Surface(onClick = onClick, modifier = modifier.onFocusChanged { focused = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(shape),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.04f),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = focusedScale),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = if (selected) Palette.surfaceRaised else Color.Transparent,
             contentColor = tint,

@@ -27,13 +27,6 @@ fun ExitDialog(onStay: () -> Unit, onLeave: () -> Unit) {
     androidx.activity.compose.BackHandler(onBack = onStay)
     LaunchedEffect(Unit) { runCatching { stay.requestFocus() } }
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)), contentAlignment = Alignment.Center) {
-        Column(Modifier.holdsRemote().frosted(22).padding(horizontal = 26.dp, vertical = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Leave Lumiere?", style = MaterialTheme.typography.titleLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                LButton(onClick = onStay, modifier = Modifier.focusRequester(stay)) { Text("Stay") }
-                LButton(primary = false, onClick = onLeave) { Text("Leave") }
-            }
-        }
+        TvAlertCard("Leave Lumiere?", null, listOf(AlertButton("Leave", onClick = onLeave), AlertButton("Stay", onClick = onStay)))
     }
 }

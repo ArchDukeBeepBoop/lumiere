@@ -55,7 +55,7 @@ struct SetupGuide: View {
             }
         }
         .frame(width: 820, height: 600)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .animation(Theme.Motion.transition, value: step)
     }
 

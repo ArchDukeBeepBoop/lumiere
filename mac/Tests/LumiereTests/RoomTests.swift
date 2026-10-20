@@ -28,6 +28,30 @@ func registerRoomTests(_ t: TestRunner) async {
             await repository.setRoomLibraryIds(["private"])
             t.expectEqual(try await repository.entries(types: [.movie], limit: 10).map(\.id), ["clip"])
         }
+
+        await t.test("the next film in a series is the room's only if its film is") {
+            let database = try LibraryDatabase(inMemory: true)
+            try await database.writer.write { db in
+                for (id, library) in [("sequel", "animeMovies"), ("roomSequel", "private")] {
+                    try db.execute(sql: """
+                        INSERT INTO item (id, serverId, type, name, sortName, libraryId, isFolder, syncedAt)
+                        VALUES (?, 's', 'Movie', ?, ?, ?, 0, ?)
+                        """, arguments: [id, id, id, library, Date()])
+                }
+            }
+            // The server answers Continue the Series with both films.
+            let server = RefusingServer(status: "200 OK", body: #"{"Items":[{"Id":"sequel","Name":"sequel","Type":"Movie"},{"Id":"roomSequel","Name":"roomSequel","Type":"Movie"}],"TotalRecordCount":2}"#)
+            let session = JellyfinSession(
+                serverURL: server.url, serverName: "x",
+                serverId: "s", userId: "u", userName: "u", deviceId: "d")
+            let repository = LibraryRepository(
+                database: database, client: JellyfinClient(session: session, token: "t"))
+            await repository.setRoomLibraryIds(["private"])
+            t.expectEqual(await repository.seriesNextUp().map(\.id), ["roomSequel"])
+            await repository.setRoomLibraryIds([])
+            await repository.setPrivateLibraryIds(["private"])
+            t.expectEqual(await repository.seriesNextUp().map(\.id), ["sequel"])
+        }
     }
 }
 

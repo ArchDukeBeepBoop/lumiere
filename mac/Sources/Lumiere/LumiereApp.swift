@@ -85,6 +85,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         playbackMenus = controller
     }
 
+    @MainActor
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? { DockMenu.menu() }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }

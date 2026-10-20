@@ -53,7 +53,7 @@ struct EditMetadataSheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 520, height: 580)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .task { await load() }
     }
 

@@ -95,6 +95,8 @@ extension LibraryRepository {
         for item in await client.seriesNextUp() {
             if let entry = try? await entry(id: item.id) { out.append(entry) }
         }
-        return out
+        // A server-made list, so the room's rules are applied here: without
+        // this the Private Room's Up Next offered the next Anime Movies film.
+        return await visible(out)
     }
 }

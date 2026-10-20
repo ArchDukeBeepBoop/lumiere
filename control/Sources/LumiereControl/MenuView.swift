@@ -1,150 +1,184 @@
 import AppKit
+import ControlCore
 import SwiftUI
 
-/// The menu behind the icon.
+/// The menu behind the icon, laid out as macOS lays out its own menu bar extras.
 ///
-/// One screen, no submenus, no window. Everything here is something you do while
-/// standing up — start the server, open the app, run an import — and a menu bar
-/// item that needs navigating is one you stop using.
-///
-/// The layout is a single column on a fixed grid: a header that states the one
-/// fact worth knowing, then groups separated by space rather than by rules. The
-/// only divider in the whole menu is above Quit, because that is the only place
-/// a mistaken click costs anything.
+/// A header that states the one fact you clicked to learn. Two Control Center
+/// tiles for the two things you came to switch. A module card for the library.
+/// Grouped rows with circled icons. And at the foot, plain commands with their
+/// key equivalents — Restart, Show Log, Settings…, Quit — exactly where the
+/// Wi-Fi and Bluetooth menus put theirs, so nothing here has to be learned.
 struct MenuView: View {
     @Bindable var server: ServerProcess
     @Bindable var lumiere: AppLauncher
-    @Bindable var loginItem: LoginItem
     @Bindable var backups: BackupRestorer
+    @Bindable var monitor: LibraryMonitor
+
+    @Environment(\.openSettings) private var openSettings
+    @State private var copied: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            MenuSection(text: "Server")
-            VStack(alignment: .leading, spacing: 0) { serverRows }.menuPanel()
-            MenuSection(text: "Lumiere")
-            VStack(alignment: .leading, spacing: 0) { appRows }.menuPanel()
-            MenuSection(text: "Library")
-            VStack(alignment: .leading, spacing: 0) {
-                BackupRows(backups: backups, server: server)
-            }
-            .menuPanel()
-            footer
+            tiles.padding(.horizontal, Menu.gutter).padding(.top, 10)
+            LibraryCard(stats: monitor.stats)
+                .padding(.horizontal, Menu.gutter).padding(.top, 8)
+            MenuSection(text: "Sharing")
+            sharing
+            MenuSection(text: "Backups")
+            BackupRows(backups: backups, server: server)
+            MenuRule()
+            commands
         }
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
         .frame(width: Menu.width)
-        .modifier(MenuLookBackground())
+        .task { await monitor.refresh() }
     }
 
     // MARK: - Header
 
-    /// The status, given the most room in the menu because it is the answer to
-    /// the question that made you click.
     private var header: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("Lumiere")
-                .font(Menu.title)
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(statusColour)
-                    .frame(width: 6, height: 6)
-                Text(statusText)
-                    .font(Menu.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: 10) {
+            Image(nsImage: IrisIcon.image(openness: serving ? 1 : 0, size: 34))
+                .id(serving)
+                .transition(.opacity)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Lumiere Server").font(Menu.title)
+                status
             }
+            Spacer(minLength: 0)
         }
-        .padding(.horizontal, Menu.gutter)
-        .padding(.top, 6)
-        .padding(.bottom, 2)
+        .padding(.horizontal, Menu.gutter + 2)
+        .padding(.top, 4)
+        .animation(.easeInOut(duration: 0.35), value: serving)
     }
 
-    private var statusColour: Color {
+    private var serving: Bool { server.state == .running }
+
+    @ViewBuilder private var status: some View {
+        Group {
+            switch server.state {
+            case .running where monitor.stats?.isPlaying == true:
+                HStack(spacing: 4) {
+                    // Animated only while the menu is open — the menu bar itself
+                    // never moves, which is a courtesy the system extends too.
+                    Image(systemName: "waveform").symbolEffect(.variableColor.iterative)
+                    Text("Playing · background work paused")
+                }
+                .foregroundStyle(Menu.accent)
+            case .running:
+                TimelineView(.periodic(from: .now, by: 30)) { context in
+                    Text(uptime(at: context.date))
+                }
+            case .starting:
+                Text("Starting…")
+            case .stopped:
+                Text("Stopped")
+            case .failed(let why):
+                Text(why).foregroundStyle(.red)
+            }
+        }
+        .font(Menu.caption)
+        .foregroundStyle(.secondary)
+        .lineLimit(2)
+    }
+
+    private func uptime(at now: Date) -> String {
+        guard let since = server.startedAt else { return "Serving" }
+        let f = DateComponentsFormatter()
+        f.unitsStyle = .abbreviated
+        f.maximumUnitCount = 2
+        f.allowedUnits = [.day, .hour, .minute]
+        let span = max(60, now.timeIntervalSince(since))
+        return "Serving · up \(f.string(from: span) ?? "")"
+    }
+
+    // MARK: - Tiles
+
+    private var tiles: some View {
+        HStack(spacing: 8) {
+            Tile(symbol: "power", title: "Server", state: serverWord,
+                 active: serving, busy: server.state == .starting) {
+                if serving || server.state == .starting { server.stop() } else { server.start() }
+            }
+            Tile(symbol: "play.rectangle.fill", title: "Lumiere",
+                 state: !lumiere.isInstalled ? "Not installed" : lumiere.isRunning ? "Open" : "Closed",
+                 active: lumiere.isRunning) {
+                guard lumiere.isInstalled else { return }
+                if lumiere.isRunning { lumiere.quit() } else { lumiere.launch() }
+            }
+            .disabled(!lumiere.isInstalled)
+        }
+    }
+
+    private var serverWord: String {
         switch server.state {
-        case .running: Menu.accent
-        case .starting: .secondary
-        case .failed: .red
-        case .stopped: Color.primary.opacity(0.25)
+        case .running: "On"
+        case .starting: "Starting"
+        case .stopped: "Off"
+        case .failed: "Stopped"
         }
     }
 
-    private var statusText: String {
-        switch server.state {
-        case .running: "Serving on 127.0.0.1:8098"
-        case .starting: "Starting…"
-        case .stopped: "Not running"
-        case .failed(let why): why
-        }
-    }
+    // MARK: - Sharing
 
-    // MARK: - Sections
-
-    @ViewBuilder private var serverRows: some View {
-        if server.state == .running || server.state == .starting {
-            MenuRow(symbol: "stop.circle", title: "Stop Server") { server.stop() }
+    @ViewBuilder private var sharing: some View {
+        let local = "127.0.0.1:8098"
+        MenuRow(symbol: "desktopcomputer", title: "This Mac",
+                detail: copied == local ? "Copied" : local) { copy(local) }
+        if monitor.stats?.listensOnNetwork == true, let ip = monitor.lanAddress {
+            let lan = "\(ip):8098"
+            MenuRow(symbol: "wifi", title: "Home Network", subtitle: "TV and phone connect here",
+                    detail: copied == lan ? "Copied" : lan, active: serving) { copy(lan) }
         } else {
-            MenuRow(symbol: "play.circle", title: "Start Server") { server.start() }
-        }
-        MenuRow(symbol: "link", title: "Copy Address", detail: "127.0.0.1:8098") {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(server.address.absoluteString, forType: .string)
+            MenuRow(symbol: "wifi.slash", title: "Home Network",
+                    subtitle: "Off — turn on in Lumiere's Settings", isEnabled: false) {}
         }
     }
 
-    @ViewBuilder private var appRows: some View {
-        if !lumiere.isInstalled {
-            MenuNote(symbol: "exclamationmark.triangle", text: "Lumiere is not installed.")
-        } else if lumiere.isRunning {
-            MenuRow(symbol: "xmark.circle", title: "Quit Lumiere") { lumiere.quit() }
-        } else {
-            MenuRow(symbol: "play.rectangle", title: "Open Lumiere") { lumiere.launch() }
+    private func copy(_ address: String) {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString("http://" + address, forType: .string)
+        withAnimation { copied = address }
+        Task {
+            try? await Task.sleep(for: .seconds(1.6))
+            withAnimation { if copied == address { copied = nil } }
         }
     }
 
-    // MARK: - Footer
+    // MARK: - Commands
 
-    private var footer: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            MenuSection(text: "Options")
-            loginToggle
-            MenuLookRow()
-            if let problem = loginItem.problem {
-                MenuNote(symbol: nil, text: problem, tint: .red)
-            }
-            Divider()
-                .padding(.horizontal, Menu.gutter)
-                .padding(.top, 10)
-                .padding(.bottom, 6)
-            // Named plainly. It is not obvious that closing a menu bar app stops
-            // a server, and the alternative — orphaning it on port 8098 — is
-            // worse and harder to explain after the fact.
-            MenuRow(symbol: "power", title: "Quit", detail: "stops the server") {
-                server.stop()
-                NSApplication.shared.terminate(nil)
-            }
+    @ViewBuilder private var commands: some View {
+        MenuCommand(title: "Restart Server", key: "r", isEnabled: server.state != .starting) {
+            Task { await server.restart() }
+        }
+        MenuCommand(title: "Show Server Log") { showLog() }
+        MenuCommand(title: "Show Library in Finder") {
+            NSWorkspace.shared.activateFileViewerSelecting([LibraryMonitor.database])
+        }
+        MenuRule()
+        MenuCommand(title: "Settings…", key: ",") {
+            NSApp.activate(ignoringOtherApps: true)
+            openSettings()
+        }
+        // Named for what it is. Quitting a menu bar app is not obviously the
+        // same as stopping a server; the Settings window says so in full.
+        MenuCommand(title: "Quit Lumiere Control", key: "q") {
+            server.stop()
+            NSApplication.shared.terminate(nil)
         }
     }
 
-    /// A toggle laid out on the same grid as the rows, so the column of labels
-    /// stays unbroken. A stock Toggle would indent differently and the eye
-    /// notices immediately.
-    private var loginToggle: some View {
-        HStack(spacing: 0) {
-            Image(systemName: "person.badge.clock")
-                .font(.system(size: 13))
-                .frame(width: Menu.iconColumn, alignment: .leading)
-            Text("Start server at login")
-                .font(Menu.body)
-            Spacer(minLength: 8)
-            Toggle("", isOn: Binding(
-                get: { loginItem.isEnabled },
-                set: { loginItem.set($0) }
-            ))
-            .labelsHidden()
-            .toggleStyle(.switch)
-            .controlSize(.mini)
+    /// In Console, which is where a Mac keeps logs and what it opens them in.
+    private func showLog() {
+        let log = LibraryMonitor.logFile
+        let console = URL(fileURLWithPath: "/System/Applications/Utilities/Console.app")
+        guard FileManager.default.fileExists(atPath: log.path) else {
+            NSWorkspace.shared.open(log.deletingLastPathComponent())
+            return
         }
-        .padding(.horizontal, Menu.gutter)
-        .frame(height: Menu.rowHeight)
+        NSWorkspace.shared.open([log], withApplicationAt: console,
+                                configuration: NSWorkspace.OpenConfiguration())
     }
 }

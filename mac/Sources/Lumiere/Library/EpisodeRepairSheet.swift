@@ -43,7 +43,7 @@ struct EpisodeRepairSheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 660, height: 620)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .task {
             let model = EpisodeRepairModel(
                 seriesId: seriesId, client: client, repository: repository

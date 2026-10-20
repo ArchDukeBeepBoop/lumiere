@@ -71,6 +71,8 @@ enum class TrackOrder(val label: String, val sortBy: List<String>, val descendin
 
 @Composable
 fun MusicScreen(state: AppState, view: Item) {
+    // The phone's and the Quest's: Apple Music's Library.
+    if (!LocalFormFactor.current.isTv) { PhoneMusicScreen(state, view); return }
     val server = state.server ?: return
     val userId = state.session?.userId ?: return
     val form = LocalFormFactor.current

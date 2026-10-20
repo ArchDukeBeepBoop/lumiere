@@ -20,7 +20,8 @@ extension DetailView {
                 onFinish: app?.client == nil ? nil : { isFinishingCollection = true },
                 onDelete: app?.client == nil ? nil : { isConfirmingCollectionDelete = true },
                 onIdentify: app?.client == nil ? nil : { identifyingCollection = true },
-                onScan: app?.client == nil ? nil : { await scanCollection(model: model, entry: entry) }
+                onScan: app?.client == nil ? nil : { await scanCollection(model: model, entry: entry) },
+                onEdit: app?.client == nil ? nil : { editingId = entry.id }
             )
             .sheet(isPresented: $identifyingCollection) {
                 if let app, let client = app.client {
@@ -79,7 +80,8 @@ extension DetailView {
                 selectedVersion: Binding(
                     get: { model.selectedSourceId },
                     set: { model.selectedSourceId = $0 }
-                )
+                ),
+                languages: languageChips(for: model, entry: entry)
             )
         } else {
             DetailHeader(
@@ -135,5 +137,14 @@ extension DetailView {
         try? await app.repository?.refreshItem(itemId: id)
         await model.load()
         await app.contentDidChange("after a collection was identified")
+    }
+
+    /// The chosen file's languages, keyed as the player remembers them.
+    func languageChips(for model: DetailModel, entry: LibraryEntry) -> LanguageChips? {
+        let sources = model.detail?.mediaSources ?? []
+        let source = sources.first { $0.id == model.selectedSourceId } ?? sources.first
+        guard let streams = source?.mediaStreams, !streams.isEmpty else { return nil }
+        return LanguageChips(repository: model.repository,
+                             key: entry.item.seriesId ?? entry.item.id, streams: streams)
     }
 }

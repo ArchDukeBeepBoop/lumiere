@@ -15,6 +15,7 @@ extension SettingsView {
 
             LibraryHealthCard(app: app)
             ServerScheduleCard(app: app)
+            ThemeCollectionsCard(app: app)
             RemovedItemsCard(app: app)
         }
 

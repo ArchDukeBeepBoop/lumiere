@@ -10,23 +10,19 @@ extension PlayerTrackPanel {
 
     @ViewBuilder
     var subtitleTools: some View {
-        Divider()
-            .overlay(Theme.PlayerPalette.surfaceStroke)
-            .padding(.vertical, Theme.Space.xxs)
-
         // Only where a subtitle is actually showing: syncing nothing is a
         // control that can only disappoint.
         if model.selectedSubtitleTrack != nil {
             PlayerPanelRow(
-                title: "Sync to audio", detail: syncDetail, selected: false
+                title: "Sync to Audio", detail: nil, subtitle: syncDetail, selected: false
             ) {
                 Task { await model.syncCurrentSubtitle() }
             }
         }
 
         PlayerPanelRow(
-            title: "Find subtitles…",
-            detail: model.subtitleResults.isEmpty ? nil : "\(model.subtitleResults.count) found",
+            title: "Find Subtitles…",
+            detail: nil, subtitle: model.subtitleResults.isEmpty ? nil : "\(model.subtitleResults.count) found",
             selected: false
         ) {
             Task { await model.findSubtitles() }
@@ -49,7 +45,7 @@ extension PlayerTrackPanel {
             note(String(format: "Only %.0f%% sure of the timing.", sync.confidence * 100))
             PlayerPanelRow(
                 title: String(format: "Try %+.1f s", sync.offset),
-                detail: "Undo afterwards if the lines miss", selected: false
+                detail: nil, subtitle: "Undo afterwards if the lines miss", selected: false
             ) {
                 Task { await model.tryUnsureSync(sync) }
             }
@@ -58,7 +54,7 @@ extension PlayerTrackPanel {
             if model.queue.count > 1 {
                 PlayerPanelRow(
                     title: "Use for the rest of the season",
-                    detail: String(format: "%+.1f s on %d more", seconds, model.queue.count - 1),
+                    detail: nil, subtitle: String(format: "%+.1f s on %d more", seconds, model.queue.count - 1),
                     selected: false
                 ) {
                     Task { await model.applyDelayToSeason(seconds) }
@@ -67,7 +63,7 @@ extension PlayerTrackPanel {
         case .tried(let previous):
             note("Shifted. If the lines still miss, go back.")
             PlayerPanelRow(
-                title: "Revert", detail: String(format: "to %+.1f s", previous), selected: false
+                title: "Revert", detail: nil, subtitle: String(format: "to %+.1f s", previous), selected: false
             ) {
                 Task { await model.revertTriedSync(to: previous) }
             }
@@ -76,7 +72,7 @@ extension PlayerTrackPanel {
         ForEach(model.subtitleResults) { candidate in
             PlayerPanelRow(
                 title: candidate.release.isEmpty ? "Untitled release" : candidate.release,
-                detail: detail(for: candidate),
+                detail: nil, subtitle: detail(for: candidate),
                 selected: false
             ) {
                 Task { await model.downloadSubtitle(candidate) }
@@ -108,10 +104,10 @@ extension PlayerTrackPanel {
 
     private func note(_ text: String) -> some View {
         Text(text)
-            .font(Theme.Font.caption)
+            .font(Theme.Font.playerDetail)
             .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Theme.Space.md)
+            .padding(.horizontal, Theme.Space.sm)
             .padding(.vertical, Theme.Space.xs)
             .fixedSize(horizontal: false, vertical: true)
     }

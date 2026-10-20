@@ -70,6 +70,8 @@ enum SettingsDefaults {
         Preference.roomUsesOwnTheme.name: Preference.roomUsesOwnTheme.defaultValue,
         Preference.roomBlocksCapture.name: Preference.roomBlocksCapture.defaultValue,
         Preference.roomBlursCovers.name: Preference.roomBlursCovers.defaultValue,
+        Preference.roomAmbientGlow.name: Preference.roomAmbientGlow.defaultValue,
+        Preference.widgetShowsResume.name: Preference.widgetShowsResume.defaultValue,
         Preference.looksUpPrivateLibraries.name: Preference.looksUpPrivateLibraries.defaultValue,
     ] }
     static var player: [String: Any] { [

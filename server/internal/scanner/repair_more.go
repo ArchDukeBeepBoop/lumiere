@@ -18,7 +18,7 @@ func restoreAddedDates(db *sql.DB, log *slog.Logger) error {
 	// A container has no path of its own to ask, so its folder is used — which
 	// for a series is the path the scanner stored on it.
 	rows, err := db.Query(`
-		SELECT id, path FROM item
+		SELECT id, path, date_created FROM item
 		WHERE path IS NOT NULL AND path <> ''
 		  AND date_created > ? AND date_created < ?`,
 		scanEpoch, time.Now().UTC().Format(time.RFC3339))
@@ -28,8 +28,8 @@ func restoreAddedDates(db *sql.DB, log *slog.Logger) error {
 	type fix struct{ id, when string }
 	var fixes []fix
 	for rows.Next() {
-		var id, path string
-		if err := rows.Scan(&id, &path); err != nil {
+		var id, path, current string
+		if err := rows.Scan(&id, &path, &current); err != nil {
 			rows.Close()
 			return err
 		}
@@ -38,7 +38,11 @@ func restoreAddedDates(db *sql.DB, log *slog.Logger) error {
 			// The file is gone; its date is the least of that row's problems.
 			continue
 		}
-		fixes = append(fixes, fix{id, info.ModTime().UTC().Format(time.RFC3339)})
+		// Already the file's own date: nothing to restore. Without this every
+		// scan "restored" the same 2,000-odd rows to the value they held.
+		if when := info.ModTime().UTC().Format(time.RFC3339); when != current {
+			fixes = append(fixes, fix{id, when})
+		}
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
@@ -64,7 +68,8 @@ func restoreAddedDates(db *sql.DB, log *slog.Logger) error {
 		  AND (parent.path IS NULL OR parent.path = '')
 		  AND parent.date_created > ?
 		  AND child.date_created IS NOT NULL
-		GROUP BY parent.id`, scanEpoch)
+		GROUP BY parent.id
+		HAVING parent.date_created <> MIN(child.date_created)`, scanEpoch)
 	if err != nil {
 		return err
 	}

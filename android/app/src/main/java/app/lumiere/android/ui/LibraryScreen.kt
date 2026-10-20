@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.MaterialTheme
@@ -108,55 +109,64 @@ fun LibraryScreen(state: AppState, view: Item) {
     }
 
     Column(Modifier.fillMaxSize().background(Palette.canvas)) {
-        Text(view.name, style = MaterialTheme.typography.headlineLarge,
-            modifier = Modifier.padding(start = form.gutter.dp, top = 16.dp, end = form.gutter.dp))
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = form.gutter.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Order.entries.forEach { o ->
-                LChip(selected = order == o && letter == null, onClick = { order = o; letter = null },
-                    label = { Text(o.label) })
+        val scope = androidx.compose.runtime.rememberCoroutineScope()
+        // A random title from here, playing at once.
+        val shuffle: () -> Unit = { scope.launch {
+            runCatching { server.shuffleFrom(session.userId, view) }.getOrNull()?.let { state.push(Screen.Player(it.id, 0.0)) }
+        } }
+        if (form.isTv) {
+            Text(view.name, style = MaterialTheme.typography.headlineLarge,
+                modifier = Modifier.padding(start = form.gutter.dp, top = 16.dp, end = form.gutter.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = form.gutter.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Order.entries.forEach { o ->
+                    LChip(selected = order == o && letter == null, onClick = { order = o; letter = null },
+                        label = { Text(o.label) })
+                }
+                LChip(unwatched, { unwatched = !unwatched }, { Text("Unwatched") })
+                LChip(favourites, { favourites = !favourites }, { Text("Favourites") })
+                LChip(false, shuffle, { Text("Shuffle") })
             }
-            LChip(unwatched, { unwatched = !unwatched }, { Text("Unwatched") })
-            LChip(favourites, { favourites = !favourites }, { Text("Favourites") })
-            // A random title from here, playing at once.
-            val scope = androidx.compose.runtime.rememberCoroutineScope()
-            LChip(false, { scope.launch {
-                runCatching { server.shuffleFrom(session.userId, view) }.getOrNull()?.let { state.push(Screen.Player(it.id, 0.0)) }
-            } }, { Text("Shuffle") })
+        } else {
+            // On a phone, as iOS: a large title with Shuffle beside it, the search field, then the filters in a scrolling row.
+            IosLargeTitle(view.name) {
+                IosCircle(androidx.compose.material.icons.Icons.Default.Shuffle, "Shuffle", shuffle, size = 34)
+            }
+            IosSearchField(filter, { filter = it }, "Search ${view.name}", Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+            androidx.compose.foundation.lazy.LazyRow(contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Order.entries.forEach { o -> item { IosChip(order == o && letter == null, o.label) { order = o; letter = null } } }
+                item { IosChip(unwatched, "Unwatched") { unwatched = !unwatched } }
+                item { IosChip(favourites, "Favourites") { favourites = !favourites } }
+            }
         }
         if (genres.isNotEmpty()) {
             androidx.compose.foundation.lazy.LazyRow(
                 contentPadding = PaddingValues(horizontal = form.gutter.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                item { LChip(genre == null, { genre = null }, { Text("All genres") }) }
+                item { if (form.isTv) LChip(genre == null, { genre = null }, { Text("All genres") }) else IosChip(genre == null, "All Genres") { genre = null } }
                 items(genres.size) { i ->
                     val g = genres[i]
-                    LChip(genre == g, { genre = if (genre == g) null else g }, { Text(g) })
+                    if (form.isTv) LChip(genre == g, { genre = if (genre == g) null else g }, { Text(g) })
+                    else IosChip(genre == g, g) { genre = if (genre == g) null else g }
                 }
             }
-        }
-        if (!form.isTv) {
-            OutlinedTextField(
-                value = filter, onValueChange = { filter = it }, singleLine = true,
-                placeholder = { Text("Filter ${view.name}") },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = form.gutter.dp),
-            )
         }
         Row(Modifier.weight(1f)) {
         LazyVerticalGrid(
             modifier = Modifier.weight(1f),
-            columns = GridCells.Adaptive(form.posterWidth.dp),
-            contentPadding = PaddingValues(form.gutter.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            columns = if (form.isTv) GridCells.Adaptive(form.posterWidth.dp) else GridCells.Fixed(phoneColumns()),
+            contentPadding = if (form.isTv) PaddingValues(form.gutter.dp) else PaddingValues(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 96.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (form.isTv) 14.dp else 10.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             itemsIndexed(items, key = { _, item -> item.id }) { index, item ->
                 if (index >= items.size - 20) LaunchedEffect(items.size) { loadMore(generation) }
-                ItemCard(item, server, CardShape.Poster) {
+                ItemCard(item, server, CardShape.Poster, fill = !form.isTv) {
                     state.push(Screen.Detail(item.id))
                 }
             }

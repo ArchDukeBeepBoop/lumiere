@@ -1,6 +1,8 @@
 package app.lumiere.android.ui
 
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -136,39 +138,33 @@ fun HomeScreen(state: AppState, refreshKey: Int) {
         when {
             // On a TV, a quiet name on the dark while the first Home arrives, not grey blocks.
             // The app's icon, where the launch window put it, until Home is ready.
-            current == null && error == null && form.isTv -> androidx.compose.foundation.Image(
-                androidx.compose.ui.res.painterResource(app.lumiere.android.R.drawable.boot_icon), "Lumiere",
-                modifier = Modifier.align(Alignment.Center).size(144.dp))
-            current == null && error == null -> Column { repeat(3) { SkeletonShelf() } }
+            current == null && error == null && form.isTv -> Unit
+            current == null && error == null -> Column(Modifier.statusBarsPadding()) { repeat(3) { SkeletonShelf() } }
             current == null && form.isTv -> app.lumiere.android.tv.OfflineHome(state, error!!) { attempt++ }
             current == null -> Text(error!!, style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.align(Alignment.Center).padding(24.dp))
             // Started afresh when the room opens or closes, so nothing private —
             // a backdrop, a selection — carries across.
             form.isTv -> androidx.compose.runtime.key(state.roomOpen) { TvHome(state, current.toTv(state), open) }
-            else -> LazyColumn(contentPadding = PaddingValues(bottom = 32.dp)) {
-                item {
-                    val pool = current.latest.filter { !state.hides(it.first.id) }.flatMap { it.second }
-                        .filter { it.backdropTag != null }
-                    Featured(state, pool)
-                }
-                item { Shelf("Continue Watching", state.visible(current.resume), server, CardShape.Wide, onOpen = open) }
-                item { Shelf("Next Up", state.visible(current.nextUp), server, CardShape.Wide, onOpen = open) }
-                item { PhoneLibraries(state.visibleViews(current.views), extras, state) }
-                item { Shelf("Watched Lately", state.visible(current.watched), server, CardShape.Wide, onOpen = open) }
-                current.latest.filter { !state.hides(it.first.id) }.forEach { (view, items) ->
-                    item(key = "latest-${view.id}") {
-                        Shelf("Recently Added in ${view.name}", items, server, CardShape.Poster, onOpen = open)
-                    }
-                }
-                phoneTopTens(state, extras, open)
-                phoneGenres(state, extras)
-            }
+            else -> PhoneHome(state, current, extras, open)
         }
         // The saved Home stays up while the Mac is away; a quiet pill says so,
         // and goes once it answers again.
-        if (rows != null && error != null) Text("Reconnecting to the Mac…", style = MaterialTheme.typography.labelLarge,
-            color = Palette.textPrimary, modifier = Modifier.align(Alignment.TopCenter).padding(top = 14.dp)
+        // The app's icon, where the launch window put it, fading into Home once Home is ready.
+        if (form.isTv) {
+            val iconAlpha by androidx.compose.animation.core.animateFloatAsState(if (current == null && error == null) 1f else 0f,
+                androidx.compose.animation.core.tween(app.lumiere.android.Motion.ms(450)), label = "bootIcon")
+            if (iconAlpha > 0f) androidx.compose.foundation.Image(
+                androidx.compose.ui.res.painterResource(app.lumiere.android.R.drawable.boot_icon), "Lumiere",
+                modifier = Modifier.align(Alignment.Center).size(144.dp).graphicsLayer { alpha = iconAlpha; scaleX = 0.92f + 0.08f * iconAlpha; scaleY = 0.92f + 0.08f * iconAlpha })
+        }
+        // The Mac away: a sleeping Mac is woken by itself, and the pill says what is shown.
+        if (form.isTv && rows != null && error != null) LaunchedEffect(error) {
+            state.settings.wakeAddress.takeIf { it.isNotEmpty() }?.let { app.lumiere.android.tv.Wake.send(it) }
+        }
+        if (rows != null && error != null) Text(if (form.isTv) "The Mac isn't answering — waking it; showing what was saved" else "Reconnecting to the Mac…", style = MaterialTheme.typography.labelLarge,
+            color = Palette.textPrimary, modifier = Modifier.align(Alignment.TopCenter)
+                .then(if (form.isTv) Modifier else Modifier.statusBarsPadding().padding(top = 52.dp)).padding(top = 14.dp)
                 .background(Palette.surfaceRaised.copy(alpha = 0.9f), androidx.compose.foundation.shape.RoundedCornerShape(50))
                 .padding(horizontal = 16.dp, vertical = 8.dp))
     }

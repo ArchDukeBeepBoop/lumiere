@@ -114,6 +114,7 @@ struct ShellView: View {
             SyncPanel(app: app, onDone: { showingSyncPanel = false })
         }
         .sheet(isPresented: $app.isShowingSetupGuide) { SetupGuide(app: app) }
+        .removalCenterDialog()
         .animation(Theme.Motion.transition, value: app.nowPlayingItemId)
         .animation(Theme.Motion.transition, value: app.music.isFullscreen)
         // Strips the window's title bar for the duration of playback, so the video
@@ -186,6 +187,11 @@ struct ShellView: View {
             .padding(PillSidebar.margin)
         }
         .animation(Theme.Motion.transition, value: showsSidebar)
+        // lumiere://item/<id>, from the Continue Watching widget.
+        .onOpenURL { url in
+            guard url.scheme == "lumiere", url.host() == "item", let id = url.pathComponents.last, id != "/" else { return }
+            NotificationCenter.default.post(name: .openDetail, object: id)
+        }
         .onReceive(NotificationCenter.default.publisher(for: .openDetail)) { note in
             if let id = note.object as? String, id.hasPrefix("play:") { app.nowPlayingItemId = String(id.dropFirst(5)) } else if let id = note.object as? String { path.append(DetailRoute(itemId: id)) }
         }
@@ -221,6 +227,11 @@ struct ShellView: View {
             openLaunchRoute()
             app.applyForcedOfflineIfRequested()
             await app.offerSetupIfNew()
+            // Continue Watching on the Dock icon's menu. See `DockMenu`.
+            while !Task.isCancelled {
+                await DockMenu.refresh(app)
+                try? await Task.sleep(for: .seconds(120))
+            }
             // Syncing is owned by AppModel.start()/signedIn(), which run after the
             // repository exists. Driving it from here raced that and silently did
             // nothing — see the note on AppModel.start().

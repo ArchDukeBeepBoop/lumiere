@@ -1,5 +1,31 @@
 package app.lumiere.android.tv
 
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Autorenew
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DoneAll
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LibraryAdd
+import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.Replay
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.ThumbDown
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.shadow
 import app.lumiere.android.ui.holdsRemote
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -98,21 +124,23 @@ fun TvActions(state: AppState) {
     }
     androidx.activity.compose.BackHandler { if (page != Page.Menu) page = Page.Menu else close(false) }
 
-    Box(Modifier.fillMaxSize().ignoreHeldOk().background(Color.Black.copy(alpha = 0.7f)), contentAlignment = Alignment.CenterEnd) {
-        Column(Modifier.holdsRemote().fillMaxHeight().width(460.dp).padding(24.dp).frosted().padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // The title held, larger, with what it is about — before what can be done with it.
-            androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                coil.compose.AsyncImage(app.lumiere.android.ui.imageFor(item, server, app.lumiere.android.ui.CardShape.Poster, 200), null,
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                    modifier = Modifier.width(84.dp).aspectRatio(2f / 3f).background(Palette.surfaceRaised, androidx.compose.foundation.shape.RoundedCornerShape(8.dp)))
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(if (item.isEpisode) "${item.seriesName} · ${item.episodeLabel ?: item.name}" else item.name,
-                        style = MaterialTheme.typography.titleLarge, maxLines = 2)
-                    item.overview?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Palette.textSecondary, maxLines = 4,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
-                }
-            }
+    // iOS's context menu, on a TV: the title lifted out large on the left, and
+    // beside it a floating card of what can be done, grouped, each with its symbol.
+    Box(Modifier.fillMaxSize().ignoreHeldOk().background(Color.Black.copy(alpha = 0.62f)), contentAlignment = Alignment.Center) {
+        androidx.compose.foundation.layout.Row(horizontalArrangement = Arrangement.spacedBy(36.dp), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.width(240.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            coil.compose.AsyncImage(app.lumiere.android.ui.imageFor(item, server, app.lumiere.android.ui.CardShape.Poster, 360), null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxWidth().aspectRatio(2f / 3f)
+                    .shadow(24.dp, androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                    .background(Palette.surfaceRaised, androidx.compose.foundation.shape.RoundedCornerShape(14.dp)))
+            Text(if (item.isEpisode) "${item.seriesName} · ${item.episodeLabel ?: item.name}" else item.name,
+                style = MaterialTheme.typography.titleMedium, maxLines = 2)
+            item.overview?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = Palette.textSecondary, maxLines = 3,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+        }
+        Column(Modifier.holdsRemote().heightIn(max = 620.dp).width(400.dp).frosted(20).padding(vertical = 10.dp, horizontal = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)) {
             note?.let { Text(it, color = Palette.accent, style = MaterialTheme.typography.labelMedium) }
             when (val p = page) {
                 Page.Menu -> Menu(state, item) { action ->
@@ -177,6 +205,7 @@ fun TvActions(state: AppState) {
                 is Page.Confirm -> Confirm(p, onNo = { page = Page.Menu }) { act("Done.") { p.run() } }
             }
         }
+        }
     }
 }
 
@@ -217,14 +246,18 @@ private fun Menu(state: AppState, item: Item, pick: (String) -> Unit) {
     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         var firstSet = false
         rows.forEach { (key, label) ->
-            if (key == "—") item { Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).background(Color.White.copy(alpha = 0.1f)).padding(0.5.dp)) }
+            // iOS groups a context menu with a thicker band, not a hairline.
+            if (key == "—") item { Box(Modifier.fillMaxWidth().padding(vertical = 4.dp).height(6.dp).background(Color.Black.copy(alpha = 0.22f))) }
             else {
                 val isFirst = !firstSet.also { firstSet = true }
                 item(key = key) {
+                    val destructive = key in setOf("remove", "delete", "deletecollection")
                     app.lumiere.android.ui.TvPill({ pick(key) },
                         Modifier.fillMaxWidth().then(if (isFirst) Modifier.focusRequester(first) else Modifier),
-                        tint = if (key in setOf("remove", "delete", "deletecollection")) Color(0xFFE57373) else Palette.textPrimary) {
-                        Text(label, style = MaterialTheme.typography.titleMedium)
+                        tint = if (destructive) Color(0xFFFF6961) else Palette.textPrimary,
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+                        Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        symbolFor(key)?.let { androidx.compose.material3.Icon(it, null, Modifier.size(20.dp)) }
                     }
                 }
             }
@@ -308,7 +341,7 @@ private fun ArtworkPicker(state: AppState, item: Item, onPick: (String, Artwork)
     val server = state.server ?: return
     var type by remember { mutableStateOf("Primary") }
     var art by remember(type) { mutableStateOf<List<Artwork>?>(null) }
-    LaunchedEffect(type) { art = server.remoteArtwork(item.id, type) }
+    LaunchedEffect(type) { art = runCatching { server.remoteArtwork(item.id, type) }.getOrDefault(art) }
     Text("Choose or Remove Artwork", style = MaterialTheme.typography.titleMedium, color = Palette.accent)
     LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         items(listOf("Primary" to "Poster", "Backdrop" to "Backdrop", "Logo" to "Logo", "Thumb" to "Thumbnail")) { (t, l) ->
@@ -329,13 +362,38 @@ private fun ArtworkPicker(state: AppState, item: Item, onPick: (String, Artwork)
 
 @Composable
 private fun Confirm(p: Page.Confirm, onNo: () -> Unit, onYes: () -> Unit) {
-    val no = remember { FocusRequester() }
-    LaunchedEffect(p) { runCatching { no.requestFocus() } }
-    Text(p.title, style = MaterialTheme.typography.titleLarge)
-    Text(p.note, style = MaterialTheme.typography.bodyMedium)
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        LButton(primary = false, onClick = onYes) { Text(p.label) }
-        // Cancel has focus: the safe answer is the one a stray press gives.
-        LButton(modifier = Modifier.focusRequester(no), onClick = onNo) { Text("Cancel") }
+    // An alert as tvOS gives it, inside the menu card: Cancel focused, the action in red.
+    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        app.lumiere.android.ui.TvAlertCard(p.title, p.note,
+            listOf(app.lumiere.android.ui.AlertButton(p.label, destructive = true, onClick = onYes), app.lumiere.android.ui.AlertButton("Cancel", onClick = onNo)))
+    }
+}
+
+/** The symbol beside each action, as iOS puts one at the end of every context-menu row. */
+private fun symbolFor(key: String): androidx.compose.ui.graphics.vector.ImageVector? = run {
+    when (key) {
+        "play" -> androidx.compose.material.icons.Icons.Default.PlayArrow
+        "restart" -> androidx.compose.material.icons.Icons.Default.Replay
+        "details" -> androidx.compose.material.icons.Icons.Default.Info
+        "show" -> androidx.compose.material.icons.Icons.Default.Tv
+        "season" -> androidx.compose.material.icons.Icons.AutoMirrored.Filled.List
+        "watched" -> androidx.compose.material.icons.Icons.Default.CheckCircle
+        "uptohere" -> androidx.compose.material.icons.Icons.Default.DoneAll
+        "favourite" -> androidx.compose.material.icons.Icons.Default.Star
+        "hide" -> androidx.compose.material.icons.Icons.Default.VisibilityOff
+        "watchlist" -> androidx.compose.material.icons.Icons.Default.AddCircle
+        "notinterested" -> androidx.compose.material.icons.Icons.Default.ThumbDown
+        "playlist" -> androidx.compose.material.icons.Icons.AutoMirrored.Filled.PlaylistAdd
+        "collection" -> androidx.compose.material.icons.Icons.Default.LibraryAdd
+        "download" -> androidx.compose.material.icons.Icons.Default.Download
+        "edit" -> androidx.compose.material.icons.Icons.Default.Edit
+        "identify" -> androidx.compose.material.icons.Icons.Default.Search
+        "refresh" -> androidx.compose.material.icons.Icons.Default.Refresh
+        "replace" -> androidx.compose.material.icons.Icons.Default.Autorenew
+        "artwork" -> androidx.compose.material.icons.Icons.Default.Image
+        "frame" -> androidx.compose.material.icons.Icons.Default.PhotoCamera
+        "remove" -> androidx.compose.material.icons.Icons.Default.RemoveCircleOutline
+        "delete", "deletecollection" -> androidx.compose.material.icons.Icons.Default.Delete
+        else -> null
     }
 }

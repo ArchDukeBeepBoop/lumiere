@@ -1,5 +1,7 @@
 package app.lumiere.android.ui
 
+import app.lumiere.android.api.lyrics
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
@@ -76,11 +78,28 @@ fun Screensaver(state: AppState, pool: List<Item>) {
         Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
             AsyncImage(server.imageUrl(t.albumId ?: t.id, "Primary", null, 640), null, contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.3f })
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // An Apple lock screen for music: the time large, the cover beside the song,
+            // and the line being sung, so the room can sing along from across it.
+            var lines by remember(t.id) { mutableStateOf<List<app.lumiere.android.api.LyricLine>?>(null) }
+            LaunchedEffect(t.id) { lines = runCatching { server.lyrics(t.id) }.getOrNull() }
+            val sung = lines?.takeIf { it.firstOrNull()?.start != null }?.let { l ->
+                app.lumiere.android.api.currentLyric(l, app.lumiere.android.music.Music.position)?.let { l.getOrNull(it)?.text }
+            }
+            androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 64.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(48.dp)) {
                 AsyncImage(server.imageUrl(t.albumId ?: t.id, "Primary", null, 640), null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(320.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(12.dp)))
-                Text(t.name, style = MaterialTheme.typography.headlineSmall, color = Color.White, modifier = Modifier.padding(top = 18.dp))
-                Text(t.artists.joinToString(", ").ifEmpty { t.albumArtist ?: "" }, style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.7f))
+                    modifier = Modifier.size(300.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp)))
+                Column {
+                    ClockText()
+                    Text(t.name, style = MaterialTheme.typography.headlineMedium, color = Color.White, modifier = Modifier.padding(top = 14.dp), maxLines = 2)
+                    Text(t.artists.joinToString(", ").ifEmpty { t.albumArtist ?: "" }, style = MaterialTheme.typography.titleMedium, color = Color.White.copy(alpha = 0.7f))
+                    sung?.takeIf { it.isNotBlank() }?.let {
+                        androidx.compose.animation.Crossfade(it, label = "sung") { line ->
+                            Text(line, color = Color.White, fontSize = 30.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                lineHeight = 38.sp, modifier = Modifier.padding(top = 28.dp), maxLines = 3)
+                        }
+                    }
+                }
             }
         }
         return

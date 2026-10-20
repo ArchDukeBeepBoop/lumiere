@@ -23,6 +23,8 @@ struct CollectionHeader: View {
     var onIdentify: (() -> Void)?
     /// Scan Collection — find its series, name, picture and fill it, by itself.
     var onScan: (() async -> Void)?
+    /// Rename it, and edit its synopsis. See `EditMetadataSheet`.
+    var onEdit: (() -> Void)?
     @State private var isScanning = false
 
     @Environment(\.displayScale) private var scale
@@ -185,6 +187,9 @@ struct CollectionHeader: View {
                     }
                 }
 
+                if let onEdit {
+                    QuietIconButton(systemName: "pencil", help: "Edit… — rename this collection", action: onEdit)
+                }
                 if let onIdentify {
                     QuietIconButton(
                         systemName: "magnifyingglass",

@@ -268,7 +268,7 @@ extension PlayerModel {
             self.autoSkipIfDue()
         }
         engine.onEnded = { [weak self] in
-            Task { await self?.finish(markPlayed: true); self?.endedCount += 1 }
+            Task { await self?.finish(markPlayed: true, stopEngine: false); self?.endedCount += 1 }
         }
         engine.onError = { [weak self] error in
             self?.state = .failed(error.localizedDescription)

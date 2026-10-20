@@ -14,4 +14,10 @@ public extension JellyfinClient {
         let body = try? JSONSerialization.data(withJSONObject: ["Libraries": Array(libraryIds).sorted()])
         try? await sendVoid(path: "Lumiere/Private", method: "POST", body: body)
     }
+
+    /// Whether the server answers the Continue Watching widget's feed.
+    func setWidgetEnabled(_ enabled: Bool) async {
+        let body = try? JSONSerialization.data(withJSONObject: ["Enabled": enabled])
+        try? await sendVoid(path: "Lumiere/Widget/Enabled", method: "POST", body: body)
+    }
 }

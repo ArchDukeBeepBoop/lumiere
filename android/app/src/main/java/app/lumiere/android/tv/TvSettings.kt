@@ -1,5 +1,15 @@
 package app.lumiere.android.tv
 
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.Subtitles
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -141,8 +151,8 @@ fun TvSettingsScreen(state: AppState) {
                 { p.episodesOpenPage }) { p.episodesOpenPage = it },
             Opt.Toggle("Hide spoilers", "Episodes not yet watched show their number only — no name, no story.",
                 { p.hidesSpoilers }) { p.hidesSpoilers = it },
-            Opt.Toggle("Compact Home", "Only the first six rows, quicker on this projector's memory. The rest stay in Rows below.",
-                { p.compactHome }) { p.compactHome = it },
+            Opt.Pick("Rows on Home", "All your rows, or a shorter Home for this projector's memory.", listOf("All", "6", "9", "12"),
+                { listOf(0, 6, 9, 12).indexOf(p.homeRows).coerceAtLeast(0) }) { p.homeRows = listOf(0, 6, 9, 12)[it]; p.compactHome = false },
             Opt.Custom("Rows", "OK picks a row up; up and down move it; OK puts it down. Menu switches it on or off.") { HomeOrder(p) },
             Opt.Action("Show the remote tour again", "The three cards from the first open.") { p.tvTourShown = false; state.tab(Screen.Home) },
         )),
@@ -228,14 +238,21 @@ fun TvSettingsScreen(state: AppState) {
 
     Box(Modifier.fillMaxSize().background(Palette.canvas)) {
         Row(Modifier.fillMaxSize().padding(40.dp), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-            Column(Modifier.width(280.dp).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text("Settings", style = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.Bold, color = Palette.textPrimary),
-                    modifier = Modifier.padding(bottom = 14.dp))
+            Column(Modifier.width(280.dp).fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // tvOS Settings: the chosen section's symbol, large, above its list.
+                androidx.compose.animation.Crossfade(categories.getOrNull(category)?.name, label = "glyph") { name ->
+                    SettingsGlyph(name ?: "", 72.dp)
+                }
+                Text("Settings", style = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.textPrimary),
+                    modifier = Modifier.padding(top = 10.dp, bottom = 8.dp))
                 categories.forEachIndexed { i, c ->
                     val on = i == category && search.isBlank()
                     app.lumiere.android.ui.TvPill({ category = i; picking = null; search = "" },
                         Modifier.fillMaxWidth().then(if (i == 0) Modifier.focusRequester(firstCategory) else Modifier)
                             .onFocusChanged { if (it.isFocused) { category = i; picking = null } }, selected = on) {
+                        SettingsGlyph(c.name, 28.dp)
+                        androidx.compose.foundation.layout.Spacer(Modifier.width(12.dp))
                         Text(c.name, style = MaterialTheme.typography.titleMedium)
                     }
                 }
@@ -384,5 +401,24 @@ private fun HomeOrder(p: Prefs) {
                     }
                     .padding(horizontal = 10.dp, vertical = 6.dp))
         }
+    }
+}
+
+/** iOS Settings' mark for a section: a white symbol on a rounded square of its own colour. */
+@Composable
+private fun SettingsGlyph(section: String, size: androidx.compose.ui.unit.Dp) {
+    val (icon, colour) = when (section) {
+        "Your Setup" -> androidx.compose.material.icons.Icons.Default.Settings to Color(0xFF8E8E93)
+        "Playback" -> androidx.compose.material.icons.Icons.Default.PlayArrow to Color(0xFFFF9500)
+        "Subtitles & Sound" -> androidx.compose.material.icons.Icons.Default.Subtitles to Color(0xFF5856D6)
+        "Picture & Text" -> androidx.compose.material.icons.Icons.Default.Tune to Color(0xFF34C759)
+        "Home" -> androidx.compose.material.icons.Icons.Default.Home to Color(0xFF007AFF)
+        "Private Room" -> androidx.compose.material.icons.Icons.Default.Lock to Color(0xFFAF52DE)
+        "This Device" -> androidx.compose.material.icons.Icons.Default.Tv to Color(0xFF636366)
+        "Account" -> androidx.compose.material.icons.Icons.Default.Person to Color(0xFFFF2D55)
+        else -> androidx.compose.material.icons.Icons.Default.Settings to Color(0xFF8E8E93)
+    }
+    Box(Modifier.size(size).background(colour, RoundedCornerShape(size * 0.23f)), contentAlignment = Alignment.Center) {
+        androidx.compose.material3.Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * 0.62f))
     }
 }

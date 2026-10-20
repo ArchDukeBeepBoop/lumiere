@@ -52,6 +52,7 @@ struct CollectionSeriesSheet: View {
         }
         .padding(Theme.Space.xl)
         .frame(width: 620, height: 560)
+        .glassSheet()
         .task {
             query = initialQuery
             if !query.isEmpty { await search() }

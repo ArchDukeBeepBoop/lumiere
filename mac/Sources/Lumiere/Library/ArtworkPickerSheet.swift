@@ -126,7 +126,7 @@ struct ArtworkPickerSheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 620, height: 520)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .task { await load() }
     }
 

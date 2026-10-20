@@ -6,10 +6,13 @@ import Darwin
 /// stand in for — that is the server being away, and a change made then is
 /// kept and sent later rather than rolled back.
 final class RefusingServer: @unchecked Sendable {
+    convenience init() { self.init(status: "403 Forbidden", body: "") }
+
     let port: UInt16
     private let socketFD: Int32
 
-    init() {
+    /// A server that answers every request with this status and body.
+    init(status: String, body: String) {
         let socketFD = socket(AF_INET, SOCK_STREAM, 0)
         self.socketFD = socketFD
         var yes: Int32 = 1
@@ -32,7 +35,7 @@ final class RefusingServer: @unchecked Sendable {
         port = UInt16(bigEndian: bound.sin_port)
         let fd = socketFD
         Thread.detachNewThread {
-            let reply = Array("HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".utf8)
+            let reply = Array(("HTTP/1.1 \(status)\r\nContent-Type: application/json\r\nContent-Length: \(body.utf8.count)\r\nConnection: close\r\n\r\n" + body).utf8)
             while true {
                 let client = accept(fd, nil, nil)
                 if client < 0 { return }

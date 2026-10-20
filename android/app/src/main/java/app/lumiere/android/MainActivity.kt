@@ -2,6 +2,7 @@
 
 package app.lumiere.android
 
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.background
 import androidx.compose.ui.unit.dp
@@ -61,14 +62,15 @@ class MainActivity : ComponentActivity() {
             LumiereTheme {
                 // "tv" in the launch intent draws the TV layout on a phone held
                 // sideways — how the TV screens are checked without the TV.
-                val form = if (intent?.getBooleanExtra("tv", false) == true) {
+                // Only the TV's app has the preview: the phone's and the Quest's never draw the TV layout.
+                val form = if (Flavor.tv && intent?.getBooleanExtra("tv", false) == true) {
                     requestedOrientation = android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
                     app.lumiere.android.ui.FormFactor(isTv = true)
                 } else detectFormFactor(LocalContext.current)
                 // The preview drawn at a 1080p TV's scale — 540 units tall — so
                 // what is checked on the phone is what the projector shows.
                 val real = androidx.compose.ui.platform.LocalDensity.current
-                val tvPreview = intent?.getBooleanExtra("tv", false) == true
+                val tvPreview = Flavor.tv && intent?.getBooleanExtra("tv", false) == true
                 // Larger text, for a screen read from across a room (Settings).
                 val textScale = 1f + 0.15f * state.settings.textScale
                 val density = if (tvPreview) androidx.compose.ui.unit.Density(
@@ -83,6 +85,8 @@ class MainActivity : ComponentActivity() {
                 androidx.compose.runtime.LaunchedEffect(state.session?.token) {
                     while (true) {
                         state.server?.let { s -> state.updateReady = app.lumiere.android.Updater.check(s)?.name }
+                        state.updateReady?.let { v -> if (app.lumiere.android.ui.detectFormFactor(this@MainActivity).isTv) app.lumiere.android.ui.Notice.show("Update available", "Lumiere $v · in the menu bar",
+                            androidx.compose.material.icons.Icons.Default.SystemUpdate, androidx.compose.ui.graphics.Color(0xFF007AFF)) }
                         kotlinx.coroutines.delay(12 * 3600_000L)
                     }
                 }
@@ -280,6 +284,10 @@ class MainActivity : ComponentActivity() {
 
     /** A title from the widget or the TV's Play Next row. */
     private fun openFrom(intent: android.content.Intent?) {
+        // A video or song opened from another app ("Open with Lumiere"): played here, no Mac needed.
+        app.lumiere.android.local.LocalFiles.fromIntent(this, intent)?.let { (uri, name) ->
+            state.push(Screen.LocalFile(uri, name)); return
+        }
         val id = intent?.getStringExtra("item") ?: intent?.data?.getQueryParameter("item") ?: return
         if (state.session == null) return
         state.tab(Screen.Home)
@@ -343,6 +351,9 @@ private fun App(state: AppState, onExit: () -> Unit) {
             .diskCache { coil.disk.DiskCache.Builder().directory(context.cacheDir.resolve("images")).maxSizeBytes(250L shl 20).build() }
             .build()
             .also { loader -> Diagnostics.imageCacheMb = { (loader.memoryCache?.size ?: 0) / 1_048_576L } }
+            // Every picture fetched anywhere signs in: the banner's colour was read through
+            // Coil's default loader, which the Mac refused (401).
+            .also { loader -> coil.Coil.setImageLoader(loader) }
     }
     // Bumped whenever a screen comes back into view, so it reloads: a title
     // just watched has moved on by the time Back returns to Home.
@@ -366,7 +377,7 @@ private fun App(state: AppState, onExit: () -> Unit) {
     val activity = LocalContext.current as? android.app.Activity
     LaunchedEffect(tvForm, state.settings.phoneRemote, state.session?.token) {
         val ctx = activity ?: return@LaunchedEffect
-        if (!tvForm || !state.settings.phoneRemote || state.session == null) { app.lumiere.android.remote.RemoteHost.stop(ctx); return@LaunchedEffect }
+        if (!Flavor.listensForRemote || !tvForm || !state.settings.phoneRemote || state.session == null) { app.lumiere.android.remote.RemoteHost.stop(ctx); return@LaunchedEffect }
         app.lumiere.android.remote.RemoteHost.actions = app.lumiere.android.remote.RemoteHost.Actions(
             key = { k -> remoteKey(ctx, state, k) },
             play = { id, start ->
@@ -381,6 +392,7 @@ private fun App(state: AppState, onExit: () -> Unit) {
         app.lumiere.android.remote.RemoteHost.start(ctx, "Lumiere on ${android.os.Build.MODEL}")
     }
     app.lumiere.android.ui.TvLook.on = tvForm
+    app.lumiere.android.ui.PhoneLook.on = !tvForm
     // A crash last time: its report goes to the Mac by itself, once the Mac answers.
     LaunchedEffect(state.server) {
         val ctx = bootWindow ?: return@LaunchedEffect
@@ -419,7 +431,8 @@ private fun App(state: AppState, onExit: () -> Unit) {
       androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
       val calm = if (LocalFormFactor.current.isTv) app.lumiere.android.ui.CalmScroll else androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current
       CompositionLocalProvider(app.lumiere.android.ui.LocalCardMenu provides
-          if (LocalFormFactor.current.isTv) ({ item: app.lumiere.android.api.Item -> state.actionsFor = item }) else null,
+          if (LocalFormFactor.current.isTv) ({ item: app.lumiere.android.api.Item -> state.actionsFor = item })
+          else ({ item: app.lumiere.android.api.Item -> app.lumiere.android.ui.PhoneMenu.item = item }),
           androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides calm) {
         Shell(state) { screen ->
             when (screen) {
@@ -434,6 +447,10 @@ private fun App(state: AppState, onExit: () -> Unit) {
                 Screen.Search -> if (LocalFormFactor.current.isTv) app.lumiere.android.tv.TvSearchScreen(state) else SearchScreen(state)
                 Screen.Settings -> if (LocalFormFactor.current.isTv) app.lumiere.android.tv.TvSettingsScreen(state) else app.lumiere.android.ui.SettingsScreen(state)
                 Screen.Downloads -> app.lumiere.android.downloads.DownloadsScreen(state)
+                Screen.Remote -> app.lumiere.android.remote.RemoteScreen(state)
+                Screen.PhoneLibrary -> app.lumiere.android.ui.PhoneLibraryScreen(state)
+                Screen.OnThisPhone -> app.lumiere.android.local.OnThisPhoneScreen(state)
+                is Screen.LocalFile -> androidx.compose.runtime.key(screen.uri) { app.lumiere.android.local.LocalPlayerScreen(state, screen.uri, screen.name) }
                 is Screen.Music -> app.lumiere.android.music.MusicScreen(state, screen.view)
                 is Screen.Album -> app.lumiere.android.music.AlbumScreen(state, screen.id)
                 is Screen.Artist -> app.lumiere.android.music.ArtistScreen(state, screen.artist, screen.libraryId)
@@ -445,7 +462,8 @@ private fun App(state: AppState, onExit: () -> Unit) {
                 Screen.Playlists -> app.lumiere.android.ui.PlaylistsScreen(state)
                 is Screen.Playlist -> app.lumiere.android.ui.PlaylistScreen(state, screen.id, screen.name)
                 is Screen.Person -> if (tvForm) app.lumiere.android.tv.TvPersonScreen(state, screen.id, screen.name) else app.lumiere.android.ui.PersonScreen(state, screen.id, screen.name)
-                is Screen.Genre -> app.lumiere.android.tv.GenreScreen(state, screen.name)
+                is Screen.Genre -> if (tvForm) app.lumiere.android.tv.GenreScreen(state, screen.name)
+                    else app.lumiere.android.ui.PhoneGenreScreen(state, screen.name)
                 Screen.DiagnosticsView -> app.lumiere.android.tv.DiagnosticsScreen(state)
                 Screen.TvLibrary -> app.lumiere.android.tv.TvLibraryScreen(state)
                 Screen.Setup -> app.lumiere.android.ui.SetupScreen(state)
@@ -454,6 +472,7 @@ private fun App(state: AppState, onExit: () -> Unit) {
       }
         if (state.top !is Screen.Player) app.lumiere.android.ui.Screensaver(state, state.saverPool)
         app.lumiere.android.tv.TvActions(state)
+        if (!tvForm) app.lumiere.android.ui.PhoneActions(state)
         // The menu closed: the remote goes back to the card it was opened on,
         // not to the top of the page.
         androidx.compose.runtime.LaunchedEffect(state.actionsFor == null) {
@@ -462,6 +481,7 @@ private fun App(state: AppState, onExit: () -> Unit) {
             }
         }
         app.lumiere.android.tv.QuickToggles(state)
+        if (tvForm) app.lumiere.android.ui.Notice.Host()
         // A phone asking to pair: the code it must send, large enough to read from the sofa.
         app.lumiere.android.remote.RemoteHost.code?.let { code ->
             androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.TopEnd) {

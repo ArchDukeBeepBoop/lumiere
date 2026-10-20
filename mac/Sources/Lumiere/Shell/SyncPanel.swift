@@ -53,7 +53,7 @@ struct SyncPanel: View {
         }
         .padding(Theme.Space.xxl)
         .frame(width: 560, height: showsOptions ? 660 : 460)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .animation(Theme.Motion.transition, value: showsOptions)
         .animation(Theme.Motion.transition, value: isScanning)
         .task { await pollScan() }

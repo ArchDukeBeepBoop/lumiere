@@ -20,8 +20,15 @@ import org.json.JSONObject
 object Updater {
     data class Available(val code: Int, val name: String)
 
+    /**
+     * Each app fetches only its own build: the TV's where the Mac has always
+     * kept it, the phone's and the Quest's under their own names — so a phone
+     * is never offered the TV's app.
+     */
+    private val channel = if (Flavor.tv) "" else "${BuildConfig.DEVICE}/"
+
     suspend fun check(server: Server): Available? = runCatching {
-        val o = JSONObject(server.get("Lumiere/Android/Latest"))
+        val o = JSONObject(server.get("Lumiere/Android/${channel}Latest"))
         val code = o.optInt("VersionCode")
         if (code > BuildConfig.VERSION_CODE) Available(code, o.optString("VersionName")) else null
     }.getOrNull()
@@ -32,7 +39,7 @@ object Updater {
             val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
             val id = installer.createSession(params)
             installer.openSession(id).use { session ->
-                server.http.newCall(Request.Builder().url(server.url("Lumiere/Android/lumiere.apk")).build())
+                server.http.newCall(Request.Builder().url(server.url("Lumiere/Android/${channel}lumiere.apk")).build())
                     .execute().use { r ->
                         if (!r.isSuccessful) error("the server answered ${r.code}")
                         session.openWrite("lumiere.apk", 0, -1).use { out -> r.body!!.byteStream().copyTo(out); session.fsync(out) }

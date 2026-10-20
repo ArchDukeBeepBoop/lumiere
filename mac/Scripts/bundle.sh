@@ -89,6 +89,15 @@ if [ "$CONFIG" = "release" ]; then
 	"$ROOT/Scripts/vendor-dylibs.sh" "$APP" "$MPV_PREFIX/lib/libmpv.dylib"
 fi
 
+# The Continue Watching widget, as an app extension. Compiled with swiftc
+# rather than SwiftPM, which cannot produce an .appex. See Widget/.
+echo "==> Widget"
+APPEX="$APP/Contents/PlugIns/LumiereWidgets.appex"
+mkdir -p "$APPEX/Contents/MacOS"
+cp "$ROOT/Widget/Info.plist" "$APPEX/Contents/Info.plist"
+swiftc -parse-as-library -O -target x86_64-apple-macos15.0 -application-extension \
+	"$ROOT/Widget/LumiereWidget.swift" -o "$APPEX/Contents/MacOS/LumiereWidgets"
+
 # Ad-hoc signing (`--sign -`) derives the app's identity from the binary's own
 # content hash, which changes on every rebuild — so macOS treats each build as a
 # different app and any Keychain "Always Allow" grant is invalidated the moment the
@@ -98,11 +107,17 @@ fi
 SIGNING_IDENTITY="Lumiere Local Signing"
 if security find-identity -v -p codesigning 2>/dev/null | grep -q "$SIGNING_IDENTITY"; then
 	echo "==> Signing ($SIGNING_IDENTITY)"
-	codesign --force --deep --sign "$SIGNING_IDENTITY" "$APP"
+	IDENTITY="$SIGNING_IDENTITY"
 else
 	echo "==> Signing (ad-hoc — run ./Scripts/make-signing-identity.sh for a stable identity)"
-	codesign --force --deep --sign - "$APP"
+	IDENTITY="-"
 fi
+# Deep first, for the vendored dylibs; then the widget again with its sandbox
+# entitlements, which --deep would have stripped; then the app shallow, to
+# seal over the re-signed widget.
+codesign --force --deep --sign "$IDENTITY" "$APP"
+codesign --force --sign "$IDENTITY" --entitlements "$ROOT/Widget/Widget.entitlements" "$APPEX"
+codesign --force --sign "$IDENTITY" "$APP"
 
 echo "==> Done: $APP"
 du -sh "$APP" | awk '{print "    bundle size: " $1}'

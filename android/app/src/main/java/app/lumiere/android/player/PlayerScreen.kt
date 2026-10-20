@@ -373,7 +373,8 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
             EpisodeStrip(server, session.userId, cur, onPick = { e -> state.pop(); state.push(Screen.Player(e.id, null)) },
                 onClose = { showEpisodes = false })
         }
-        if (showPanel) QuickPanel(player, prefs, onTracks = { showTracks = true }) { showPanel = false }
+        if (showPanel) { if (isTv) TvPlaybackMenu(player, prefs, onTracks = { showTracks = true }) { showPanel = false }
+            else QuickPanel(player, prefs, onTracks = { showTracks = true }) { showPanel = false } }
         if (showTracks) item?.let { cur ->
             val externals = cur.streams.count { it.type == "Subtitle" && it.isExternal }
             // A subtitle fetched or refitted is a new file: the title restarts where it was to load it.
@@ -454,7 +455,7 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
 
 /** Landscape and edge-to-edge on a phone while the player is up. */
 @Composable
-private fun ImmersiveLandscape(enabled: Boolean) {
+internal fun ImmersiveLandscape(enabled: Boolean) {
     val activity = LocalContext.current as? Activity ?: return
     DisposableEffect(enabled) {
         if (!enabled) return@DisposableEffect onDispose { }

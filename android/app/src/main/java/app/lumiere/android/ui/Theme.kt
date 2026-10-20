@@ -55,14 +55,15 @@ object MaterialYou {
 /** The Mac app's dark palette (Theme.Palette), carried over value for value. */
 object Palette {
     // On a TV, Apple TV's greys: one even ground, cards a step lighter.
-    val canvas get() = RoomTheme.map(if (TvLook.on) 0xFF1C1C1E else 0xFF0D0F12)
-    val chrome get() = RoomTheme.map(if (TvLook.on) 0xFF242426 else 0xFF14171C)
-    val surface get() = RoomTheme.map(if (TvLook.on) 0xFF2C2C2E else 0xFF1A1F26)
-    val surfaceRaised get() = RoomTheme.map(if (TvLook.on) 0xFF3A3A3C else 0xFF22262D)
-    val border get() = RoomTheme.map(0xFF262B33)
-    val textPrimary get() = RoomTheme.map(0xFFF2F4F7)
-    val textSecondary get() = RoomTheme.map(0xFFA8B0BC)
-    val textMuted get() = RoomTheme.map(0xFF6B7381)
+    // On a phone, iOS's dark mode: true black, grouped greys above it.
+    val canvas get() = RoomTheme.map(if (TvLook.on) 0xFF1C1C1E else if (PhoneLook.on) 0xFF000000 else 0xFF0D0F12)
+    val chrome get() = RoomTheme.map(if (TvLook.on) 0xFF242426 else if (PhoneLook.on) 0xFF121214 else 0xFF14171C)
+    val surface get() = RoomTheme.map(if (TvLook.on) 0xFF2C2C2E else if (PhoneLook.on) 0xFF1C1C1E else 0xFF1A1F26)
+    val surfaceRaised get() = RoomTheme.map(if (TvLook.on) 0xFF3A3A3C else if (PhoneLook.on) 0xFF2C2C2E else 0xFF22262D)
+    val border get() = RoomTheme.map(if (PhoneLook.on) 0xFF38383A else 0xFF262B33)
+    val textPrimary get() = RoomTheme.map(if (PhoneLook.on) 0xFFFFFFFF else 0xFFF2F4F7)
+    val textSecondary get() = RoomTheme.map(if (PhoneLook.on) 0xFFA1A1A8 else 0xFFA8B0BC)
+    val textMuted get() = RoomTheme.map(if (PhoneLook.on) 0xFF6E6E74 else 0xFF6B7381)
     val accent get() = MaterialYou.accent?.takeIf { !RoomTheme.isOn } ?: RoomTheme.map(if (Night.on) 0xFFA8823A else 0xFFC9A227)
     val onAccent get() = RoomTheme.map(0xFF0D0F12)
 }
@@ -76,10 +77,13 @@ data class FormFactor(val isTv: Boolean) {
 
 val LocalFormFactor = staticCompositionLocalOf { FormFactor(isTv = false) }
 
-fun detectFormFactor(context: Context): FormFactor {
-    val ui = context.getSystemService(Context.UI_MODE_SERVICE) as UiModeManager
-    return FormFactor(ui.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION)
-}
+/**
+ * The TV's layout in the TV's app, the touch layout in the phone's and the
+ * Quest's — by which app this is (Flavor), not by guessing from the device:
+ * a headset once passed for a TV.
+ */
+@Suppress("UNUSED_PARAMETER")
+fun detectFormFactor(context: Context): FormFactor = FormFactor(isTv = app.lumiere.android.Flavor.tv)
 
 @Composable
 fun LumiereTheme(content: @Composable () -> Unit) {
@@ -101,6 +105,11 @@ fun LumiereTheme(content: @Composable () -> Unit) {
 
 /** After 10 pm the gold goes a softer amber, kinder to a dark room; set by the activity each hour. */
 object Night {
+    var on by androidx.compose.runtime.mutableStateOf(false)
+}
+
+/** iOS's dark greys on a phone; set by the activity. */
+object PhoneLook {
     var on by androidx.compose.runtime.mutableStateOf(false)
 }
 

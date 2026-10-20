@@ -30,6 +30,23 @@ extension PlayerSettingsPanel {
             }
         }
 
+        var icon: String {
+            switch self {
+            case .aspectRatio: return "aspectratio"
+            case .verticalShift: return "arrow.up.and.down"
+            case .flip: return "arrow.left.and.right.righttriangle.left.righttriangle.right"
+            case .chapters: return "list.bullet.rectangle"
+            case .playbackSpeed: return "gauge.with.dots.needle.67percent"
+            case .loop: return "repeat"
+            case .subtitleStyle: return "textformat"
+            case .subtitleSize: return "textformat.size"
+            case .subtitleDelay: return "clock.arrow.2.circlepath"
+            case .upscaling: return "sparkles.tv"
+            case .ambientMode: return "lightbulb.min"
+            case .statistics: return "chart.bar.xaxis"
+            }
+        }
+
         /// Only mpv can honour geometry and scaler changes.
         var needsVideoAdjustments: Bool {
             switch self {

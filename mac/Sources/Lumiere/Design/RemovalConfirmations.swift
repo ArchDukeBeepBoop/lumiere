@@ -1,42 +1,66 @@
 import SwiftUI
 import LumiereKit
 
-/// The two questions before content leaves the library.
-struct RemovalConfirmations: ViewModifier {
-    let actions: MetadataActions
-    @Binding var confirmingRemove: Bool
-    @Binding var confirmingDelete: Bool
+/// The two questions before content leaves the library, asked by the window.
+///
+/// They used to be a pair of dialogs on every card, and on Home — cards in
+/// lazy shelves, re-made as they scroll — the dialog never appeared: "Delete
+/// File…" did nothing at all, and no request ever reached the server. A card
+/// now hands the question to this, and the shell shows the one dialog.
+@MainActor
+@Observable
+final class RemovalCenter {
+    static let shared = RemovalCenter()
+
+    struct Pending: Identifiable {
+        let title: String
+        let permanent: Bool
+        let perform: () async -> Void
+        let id = UUID()
+    }
+
+    var pending: Pending?
+
+    func ask(_ title: String, permanent: Bool, perform: @escaping () async -> Void) {
+        pending = Pending(title: title, permanent: permanent, perform: perform)
+    }
+}
+
+extension View {
+    /// The window's one removal dialog. Attached by `ShellView`.
+    func removalCenterDialog() -> some View {
+        modifier(RemovalCenterDialog())
+    }
+}
+
+private struct RemovalCenterDialog: ViewModifier {
+    @Bindable private var center = RemovalCenter.shared
 
     func body(content: Content) -> some View {
-        if actions.removeFromLibrary == nil && actions.deleteToTrash == nil {
-            content
-        } else {
-            content
-                .confirmationDialog(
-                    "Remove \(actions.title) from the library?",
-                    isPresented: $confirmingRemove, titleVisibility: .visible
-                ) {
-                    Button("Remove") { Task { await actions.removeFromLibrary?() } }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("The files stay where they are. A show takes its seasons "
-                       + "and episodes with it. Put it back any time from "
-                       + "Settings › Library › Removed Items.")
+        let current = center.pending
+        content.confirmationDialog(
+            current.map { $0.permanent ? "Move \($0.title) to the Trash?" : "Remove \($0.title) from the library?" } ?? "",
+            isPresented: Binding(get: { center.pending != nil }, set: { if !$0 { center.pending = nil } }),
+            titleVisibility: .visible
+        ) {
+            if let current {
+                Button(current.permanent ? "Move to Trash" : "Remove", role: current.permanent ? .destructive : nil) {
+                    center.pending = nil
+                    Task { await current.perform() }
                 }
-                .confirmationDialog(
-                    "Move \(actions.title) to the Trash?",
-                    isPresented: $confirmingDelete, titleVisibility: .visible
-                ) {
-                    Button("Move to Trash", role: .destructive) {
-                        Task { await actions.deleteToTrash?() }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("The files go to the Trash on their own drive, and the "
-                       + "title leaves the library along with any seasons and "
-                       + "episodes under it. Watch history for it is discarded. "
-                       + "Recover the files from the Trash while it is there.")
-                }
+            }
+            Button("Cancel", role: .cancel) { center.pending = nil }
+        } message: {
+            if current?.permanent == true {
+                Text("The files go to the Trash on their own drive, and the "
+                   + "title leaves the library along with any seasons and "
+                   + "episodes under it. Watch history for it is discarded. "
+                   + "Recover the files from the Trash while it is there.")
+            } else {
+                Text("The files stay where they are. A show takes its seasons "
+                   + "and episodes with it. Put it back any time from "
+                   + "Settings › Library › Removed Items.")
+            }
         }
     }
 }

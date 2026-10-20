@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Quest's app: a wide window in the headset, pointed at with the
+     controllers or hands; never on its side. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The library of the device's own videos and music (On This Phone). -->
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <application>
+        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape" />
+    </application>
+</manifest>

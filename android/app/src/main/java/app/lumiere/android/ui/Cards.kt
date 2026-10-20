@@ -153,6 +153,8 @@ fun ItemCard(item: Item, server: Server, shape: CardShape, onFocus: (Item) -> Un
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(if (shape == CardShape.Poster) 2f / 3f else 16f / 9f)
+                // A phone's card sinks under the finger, as iOS's do.
+                .then(if (form.isTv) Modifier else Modifier.pressScale())
                 .focusCard({ onFocus(item) }, onClick, LocalCardMenu.current?.let { menu -> { menu(item) } })
                 .background(Palette.surface)
         ) {

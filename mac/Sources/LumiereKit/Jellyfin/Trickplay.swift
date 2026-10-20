@@ -163,3 +163,11 @@ public extension JellyfinClient {
         try await sendData(path: "Videos/\(itemId)/Trickplay/\(width)/\(sheetIndex).jpg")
     }
 }
+
+public extension JellyfinClient {
+    /// Asks Lumiere's server to make this file's scrubbing previews now.
+    /// True when it has started; false when it has them, is busy, or cannot.
+    func requestPreviews(itemId: String) async -> Bool {
+        (try? await sendData(path: "Lumiere/Trickplay/\(itemId)", method: "POST")) != nil
+    }
+}

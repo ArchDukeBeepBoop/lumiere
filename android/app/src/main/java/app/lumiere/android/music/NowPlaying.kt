@@ -71,6 +71,8 @@ import coil.compose.AsyncImage
 /** The cover large, the controls, and the lyrics or queue — the Mac's full-screen player. */
 @Composable
 fun NowPlayingScreen(state: AppState) {
+    // The phone's and the Quest's: Apple Music's Now Playing.
+    if (!LocalFormFactor.current.isTv) { PhoneNowPlaying(state); return }
     val server = state.server ?: return
     val track = Music.current ?: run { Text("Nothing playing", Modifier.padding(24.dp)); return }
     val form = LocalFormFactor.current
@@ -133,7 +135,7 @@ fun NowPlayingScreen(state: AppState) {
 
 /** Synced lyrics follow the song: the line being sung lit and kept in view; a tap goes to it. */
 @Composable
-private fun Lyrics(lines: List<LyricLine>?) {
+internal fun Lyrics(lines: List<LyricLine>?) {
     if (lines == null) {
         Text("No lyrics for this track. A .lrc file named like the track, beside it on the server, is read and synced.",
             style = MaterialTheme.typography.bodyMedium)
@@ -161,7 +163,7 @@ private fun Lyrics(lines: List<LyricLine>?) {
 }
 
 @Composable
-private fun Queue(state: AppState) {
+internal fun Queue(state: AppState) {
     val server = state.server ?: return
     LazyColumn {
         itemsIndexed(Music.queue, key = { i, t -> "$i-${t.id}" }) { i, t ->

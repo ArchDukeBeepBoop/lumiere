@@ -54,16 +54,15 @@ extension DetailHeroHeader {
     @ViewBuilder
     var versionPicker: some View {
         if versions.count > 1, let selectedVersion {
-            Picker("Version", selection: selectedVersion) {
-                ForEach(versions) { source in
-                    Text(source.name ?? "Version").tag(Optional(source.id))
-                }
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            // Matched to the Play pill above it rather than left at an arbitrary
-            // 240, so the action column has one edge instead of three.
-            .frame(maxWidth: DetailMetrics.actionColumnWidth)
+            GlassMenuButton(
+                icon: "square.stack",
+                options: versions,
+                id: \.id,
+                selection: Binding(get: { selectedVersion.wrappedValue ?? "" },
+                                   set: { selectedVersion.wrappedValue = $0 }),
+                label: { $0.name ?? "Version" },
+                help: "Which copy to play"
+            )
         }
     }
 

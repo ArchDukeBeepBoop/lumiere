@@ -61,6 +61,8 @@ func (h CollectionSuggestHandler) KeepFresh() {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			n := h.FillFromSeries(ctx, true)
 			made, adopted := h.AutoCollections(ctx)
+			themed, _ := h.ThemeCollections(ctx)
+			made += themed
 			cancel()
 			h.Log.Info("collections: overnight refresh", "filled", n, "made", made, "adopted", adopted)
 			time.Sleep(24 * time.Hour)

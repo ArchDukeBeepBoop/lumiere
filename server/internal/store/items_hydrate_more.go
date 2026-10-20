@@ -14,6 +14,20 @@ import (
 // RecursiveItemCount is every playable thing beneath, at any depth, which for
 // a series is its episodes rather than its seasons.
 func (s *Store) hydrateCounts(byID map[string]*Item, in string, args []any) error {
+	// Only for what can hold something. These ran for every row of every
+	// list — an episode list included — and 97% of an episode list's time
+	// was spent counting the children of episodes, which have none.
+	var containers []any
+	for _, it := range byID {
+		if hasChildren(it.Type) {
+			containers = append(containers, it.ID)
+		}
+	}
+	if len(containers) == 0 {
+		return nil
+	}
+	args = containers
+	in = placeholders(len(containers))
 	direct, err := s.countBy(`
 		SELECT parent_id, COUNT(*) FROM item
 		WHERE parent_id IN (`+in+`) AND extra_type IS NULL
@@ -26,7 +40,7 @@ func (s *Store) hydrateCounts(byID map[string]*Item, in string, args []any) erro
 	// walking seasons.
 	recursive, err := s.countBy(`
 		SELECT series_id, COUNT(*) FROM item
-		WHERE series_id IN (`+in+`) AND type = 'Episode' AND extra_type IS NULL
+		WHERE series_id IN (`+in+`) AND +type = 'Episode' AND extra_type IS NULL
 		GROUP BY series_id`, args)
 	if err != nil {
 		return err
@@ -38,7 +52,7 @@ func (s *Store) hydrateCounts(byID map[string]*Item, in string, args []any) erro
 	// claiming to be empty.
 	inSeason, err := s.countBy(`
 		SELECT season_id, COUNT(*) FROM item
-		WHERE season_id IN (`+in+`) AND type = 'Episode' AND extra_type IS NULL
+		WHERE season_id IN (`+in+`) AND +type = 'Episode' AND extra_type IS NULL
 		GROUP BY season_id`, args)
 	if err != nil {
 		return err
@@ -66,7 +80,7 @@ func (s *Store) hydrateCounts(byID map[string]*Item, in string, args []any) erro
 		WHERE s.parent_id IN (`+in+`) AND s.type = 'Season' AND s.extra_type IS NULL
 		  AND EXISTS (
 			SELECT 1 FROM item e
-			WHERE e.season_id = s.id AND e.type = 'Episode' AND e.extra_type IS NULL
+			WHERE e.season_id = s.id AND +e.type = 'Episode' AND e.extra_type IS NULL
 		  )
 		GROUP BY parent_id`, args)
 	if err != nil {

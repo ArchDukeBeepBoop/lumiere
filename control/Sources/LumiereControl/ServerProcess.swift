@@ -26,7 +26,16 @@ final class ServerProcess {
         case failed(String)
     }
 
-    private(set) var state: State = .stopped
+    private(set) var state: State = .stopped {
+        didSet {
+            // When it started serving, for the uptime in the menu. Set on the
+            // transition rather than by each caller, so adopting a server that
+            // was already running and starting a fresh one agree.
+            if state == .running, oldValue != .running { startedAt = Date() }
+            if state != .running { startedAt = nil }
+        }
+    }
+    private(set) var startedAt: Date?
     /// The last few log lines, for the "why did it stop" case.
     private(set) var recentLog: [String] = []
 
@@ -101,6 +110,14 @@ final class ServerProcess {
     /// can answer is worse than no dot.
     /// Stops the server and waits for it to be gone, so its database file
     /// is closed before anything replaces it.
+    /// Stop, wait for the old process to let go of the port and the database,
+    /// then start. Waiting is the point: a start issued straight after a stop
+    /// races the old server for 8098 and loses with "address already in use".
+    func restart() async {
+        await stopAndWait()
+        start()
+    }
+
     func stopAndWait() async {
         let running = process
         stop()

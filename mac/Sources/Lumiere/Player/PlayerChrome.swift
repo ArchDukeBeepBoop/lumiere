@@ -22,27 +22,29 @@ extension View {
     func playerSurface(cornerRadius: CGFloat) -> some View {
         background {
             let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-            ZStack {
-                GlassFill(shape: shape)
-                shape.fill(
-                    LinearGradient(
-                        colors: [
-                            Theme.PlayerPalette.surfaceTop,
-                            Theme.PlayerPalette.surfaceBottom
-                        ],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
+            // Smoked glass rather than a black slab: the blur and its sheen,
+            // one tint, and a rim that catches light along the top edge, as
+            // tvOS 17 and visionOS draw panels over video. Always the dark
+            // variant — the picture behind is dark whatever the Mac is set to.
+            // No live blur: it cannot sample the video layer beneath anyway,
+            // and recomputing one on every frame competed with the film on
+            // this Mac's GPU. The tint and the sheen are the look.
+            shape.fill(Theme.PlayerPalette.glassSolid)
+                .overlay {
+                    shape.fill(LinearGradient(colors: [Theme.PlayerPalette.glassSheen, .clear],
+                                              startPoint: .top, endPoint: .center))
+                }
+                .overlay {
+                    shape.strokeBorder(
+                        LinearGradient(colors: [Theme.PlayerPalette.glassRimTop, Theme.PlayerPalette.glassRimBottom],
+                                       startPoint: .top, endPoint: .bottom),
+                        lineWidth: 1)
+                }
+                .shadow(
+                    color: Theme.PlayerPalette.surfaceShadow,
+                    radius: Theme.PlayerMetric.surfaceShadow,
+                    y: Theme.PlayerMetric.surfaceShadowY
                 )
-            }
-            .overlay {
-                shape.strokeBorder(Theme.PlayerPalette.surfaceStroke, lineWidth: 1)
-            }
-            .shadow(
-                color: Theme.PlayerPalette.surfaceShadow,
-                radius: Theme.PlayerMetric.surfaceShadow,
-                y: Theme.PlayerMetric.surfaceShadowY
-            )
         }
     }
 }
@@ -158,4 +160,10 @@ struct PlayerCloseButton: View {
         .animation(Theme.Motion.hover, value: isHovering)
         .labelledHelp("Close the player (Escape)")
     }
+}
+
+/// The wake-up's clock, held by reference so writing it redraws nothing.
+@MainActor
+final class WakeClock {
+    var last = Date.distantPast
 }

@@ -48,12 +48,14 @@ extension HomeModel {
     private static let rememberedNextUpKey = "rememberedNextUp"
 
     func rememberNextUp() {
-        guard !nextUp.isEmpty else { return }
+        // Never the room's: the saved copy is redrawn on whichever Home opens
+        // next, and that was how the room's titles appeared outside it.
+        guard !nextUp.isEmpty, !inRoom else { return }
         UserDefaults.standard.set(nextUp.map(\.id), forKey: Self.rememberedNextUpKey)
     }
 
     func showRememberedNextUp() {
-        guard let ids = UserDefaults.standard.stringArray(forKey: Self.rememberedNextUpKey),
+        guard !inRoom, let ids = UserDefaults.standard.stringArray(forKey: Self.rememberedNextUpKey),
               !ids.isEmpty else { return }
         Task { @MainActor [weak self] in
             guard let self, self.nextUp.isEmpty,
@@ -64,5 +66,20 @@ extension HomeModel {
             let ordered = ids.compactMap { byId[$0] }.filter { !$0.isPlayed }
             if self.nextUp.isEmpty { self.nextUp = ordered }
         }
+    }
+
+    /// Entering or leaving the Private Room: what is on screen belongs to the
+    /// room just left, so it goes at once rather than for the second or two
+    /// the new rows take — and any load still running for that room is
+    /// abandoned, so it cannot land after the door has closed.
+    func clearForRoomChange(inRoom: Bool) {
+        self.inRoom = inRoom
+        generation += 1
+        resume = []; recentlyAdded = []; finishSeason = []; forgotten = []
+        continueSeries = []; libraryShelves = []; becauseYouWatched = nil
+        wallEntries = []; spotlight = []; spotlightReasons = [:]
+        topFilms = []; topSeries = []; topAnime = []
+        newEpisodeIds = []
+        nextUp = []
     }
 }

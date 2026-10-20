@@ -91,5 +91,11 @@ func (h EditHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, errorBody{"edit failed"})
 		return
 	}
+	// A collection renamed by hand keeps its name: Scan, Identify and the
+	// nightly passes name collections from the movie database, and would
+	// otherwise put the old name back.
+	if body.Name != nil && h.Store.IsContainer(itemID) {
+		h.Store.SetItemValue(itemID, "lock:name", "1")
+	}
 	w.WriteHeader(http.StatusNoContent)
 }

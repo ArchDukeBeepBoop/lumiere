@@ -37,6 +37,8 @@ extension SettingsView {
                   + "About a fifth of a second per point of travel; a whole swipe "
                   + "is a minute.")
 
+            DoubleClickSkipToggle()
+
             SeasonRunSettings()
 
             Toggle("Remember a flipped picture for the whole show", isOn: $remembersFlip)
@@ -220,5 +222,18 @@ extension SettingsView {
                 value: app.capabilities.dolbyVision ? "Native" : "Tone-mapped to HDR10"
             )
         }
+    }
+}
+
+/// Double-click the sides to skip, as its own switch.
+private struct DoubleClickSkipToggle: View {
+    @AppStorage(Preference.doubleClickSidesSkip.name) private var on = Preference.doubleClickSidesSkip.defaultValue
+
+    var body: some View {
+        Toggle("Double-click the sides to skip", isOn: $on)
+        Text("The left third goes back and the right third forward, by the arrow-key step. "
+           + "Off, a double-click anywhere on the picture is full screen.")
+            .font(Theme.Font.caption)
+            .foregroundStyle(Theme.Palette.textSecondary)
     }
 }

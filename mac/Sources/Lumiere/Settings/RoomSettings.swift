@@ -9,6 +9,8 @@ struct RoomSettings: View {
     @AppStorage(Preference.roomUsesOwnTheme.name) private var ownTheme = Preference.roomUsesOwnTheme.defaultValue
     @AppStorage(Preference.roomBlocksCapture.name) private var blocksCapture = Preference.roomBlocksCapture.defaultValue
     @AppStorage(Preference.roomBlursCovers.name) private var blurs = Preference.roomBlursCovers.defaultValue
+    @AppStorage(Preference.roomAmbientGlow.name) private var glows = Preference.roomAmbientGlow.defaultValue
+    @AppStorage(Preference.widgetShowsResume.name) private var widget = Preference.widgetShowsResume.defaultValue
     @AppStorage(Preference.looksUpPrivateLibraries.name) private var looksUp = Preference.looksUpPrivateLibraries.defaultValue
 
     var body: some View {
@@ -22,6 +24,9 @@ struct RoomSettings: View {
         Toggle("Give the room its own quieter look", isOn: $ownTheme)
         Toggle("Keep the room out of screenshots and screen sharing", isOn: $blocksCapture)
         Toggle("Blur private covers until pointed at", isOn: $blurs)
+        Toggle("Glow from the artwork in the room's dark theme", isOn: $glows)
+        Toggle("Show Continue Watching in desktop widgets", isOn: $widget)
+            .onChange(of: widget) { Task { await app?.client?.setWidgetEnabled(widget) } }
         Toggle("Look up private libraries on the movie database", isOn: $looksUp)
             .onChange(of: looksUp) { Task { await app?.applyPrivacy() } }
         SettingsNote("Off, new titles in private libraries are named from their own "

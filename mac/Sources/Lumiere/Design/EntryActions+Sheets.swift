@@ -35,7 +35,18 @@ private struct EntryActionSheets: ViewModifier {
                 set: { if !$0 { state.artworkPickerItem = nil } }
             )) { artworkPicker(context) }
             .sheet(item: $state.identifyEntry) { entry in
-                if let app = context.app, let client = app.client {
+                if let app = context.app, let client = app.client, entry.item.itemType == .boxSet {
+                    // A collection is identified as a film series, not as a film:
+                    // the menu opened the film search here, and found the films.
+                    CollectionSeriesSheet(
+                        mode: .identify(collectionId: entry.id), client: client,
+                        initialQuery: entry.item.name,
+                        privateLibraryIds: app.privateLibraryIds, inRoom: app.isShowingPrivateLibraries
+                    ) { changed in
+                        state.identifyEntry = nil
+                        if changed { Task { await context.refreshRow(entry.item.id) } }
+                    }
+                } else if let app = context.app, let client = app.client {
                     IdentifySheet(
                         itemId: entry.item.id,
                         // Seeded from the folder on disk, not from the scraped name.

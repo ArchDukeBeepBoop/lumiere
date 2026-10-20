@@ -39,5 +39,8 @@ func registerContainers(authed *http.ServeMux, db *store.Store, items api.ItemsH
 	authed.HandleFunc("GET /Lumiere/Collections/Discover", suggest.Discover)
 	authed.HandleFunc("POST /Lumiere/SeriesCollections/{tmdb}", suggest.CreateFromSeries)
 	authed.HandleFunc("POST /Lumiere/Collections/Auto", suggest.Auto)
+	authed.HandleFunc("GET /Lumiere/Collections/Themes", suggest.Themes)
+	authed.HandleFunc("POST /Lumiere/Collections/Themes", suggest.SetThemes)
+	authed.HandleFunc("POST /Lumiere/Collections/Themes/Run", suggest.RunThemes)
 	suggest.KeepFresh()
 }

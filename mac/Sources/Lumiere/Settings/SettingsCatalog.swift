@@ -71,6 +71,7 @@ enum SettingsCatalog {
         bool(Preference.reducesLoudSounds, "Reduce loud sounds", "Playback"),
         bool(Preference.pausesWhileScrubbing, "Pause while scrubbing", "Playback"),
         bool(Preference.scrollSeeks, "Trackpad swipes seek", "Playback"),
+        bool(Preference.doubleClickSidesSkip, "Double-click the sides to skip", "Playback"),
         int(Preference.seekStepSeconds, "Arrow-key seek (seconds)", "Playback"),
         int(Preference.seekLongStepSeconds, "Shift-arrow seek (seconds)", "Playback"),
         text(Preference.seekLanding, "Where the scrubber lands", "Playback"),
@@ -93,6 +94,8 @@ enum SettingsCatalog {
         bool(Preference.roomUsesOwnTheme, "Private Room’s own theme", "Privacy"),
         bool(Preference.roomBlocksCapture, "Private Room hidden from screenshots", "Privacy"),
         bool(Preference.roomBlursCovers, "Private Room covers blurred", "Privacy"),
+        bool(Preference.roomAmbientGlow, "Glow from the artwork in the room", "Privacy"),
+        bool(Preference.widgetShowsResume, "Continue Watching in widgets", "Privacy"),
         bool(Preference.looksUpPrivateLibraries, "Look up private libraries", "Privacy"),
     ]
 

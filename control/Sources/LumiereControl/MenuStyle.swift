@@ -1,125 +1,201 @@
 import SwiftUI
 
-/// The design primitives the menu is built from.
+/// The menu's design primitives, taken from macOS's own menu bar extras.
 ///
-/// Two traditions, and they agree more than they differ. From Apple: system
-/// materials, SF Symbols, a hover highlight that is a rounded shape rather than
-/// a full-bleed bar, and controls where the platform puts them. From
-/// Squarespace: hierarchy carried by *space* rather than by lines and boxes, a
-/// type scale of three sizes and no more, and a single accent used sparingly
-/// enough that it still means something when it appears.
+/// Not an interpretation of Apple's style — its specific furniture. Rows carry
+/// their icon inside a small grey circle that fills with the accent colour when
+/// the thing is on, as Wi-Fi and Bluetooth do since Sonoma. The two primary
+/// switches are Control Center tiles. Section headers are sentence-case and
+/// secondary, as in every system menu, not the spaced capitals of a magazine.
+/// The highlight is a soft grey rounded rectangle, because inside a menu bar
+/// window that is what the system draws — the blue bar belongs to NSMenu.
 ///
-/// The practical consequence is a lot of restraint. There is one colour in this
-/// menu that is not greyscale, and it appears on exactly one element.
+/// And the colour is the user's, not ours: `Color.accentColor` follows System
+/// Settings › Appearance, so someone with a graphite Mac gets a graphite menu.
 enum Menu {
-    /// Lumiere's amber, taken from the app icon so the family reads as one
-    /// thing. Used only for the running state — an accent that appears
-    /// everywhere is decoration, not signal.
-    static var accent: Color { MenuLook.current.accent }
+    static let accent = Color.accentColor
 
-    /// A three-step type scale. Title, body, caption — anything a menu needs to
-    /// say fits in one of them, and a fourth size would only blur the hierarchy
-    /// the other three establish.
-    static let title = Font.system(size: 15, weight: .semibold)
-    static let body = Font.system(size: 13, weight: .regular)
-    static let caption = Font.system(size: 11, weight: .regular)
-    /// Section labels: small, spaced, uppercase. The one typographic flourish,
-    /// and it earns its place by removing the need for dividers between groups.
-    static let label = Font.system(size: 10, weight: .semibold)
+    static let title = Font.system(size: 13, weight: .bold)
+    static let body = Font.system(size: 13)
+    static let caption = Font.system(size: 11)
+    static let section = Font.system(size: 12, weight: .semibold)
 
-    /// A spacing scale in multiples of four, because a rhythm you can name is
-    /// one you can keep. Sizes picked once here rather than sprinkled as
-    /// literals through the layout.
-    static let gutter: CGFloat = 14
-    static let rowHeight: CGFloat = 30
-    static let iconColumn: CGFloat = 22
-    static let width: CGFloat = 288
+    static let width: CGFloat = 300
+    /// The inset Control Center uses between the window edge and its modules.
+    static let gutter: CGFloat = 12
+    static let rowHeight: CGFloat = 32
+    static let iconCircle: CGFloat = 24
+    static let cardRadius: CGFloat = 12
 }
 
-/// A section heading.
+/// A section heading: sentence case, secondary, as in the Wi-Fi menu.
 struct MenuSection: View {
     let text: String
 
     var body: some View {
-        Text(text.uppercased())
-            .font(Menu.label)
-            .kerning(0.8)
-            .foregroundStyle(.tertiary)
-            .padding(.horizontal, Menu.gutter)
-            .padding(.top, 14)
-            .padding(.bottom, 4)
+        Text(text)
+            .font(Menu.section)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Menu.gutter + 2)
+            .padding(.top, 10)
+            .padding(.bottom, 2)
     }
 }
 
-/// One tappable row: symbol, label, optional trailing detail.
-///
-/// The icon sits in a fixed-width column so every label starts on the same
-/// vertical line — the thing that makes a list of unrelated actions read as one
-/// list rather than as several. It is also why the symbols are all the same
-/// optical weight.
+/// The grey circle with a glyph in it, accent-filled when `active`.
+struct IconCircle: View {
+    let symbol: String
+    var active = false
+    var size: CGFloat = Menu.iconCircle
+
+    var body: some View {
+        Image(systemName: symbol)
+            .font(.system(size: size * 0.46, weight: .medium))
+            .foregroundStyle(active ? Color.white : Color.primary)
+            .frame(width: size, height: size)
+            .background(Circle().fill(active ? Menu.accent : Color.primary.opacity(0.1)))
+    }
+}
+
+/// A row: circled icon, title, optional subtitle, optional trailing detail.
 struct MenuRow: View {
     let symbol: String
     let title: String
+    var subtitle: String? = nil
     var detail: String? = nil
-    var isEnabled: Bool = true
+    var active = false
+    var isEnabled = true
     let action: () -> Void
 
     @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 0) {
-                Image(systemName: symbol)
-                    .font(.system(size: 13, weight: .regular))
-                    .frame(width: Menu.iconColumn, alignment: .leading)
-                    .foregroundStyle(isEnabled ? .primary : .tertiary)
-                Text(title)
-                    .font(Menu.body)
-                    .foregroundStyle(isEnabled ? .primary : .tertiary)
+            HStack(spacing: 10) {
+                IconCircle(symbol: symbol, active: active)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(Menu.body)
+                    if let subtitle {
+                        Text(subtitle).font(Menu.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Spacer(minLength: 8)
                 if let detail {
                     Text(detail)
                         .font(Menu.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .contentTransition(.opacity)
                 }
             }
-            .padding(.horizontal, 10)
-            .frame(height: Menu.rowHeight)
+            .opacity(isEnabled ? 1 : 0.45)
+            .padding(.horizontal, 6)
+            .frame(minHeight: Menu.rowHeight + (subtitle == nil ? 0 : 6))
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(MenuRowHighlight(isOn: isHovering && isEnabled))
+            .background(Hover(isOn: isHovering && isEnabled))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
         .onHover { isHovering = $0 }
-        .padding(.horizontal, Menu.gutter - 10)
+        .padding(.horizontal, Menu.gutter - 6)
     }
 }
 
-/// A row that reads as text rather than as an action — progress, a result, a
-/// reason. Same grid as MenuRow so it does not break the column.
+/// A plain text command with its shortcut at the trailing edge — the
+/// "Wi-Fi Settings…" line at the foot of every system menu.
+struct MenuCommand: View {
+    let title: String
+    /// A ⌘-key that works while the menu is open, shown at the trailing edge
+    /// in the tertiary colour system menus use for their key equivalents.
+    var key: Character? = nil
+    var isEnabled = true
+    let action: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack {
+                Text(title).font(Menu.body)
+                Spacer()
+                if let key {
+                    Text("⌘\(String(key).uppercased())").font(Menu.body).foregroundStyle(.tertiary)
+                }
+            }
+            .opacity(isEnabled ? 1 : 0.45)
+            .padding(.horizontal, 8)
+            .frame(height: 24)
+            .background(Hover(isOn: isHovering && isEnabled))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .onHover { isHovering = $0 }
+        .modifier(CommandKey(key: key))
+        .padding(.horizontal, Menu.gutter - 8)
+    }
+}
+
+private struct CommandKey: ViewModifier {
+    let key: Character?
+    func body(content: Content) -> some View {
+        if let key {
+            content.keyboardShortcut(KeyEquivalent(key), modifiers: .command)
+        } else {
+            content
+        }
+    }
+}
+
+/// Text that reads as information rather than an action.
 struct MenuNote: View {
-    let symbol: String?
     let text: String
     var tint: Color = .secondary
 
     var body: some View {
-        HStack(spacing: 0) {
-            Group {
-                if let symbol {
-                    Image(systemName: symbol).font(.system(size: 11))
-                } else {
-                    Color.clear
-                }
-            }
-            .frame(width: Menu.iconColumn, alignment: .leading)
-            Text(text)
-                .font(Menu.caption)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .foregroundStyle(tint)
-        .padding(.horizontal, Menu.gutter)
-        .padding(.vertical, 3)
+        Text(text)
+            .font(Menu.caption)
+            .foregroundStyle(tint)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Menu.gutter + 2)
+            .padding(.vertical, 2)
     }
+}
+
+/// The soft grey hover a menu bar window draws.
+struct Hover: View {
+    let isOn: Bool
+    var body: some View {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .fill(Color.primary.opacity(isOn ? 0.09 : 0))
+    }
+}
+
+/// The hairline rule between groups in a system menu, inset as theirs are.
+struct MenuRule: View {
+    var body: some View {
+        Divider().padding(.horizontal, Menu.gutter + 2).padding(.vertical, 5)
+    }
+}
+
+/// A Control Center module: a lighter rounded card on the menu's material.
+struct Card: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background(
+                RoundedRectangle(cornerRadius: Menu.cardRadius, style: .continuous)
+                    .fill(Color.primary.opacity(0.055))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Menu.cardRadius, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+            )
+    }
+}
+
+extension View {
+    func card() -> some View { modifier(Card()) }
 }

@@ -60,6 +60,8 @@ struct DetailHeroHeader: View {
     /// of one file — the picker only appears when there is a choice to make.
     var versions: [MediaSource] = []
     var selectedVersion: Binding<String?>?
+    /// Audio and subtitle chips, where the file's streams are known.
+    var languages: LanguageChips?
 
     @Environment(\.displayScale) private var scale
     // Not private: DetailHeroHeader+Meta.swift titles the episode line with it, and
@@ -167,6 +169,7 @@ struct DetailHeroHeader: View {
                     playButton
                     actionRow
                     versionPicker
+                    if let languages { languages }
                 }
                 .frame(width: actionColumnWidth, alignment: .leading)
 

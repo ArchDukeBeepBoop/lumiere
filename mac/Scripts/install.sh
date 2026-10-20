@@ -81,9 +81,18 @@ ditto "$APP" "$DEST"
 # broken bundle silently.
 SIGNING_IDENTITY="Lumiere Local Signing"
 if security find-identity -v -p codesigning 2>/dev/null | grep -q "$SIGNING_IDENTITY"; then
-	codesign --force --deep --sign "$SIGNING_IDENTITY" "$DEST"
+	IDENTITY="$SIGNING_IDENTITY"
 else
-	codesign --force --deep --sign - "$DEST"
+	IDENTITY="-"
+fi
+# As in bundle.sh: deep, then the widget again with its sandbox entitlements
+# (which --deep strips — a widget without them never registers), then the
+# app shallow to seal over it.
+codesign --force --deep --sign "$IDENTITY" "$DEST"
+WIDGET="$DEST/Contents/PlugIns/LumiereWidgets.appex"
+if [ -d "$WIDGET" ]; then
+	codesign --force --sign "$IDENTITY" --entitlements "$ROOT/Widget/Widget.entitlements" "$WIDGET"
+	codesign --force --sign "$IDENTITY" "$DEST"
 fi
 touch "$DEST"
 

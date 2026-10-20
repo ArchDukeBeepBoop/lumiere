@@ -129,7 +129,12 @@ extension AppModel {
                     changed: page.changed, removed: page.removed, libraryIds: wanted
                 )
                 Diagnostics.log("[feed] \(result.changed) changed, \(result.removed) removed")
-                if result.changed + result.removed > 0 {
+                // Not while something plays. The player reports its position
+                // every few seconds, the server logs each report as a change,
+                // and each one rebuilt Home behind the film — 182 times in an
+                // hour for one episode. The cache above is still written;
+                // closing the player refreshes Home once ("after playback").
+                if result.changed + result.removed > 0, nowPlayingItemId == nil {
                     let one = page.changed.count + page.removed.count == 1
                         ? (page.changed.first ?? page.removed.first) : nil
                     await LibraryChangeFeed.shared.post(LibraryChange(reason: "server changes", itemId: one))

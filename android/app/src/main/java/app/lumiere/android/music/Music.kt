@@ -64,6 +64,8 @@ object Music {
 
     fun play(context: Context, server: Server, tracks: List<Item>, start: Int = 0, fromRoom: Boolean = false) {
         if (tracks.isEmpty()) return
+        // Songs from the phone stop: one thing plays at a time.
+        app.lumiere.android.local.LocalAudio.stop()
         val player = ensure(context, server)
         queue = tracks
         isPlayingFromRoom = fromRoom

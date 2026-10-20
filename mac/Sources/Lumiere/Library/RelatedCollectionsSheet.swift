@@ -49,7 +49,7 @@ struct RelatedCollectionsSheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 520, height: 560)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .task { await scan() }
         .sheet(isPresented: Binding(
             get: { !authoring.isEmpty },

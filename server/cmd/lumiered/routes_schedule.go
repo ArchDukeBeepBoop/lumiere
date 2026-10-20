@@ -25,6 +25,14 @@ func registerSchedule(authed *http.ServeMux, db *store.Store, cfg config.Config,
 	refresh *api.RefreshHandler, log *slog.Logger) {
 	api.TrickplayRoot = filepath.Join(cfg.DataDir, "cache", "trickplay")
 	keeper := &schedule.Keeper{Store: db, Log: log, Scan: refresh, TrickplayRoot: api.TrickplayRoot}
+	// The file being watched gets its previews now. See Keeper.PreviewFor.
+	authed.HandleFunc("POST /Lumiere/Trickplay/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if keeper.PreviewFor(store.NormalizeID(r.PathValue("id"))) {
+			w.WriteHeader(http.StatusAccepted)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 	keeper.Start()
 
 	// Media that appears is found in about a minute, rather than at the next

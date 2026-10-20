@@ -56,7 +56,7 @@ struct EditTrackSheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 540, height: 620)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .task { await load() }
     }
 

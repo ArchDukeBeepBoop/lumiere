@@ -107,7 +107,9 @@ func (s *Store) SeriesCollectionFor(tmdb string, private bool, rooms LibraryRoom
 
 // CollectionHolding is the collection already holding most of these films,
 // if any — a collection made by hand or by Jellyfin with no series id, which
-// an automatic pass must adopt rather than duplicate.
+// an automatic pass must adopt rather than duplicate. Never a theme
+// collection: holding every Alien film does not make Thinking Machines the
+// Alien collection.
 func (s *Store) CollectionHolding(members []string) string {
 	if len(members) == 0 {
 		return ""
@@ -119,6 +121,7 @@ func (s *Store) CollectionHolding(members []string) string {
 	var id string
 	s.DB.QueryRow(`SELECT l.parent_id FROM link l JOIN item b ON b.id = l.parent_id AND b.type = 'BoxSet'
 		WHERE l.child_id IN (`+placeholders(len(members))+`)
+		  AND NOT EXISTS (SELECT 1 FROM item_value t WHERE t.item_id = l.parent_id AND t.kind = 'theme')
 		GROUP BY l.parent_id ORDER BY count(*) DESC LIMIT 1`, args...).Scan(&id)
 	return id
 }

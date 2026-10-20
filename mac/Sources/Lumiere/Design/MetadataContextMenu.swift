@@ -67,6 +67,9 @@ struct MetadataActions {
     /// Opens the Add to Playlist sheet. Playlists are not only for music — a
     /// Jellyfin playlist holds films and episodes just as happily.
     var addToPlaylist: (() -> Void)?
+    /// The play queue. See `PlayQueue`. Nil for what does not play itself.
+    var playNext: (() -> Void)?
+    var addToQueue: (() -> Void)?
     /// Starts a batch selection with this item already chosen. The gesture people
     /// reach for first — you notice the second thing you want *while looking at
     /// the first*, not before opening a toolbar.
@@ -91,8 +94,6 @@ struct MetadataContextMenu: ViewModifier {
     let actions: MetadataActions?
 
     @State private var confirmingReplace = false
-    @State private var confirmingRemove = false
-    @State private var confirmingDelete = false
 
     /// Every modifier here is attached to *every tile on screen* — a few hundred
     /// of them on the home screen — so each one has to earn its place per card,
@@ -119,13 +120,6 @@ struct MetadataContextMenu: ViewModifier {
                         actions: actions, isPresented: $confirmingReplace
                     )
                 )
-                .modifier(
-                    RemovalConfirmations(
-                        actions: actions,
-                        confirmingRemove: $confirmingRemove,
-                        confirmingDelete: $confirmingDelete
-                    )
-                )
         } else {
             content
         }
@@ -137,6 +131,11 @@ struct MetadataContextMenu: ViewModifier {
             Button("Select…") {
                 beginSelection()
             }
+            Divider()
+        }
+        if let playNext = actions.playNext, let addToQueue = actions.addToQueue {
+            Button("Play Next") { playNext() }
+            Button("Add to Queue") { addToQueue() }
             Divider()
         }
         // First, and above the refreshes on purpose. Editing is the deliberate act;
@@ -239,11 +238,15 @@ struct MetadataContextMenu: ViewModifier {
         if actions.removeFromLibrary != nil || actions.deleteToTrash != nil {
             Divider()
         }
-        if actions.removeFromLibrary != nil {
-            Button("Remove from Library…") { confirmingRemove = true }
+        if let remove = actions.removeFromLibrary {
+            Button("Remove from Library…") {
+                RemovalCenter.shared.ask(actions.title, permanent: false, perform: remove)
+            }
         }
-        if actions.deleteToTrash != nil {
-            Button("Delete File…", role: .destructive) { confirmingDelete = true }
+        if let trash = actions.deleteToTrash {
+            Button("Delete File…", role: .destructive) {
+                RemovalCenter.shared.ask(actions.title, permanent: true, perform: trash)
+            }
         }
     }
 }

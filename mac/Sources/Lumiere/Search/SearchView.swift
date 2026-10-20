@@ -26,6 +26,8 @@ struct SearchView: View {
     @State private var searchTask: Task<Void, Never>?
     /// The shared menu's state. See `EntryActionState`.
     @State var entryState = EntryActionState()
+    @State var selection = BatchSelection()
+    @State var batchIds: (ids: [String], playlist: Bool) = ([], false)
     @FocusState private var isFocused: Bool
 
     private let columns = [
@@ -53,7 +55,7 @@ struct SearchView: View {
             } else if results.isEmpty {
                 noResults
             } else {
-                resultsGrid
+                withSearchSelection(resultsGrid, all: results.map(\.id))
             }
         }
         // Deliberately no canvas fill: the root supplies the background — glass or
@@ -110,20 +112,7 @@ struct SearchView: View {
                 ForEach(groups, id: \.title) { group in
                     Shelf(title: group.title, itemCount: group.entries.count,
                           itemWidth: group.wide ? Theme.Art.continueCardWidth * 0.7 : Theme.Art.shelfPosterWidth) {
-                        ForEach(group.entries) { entry in
-                            NavigationLink(value: DetailRoute.forEntry(entry)) {
-                                if group.wide {
-                                    WideCard(entry: entry, serverURL: serverURL, pipeline: pipeline,
-                                             width: Theme.Art.continueCardWidth * 0.7,
-                                             metadata: actions(for: entry))
-                                } else {
-                                    PosterCard(entry: entry, serverURL: serverURL, pipeline: pipeline,
-                                               width: Theme.Art.shelfPosterWidth,
-                                               metadata: actions(for: entry))
-                                }
-                            }
-                            .buttonStyle(.plain)
-                        }
+                        ForEach(group.entries) { entry in searchTile(entry, wide: group.wide) }
                     }
                 }
                 .padding(.bottom, Theme.Space.xxl)

@@ -101,11 +101,12 @@ fun TvSearchScreen(state: AppState) {
             color = if (term.isEmpty()) Palette.textMuted else Palette.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
         // tvOS's keyboard: one line of letters to sweep along, results filling
         // in below with every press — no on-screen keyboard to open.
-        LazyRow(Modifier.focusRestorer(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        LazyRow(Modifier.focusRestorer(), horizontalArrangement = Arrangement.spacedBy(4.dp), contentPadding = PaddingValues(vertical = 8.dp, horizontal = 6.dp)) {
             items(keys.size) { i ->
                 val k = keys[i]
+                // tvOS's keyboard line: the letter under the remote swells, its neighbours stay small.
                 TvPill({ term = when (k) { "␣" -> "$term "; "⌫" -> term.dropLast(1); "Clear" -> ""; else -> term + k } },
-                    if (i == 0) Modifier.focusRequester(first) else Modifier) {
+                    if (i == 0) Modifier.focusRequester(first) else Modifier, focusedScale = if (k.length == 1) 1.35f else 1.1f) {
                     Text(if (k == "Clear") "Clear" else k.uppercase(), fontSize = 18.sp)
                 }
             }
@@ -134,6 +135,27 @@ fun TvSearchScreen(state: AppState) {
                 "More" to shown.filter { it.type != "Movie" && !it.isSeries && !it.isEpisode },
             ).filter { it.second.isNotEmpty() }
             androidx.compose.foundation.lazy.LazyColumn(contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                // Apple's Top Result: the best match, large, before the rows.
+                shown.firstOrNull()?.takeIf { term.isNotBlank() }?.let { top ->
+                    item(key = "top") {
+                        Column {
+                            Text("Top Result", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary,
+                                modifier = Modifier.padding(bottom = 8.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp),
+                                modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp)) {
+                                Box(Modifier.width(360.dp).aspectRatio(16f / 9f).focusCard({}, { open(state, top, context) }) { state.actionsFor = top }
+                                    .background(Palette.surface)) {
+                                    AsyncImage(imageFor(top, server, CardShape.Wide, 720), top.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                                }
+                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(top.seriesName ?: top.name, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary, maxLines = 2)
+                                    Text(listOfNotNull(when { top.isSeries -> "TV Show"; top.isEpisode -> "Episode"; top.type == "Movie" -> "Film"; else -> null },
+                                        top.year?.toString(), top.episodeLabel).joinToString(" · "), style = MaterialTheme.typography.labelLarge, color = Palette.textSecondary)
+                                }
+                            }
+                        }
+                    }
+                }
                 groups.forEach { (name, list) ->
                     item(key = "g-$name") {
                         Column {

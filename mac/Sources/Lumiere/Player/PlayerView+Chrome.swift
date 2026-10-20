@@ -224,7 +224,7 @@ extension PlayerView {
             } else if openTab != nil {
                 PlayerTrackPanel(
                     model: model, tab: $openTab,
-                    width: Theme.PlayerMetric.panelWidth(in: playerSize),
+                    width: Theme.PlayerMetric.trackPanelWidth(in: playerSize),
                     maxHeight: Theme.PlayerMetric.panelMaxHeight(in: playerSize),
                     pipeline: pipeline, serverURL: client.session.serverURL
                 )

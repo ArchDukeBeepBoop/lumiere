@@ -7,17 +7,14 @@ extension DetailHeader {
     /// Only appears when a title genuinely has more than one file — a 4K and a
     /// 1080p rip of the same film.
     var versionPicker: some View {
-        Picker("Version", selection: Binding(
-            get: { model.selectedSourceId ?? "" },
-            set: { model.selectedSourceId = $0 }
-        )) {
-            ForEach(model.detail?.mediaSources ?? []) { source in
-                Text(versionLabel(source)).tag(source.id)
-            }
-        }
-        .pickerStyle(.menu)
-        .labelsHidden()
-        .frame(maxWidth: 220)
+        GlassMenuButton(
+            icon: "square.stack",
+            options: model.detail?.mediaSources ?? [],
+            id: \.id,
+            selection: Binding(get: { model.selectedSourceId ?? "" }, set: { model.selectedSourceId = $0 }),
+            label: { versionLabel($0) },
+            help: "Which copy to play"
+        )
     }
 
     func versionLabel(_ source: MediaSource) -> String {

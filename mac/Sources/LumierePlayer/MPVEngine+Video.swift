@@ -93,6 +93,12 @@ extension MPVEngine {
         var filters: [String] = []
         if horizontal { filters.append("hflip") }
         if vertical { filters.append("vflip") }
+        // A flip is a software filter, and zero-copy frames never reach it:
+        // mpv logged "Disabling filter hflip … because it has failed" and the
+        // picture stayed as it was. While flipped, frames are copied back so
+        // the filter can work; unflipped, zero-copy returns. The copy costs
+        // memory only for the rare file that needs flipping.
+        setProperty("hwdec", filters.isEmpty ? "videotoolbox" : "videotoolbox-copy")
         setProperty("vf", filters.joined(separator: ","))
     }
 

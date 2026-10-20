@@ -58,7 +58,7 @@ public actor JellyfinClient {
     /// Makes a value safe to put inside a quoted MediaBrowser auth parameter.
     ///
     /// This is not defensive tidying — it is the fix for a bug that made signing in
-    /// impossible on this machine. macOS names a Mac "Jeremiah’s MacBook Pro" using
+    /// impossible on this machine. macOS names a Mac "Alex’s MacBook Pro" using
     /// a curly apostrophe, U+2019, and `Host.current().localizedName` hands that
     /// straight over. An HTTP header carrying non-ASCII goes out in a form ASP.NET
     /// Core will not parse, so Jellyfin answered **400 before ever looking at the

@@ -16,6 +16,7 @@ extension PlayerControls {
                              : model.elapsedText)
                 .font(Theme.Font.playerTimecode)
                 .foregroundStyle(Theme.Palette.onPlayerChrome)
+                .contentTransition(.numericText())
                 .frame(width: timecodeWidth, alignment: .leading)
 
             scrubber
@@ -89,7 +90,14 @@ extension PlayerControls {
                             isScrubbing = true
                             Task { await model.beginScrub() }
                         }
+                        let previous = scrubFraction * model.duration
                         scrubFraction = max(0, min(1, value.location.x / width))
+                        // A tap on the trackpad as the handle crosses a chapter,
+                        // as macOS gives when a dragged window snaps to an edge.
+                        let now = scrubFraction * model.duration
+                        if model.chapters.contains(where: { $0.startSeconds > min(previous, now) && $0.startSeconds <= max(previous, now) }) {
+                            NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .now)
+                        }
                         // The picture follows the cursor rather than waiting for the
                         // release — which is the single thing that made scrubbing
                         // feel unresponsive. The model coalesces: one seek out at a

@@ -84,6 +84,7 @@ private struct EpisodeOrderSheet: View {
         }
         .padding(Theme.Space.xl)
         .frame(width: 520)
+        .glassSheet()
         .task { await load() }
     }
 

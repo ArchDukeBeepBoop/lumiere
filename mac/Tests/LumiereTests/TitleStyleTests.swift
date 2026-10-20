@@ -13,9 +13,10 @@ func registerTitleStyleTests(_ t: TestRunner) {
         season: Int? = nil,
         episode: Int? = nil,
         path: String? = nil,
-        seasons: Int? = nil
+        seasons: Int? = nil,
+        folder: Bool = false
     ) -> ItemRecord {
-        var json: [String: Any] = ["Id": "x", "Name": name, "Type": type]
+        var json: [String: Any] = ["Id": "x", "Name": name, "Type": type, "IsFolder": folder]
         if let year { json["ProductionYear"] = year }
         if let series { json["SeriesName"] = series }
         if let season { json["ParentIndexNumber"] = season }
@@ -78,6 +79,12 @@ func registerTitleStyleTests(_ t: TestRunner) {
                 TitleFormatter.title(for: episode, style: .metadataFilename),
                 "Show - 10x07 - Finale.mp4"
             )
+        }
+
+        t.test("a show's folder lends it no extension") {
+            let show = item(name: "Dr. Stone", type: "Series", year: 2019,
+                            path: "/media/Anime/Dr. Stone", folder: true)
+            t.expectEqual(TitleFormatter.title(for: show, style: .metadataFilename), "Dr. Stone (2019)")
         }
 
         t.test("a film follows Title (Year)") {

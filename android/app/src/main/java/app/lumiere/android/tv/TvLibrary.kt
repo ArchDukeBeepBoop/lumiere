@@ -1,5 +1,6 @@
 package app.lumiere.android.tv
 
+import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.mutableStateOf
 import app.lumiere.android.ui.TvPill
 import androidx.compose.ui.focus.focusRestorer
@@ -83,13 +84,17 @@ fun TvLibraryScreen(state: AppState) {
             androidx.compose.animation.AnimatedVisibility(!scrolled) {
                 Row(Modifier.fillMaxWidth().padding(start = 56.dp, end = 56.dp, top = 22.dp, bottom = 6.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    LazyRow(Modifier.weight(1f).focusRestorer(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    // Apple's segmented control: one frosted capsule, the chosen library lit inside it.
+                    Box(Modifier.weight(1f)) {
+                    LazyRow(Modifier.focusRestorer().clip(RoundedCornerShape(50))
+                        .background(Palette.surface.copy(alpha = 0.72f)).padding(5.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                         itemsIndexed(shelves) { i, s ->
                             TvPill({ chosen = i }, (if (i == chosen) Modifier.focusRequester(first) else Modifier)
                                 .onFocusChanged { if (it.isFocused) chosen = i }, selected = i == chosen) {
                                 Text(s.name, style = MaterialTheme.typography.titleSmall)
                             }
                         }
+                    }
                     }
                     if (current is Shelf.Library && !current.view.collectionType.isNullOrEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         TvPill({ q.sort = (q.sort + 1) % SORTS.size; q.letter = null }) { Text("↕ ${SORTS[q.sort].first}") }

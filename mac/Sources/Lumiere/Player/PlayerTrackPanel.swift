@@ -26,6 +26,16 @@ struct PlayerTrackPanel: View {
             case .chapters: return "Chapters"
             }
         }
+
+        var icon: String {
+            switch self {
+            case .info: return "info.circle"
+            case .audio: return "speaker.wave.2"
+            case .subtitles: return "captions.bubble"
+            case .speed: return "gauge.with.dots.needle.67percent"
+            case .chapters: return "list.bullet.rectangle"
+            }
+        }
     }
 
     let model: PlayerModel
@@ -42,59 +52,78 @@ struct PlayerTrackPanel: View {
     /// two never disagree about what a step is.
     private let speeds: [Double] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
 
+    @State private var contentHeight: CGFloat = 120
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            tabs
-            Divider().overlay(Theme.PlayerPalette.surfaceStroke)
+            header
             ScrollView {
-                VStack(spacing: Theme.Space.xxs) {
+                VStack(alignment: .leading, spacing: 2) {
                     rows
                 }
-                .padding(Theme.Space.sm)
+                .padding(.horizontal, Theme.Space.sm)
+                .padding(.bottom, Theme.Space.sm)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { contentHeight = $0 }
             }
-            .frame(maxHeight: maxHeight)
+            // As tall as its rows, up to the limit — not the limit always. Two
+            // audio tracks were floating in a box sized for a season.
+            .frame(height: min(max(contentHeight, 1), maxHeight))
+            .scrollBounceBehavior(.basedOnSize)
         }
         .frame(width: width)
-        .playerSurface(cornerRadius: Theme.Radius.playerPanel)
+        .playerSurface(cornerRadius: Theme.Radius.playerGlass)
+        .environment(\.colorScheme, .dark)
     }
 
-    // MARK: - Tabs
+    /// Two columns where there is room, as Apple TV's Audio menu has them:
+    /// what to listen to on the left, how it sounds on the right.
+    private var isWide: Bool { width >= 440 }
 
-    private var tabs: some View {
-        HStack(spacing: Theme.Space.xxs) {
-            ForEach(availableTabs) { item in
-                Button { tab = item } label: {
-                    Text(item.title)
-                        .font(Theme.Font.playerTab)
-                        .foregroundStyle(
-                            tab == item
-                                ? Theme.Palette.onPlayerChrome
-                                : Theme.Palette.onPlayerChromeSecondary
-                        )
-                        .padding(.horizontal, Theme.Space.sm)
-                        .padding(.vertical, Theme.Space.xs)
-                        .background(
-                            Capsule()
-                                .fill(Theme.PlayerPalette.controlActive)
-                                .opacity(tab == item ? 1 : 0)
-                        )
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-            }
+    // MARK: - Header
+
+    private var header: some View {
+        HStack(spacing: Theme.Space.sm) {
+            PlayerSegmented(
+                items: availableTabs,
+                selection: Binding(get: { tab ?? .audio }, set: { tab = $0 }),
+                title: { $0.title },
+                icon: isWide ? { $0.icon } : nil
+            )
+            .fixedSize()
             Spacer(minLength: 0)
             Button { tab = nil } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
-                    .frame(width: 20, height: 20)
-                    .contentShape(Rectangle())
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Theme.Palette.onPlayerChrome)
+                    .frame(width: 24, height: 24)
+                    .background(Circle().fill(Theme.PlayerPalette.segmentTrack))
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .labelledHelp("Close")
         }
-        .padding(.horizontal, Theme.Space.md)
-        .padding(.vertical, Theme.Space.sm)
+        .padding(Theme.Space.sm)
+    }
+
+    /// Side by side when wide, one above the other when not.
+    @ViewBuilder
+    private func columns<L: View, R: View>(_ left: String, _ right: String,
+                                           @ViewBuilder leading: () -> L,
+                                           @ViewBuilder trailing: () -> R) -> some View {
+        if isWide {
+            HStack(alignment: .top, spacing: Theme.Space.sm) {
+                VStack(alignment: .leading, spacing: 2) { PlayerSectionLabel(left); leading() }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+                Rectangle().fill(Theme.PlayerPalette.surfaceStroke).frame(width: 1)
+                VStack(alignment: .leading, spacing: 2) { PlayerSectionLabel(right); trailing() }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        } else {
+            PlayerSectionLabel(left)
+            leading()
+            PlayerSectionLabel(right)
+            trailing()
+        }
     }
 
     /// Chapters only where the file has any, so the tab strip never offers a page
@@ -121,25 +150,38 @@ struct PlayerTrackPanel: View {
         }
     }
 
-    @ViewBuilder
     private var audioRows: some View {
-        AudioFilterRows(model: model)
-        if model.audioTracks.isEmpty {
-            emptyNote("This file reports no audio tracks.")
-        } else {
-            ForEach(model.audioTracks) { track in
-                PlayerPanelRow(
-                    title: track.title,
-                    detail: track.language,
-                    selected: model.selectedAudioTrack == track.id
-                ) {
-                    Task { await model.selectAudioTrack(track.id) }
+        columns("Language", "Sound") {
+            if model.audioTracks.isEmpty {
+                emptyNote("This file reports no audio tracks.")
+            } else {
+                ForEach(model.audioTracks) { track in
+                    PlayerPanelRow(
+                        title: trackName(track.language, fallback: track.title),
+                        detail: nil,
+                        subtitle: TrackDetail.line(codec: track.codec, channels: track.channels,
+                                                   isDefault: track.isDefault, isForced: false),
+                        selected: model.selectedAudioTrack == track.id
+                    ) {
+                        Task { await model.selectAudioTrack(track.id) }
+                    }
                 }
             }
+        } trailing: {
+            AudioFilterRows(model: model)
         }
     }
 
+    /// "Japanese", not "jpn"; the file's own title where it names no language.
+    private func trackName(_ language: String?, fallback: String) -> String {
+        language.flatMap(DetailAbout.languageName) ?? fallback
+    }
+
     private var subtitleRows: some View {
+        columns("Subtitles", "Find & Sync") { subtitleList } trailing: { subtitleTools }
+    }
+
+    private var subtitleList: some View {
         Group {
             PlayerPanelRow(
                 title: "Off",
@@ -150,15 +192,17 @@ struct PlayerTrackPanel: View {
             }
             ForEach(model.subtitleTracks) { track in
                 PlayerPanelRow(
-                    title: track.title,
-                    detail: track.isForced ? "Forced" : track.language,
+                    title: trackName(track.language, fallback: track.title),
+                    detail: nil,
+                    subtitle: [track.title == trackName(track.language, fallback: track.title) ? nil : track.title,
+                               TrackDetail.line(codec: track.codec, channels: nil,
+                                                isDefault: track.isDefault, isForced: track.isForced)]
+                        .compactMap { $0 }.joined(separator: " · "),
                     selected: model.selectedSubtitleTrack == track.id
                 ) {
                     Task { await model.selectSubtitleTrack(track.id) }
                 }
             }
-            // Fetching one, and lining it up. See PlayerTrackPanel+Find.swift.
-            subtitleTools
         }
     }
 
@@ -200,7 +244,7 @@ struct PlayerTrackPanel: View {
                     }
                     .padding(.horizontal, Theme.Space.md)
                     .padding(.vertical, Theme.Space.xs)
-                    .background(current ? Color.white.opacity(0.08) : .clear)
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous).fill(current ? Theme.PlayerPalette.menuSelected : .clear))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -228,57 +272,5 @@ struct PlayerTrackPanel: View {
             .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(Theme.Space.md)
-    }
-}
-
-/// One row of the panel.
-///
-/// The checkmark keeps its column whether or not it is drawn, so a list of tracks
-/// has one left edge rather than two. No shadow and no permanent fill: there can
-/// be forty of these in a chapter list, and forty shadowed slabs is a wall.
-struct PlayerPanelRow: View {
-    let title: String
-    let detail: String?
-    let selected: Bool
-    let action: () -> Void
-
-    @State private var isHovering = false
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: Theme.Space.sm) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Theme.PlayerPalette.scrubPlayed)
-                    .frame(width: 14)
-                    .opacity(selected ? 1 : 0)
-
-                Text(title)
-                    .font(Theme.Font.playerRow)
-                    .foregroundStyle(Theme.Palette.onPlayerChrome)
-                    .lineLimit(1)
-
-                Spacer(minLength: Theme.Space.sm)
-
-                if let detail, !detail.isEmpty {
-                    Text(detail)
-                        .font(Theme.Font.playerRow)
-                        .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.horizontal, Theme.Space.sm)
-            .padding(.vertical, Theme.Space.sm)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
-                    .fill(isHovering ? Theme.PlayerPalette.rowHover
-                                     : Theme.PlayerPalette.rowSelected)
-                    .opacity(isHovering || selected ? 1 : 0)
-            )
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
-        .animation(Theme.Motion.hover, value: isHovering)
     }
 }

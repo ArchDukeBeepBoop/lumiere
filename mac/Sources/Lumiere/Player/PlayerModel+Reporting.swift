@@ -72,6 +72,7 @@ extension PlayerModel {
         guard let sheets = try? await client.trickplay(itemId: itemId),
               let bySize = sheets[mediaSourceId] ?? sheets.values.first,
               !bySize.isEmpty else {
+            await awaitPreviews(mediaSourceId: mediaSourceId)
             return
         }
         // Prefer the widest sheet that is still small enough to decode instantly
@@ -91,5 +92,24 @@ extension PlayerModel {
             return "\(code) · \(entry.item.name)"
         }
         return entry.item.productionYear.map(String.init)
+    }
+
+    /// No previews for this file yet — most of a library waits for the
+    /// server's quiet hours — so ask for them now and pick them up when they
+    /// are made, while this file is still playing.
+    private func awaitPreviews(mediaSourceId: String) async {
+        guard await client.requestPreviews(itemId: itemId) else { return }
+        let wanted = itemId
+        Task { [weak self] in
+            for _ in 0..<40 {
+                try? await Task.sleep(for: .seconds(15))
+                guard let self, self.itemId == wanted, self.engineRef != nil, self.trickplay == nil else { return }
+                if let sheets = try? await self.client.trickplay(itemId: wanted),
+                   let bySize = sheets[mediaSourceId] ?? sheets.values.first, !bySize.isEmpty {
+                    await self.loadTrickplay(mediaSourceId: mediaSourceId)
+                    return
+                }
+            }
+        }
     }
 }

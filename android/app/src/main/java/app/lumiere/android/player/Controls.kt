@@ -1,5 +1,6 @@
 package app.lumiere.android.player
 
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.alpha
 import app.lumiere.android.ui.LButton
 import app.lumiere.android.ui.LTextButton
@@ -228,7 +229,7 @@ fun PlayerOverlay(
                     else Text(clock(held!!.toDouble()), color = Color.White, modifier = Modifier.align(Alignment.BottomCenter))
                 }
                 androidx.compose.material3.LinearProgressIndicator(progress = { if (duration > 0) held!! / duration else 0f },
-                    color = Palette.accent, modifier = Modifier.fillMaxWidth())
+                    color = if (isTv) Color.White else Palette.accent, trackColor = Color.White.copy(alpha = 0.3f), modifier = Modifier.fillMaxWidth())
             }
         }
         flash?.let {
@@ -237,6 +238,14 @@ fun PlayerOverlay(
                     .padding(horizontal = 18.dp, vertical = 8.dp))
         }
         AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut()) {
+            // A phone's and the Quest's controls are the iPhone player's: see PhoneChrome.
+            if (!isTv) {
+                PhoneChrome(item, server, trickplay, playing, position, duration, scrubbing, hasNext,
+                    onScrub = { scrubbing = it; touched++ }, onSeek = { clock.seek(it.toDouble()); scrubbing = null },
+                    onSkip = { seekBy(it); touched++ }, onToggle = { if (player.isPlaying) player.pause() else player.play(); touched++ },
+                    onBack = onBack, onTracks = onTracks, onMenu = onMenu, onPip = onPip, onNext = onNext, onEpisodes = onEpisodes)
+                return@AnimatedVisibility
+            }
             Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
                 0f to Color.Black.copy(alpha = 0.55f), 0.25f to Color.Transparent,
                 0.65f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.75f)))) {
@@ -280,20 +289,40 @@ fun PlayerOverlay(
                             ScrubPreview(server, item?.id ?: "", trick, shown, (shown / duration) * maxWidth.value)
                         }
                         Column(Modifier.align(Alignment.BottomStart)) {
+                            // tvOS: what is playing sits above the bar, left, in plain white.
+                            if (isTv) item?.let { cur ->
+                                Text(if (cur.isEpisode) cur.seriesName ?: cur.name else cur.name, color = Color.White,
+                                    style = androidx.compose.ui.text.TextStyle(fontSize = 24.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
+                                    modifier = Modifier.padding(start = 10.dp), maxLines = 1)
+                                if (cur.isEpisode) Text(listOfNotNull(cur.episodeLabel, cur.name).joinToString(" · "), color = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(start = 10.dp), maxLines = 1)
+                            }
                             Box {
                                 ChapterMarks(item, duration)
                                 Slider(
                                     value = shown, valueRange = 0f..duration.coerceAtLeast(1f),
                                     onValueChange = { scrubbing = it; touched++ },
                                     onValueChangeFinished = { scrubbing?.let { clock.seek(it.toDouble()) }; scrubbing = null },
-                                    colors = SliderDefaults.colors(thumbColor = Palette.accent, activeTrackColor = Palette.accent,
+                                    // Apple's bar is white on a dim track, not a colour.
+                                    colors = SliderDefaults.colors(thumbColor = if (isTv) Color.White else Palette.accent,
+                                        activeTrackColor = if (isTv) Color.White else Palette.accent,
                                         inactiveTrackColor = Color.White.copy(alpha = 0.3f)),
                                 )
                             }
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                // Time gone on the left, time left on the right, as tvOS counts.
+                                if (isTv) {
+                                    Text(clock(shown.toDouble()), color = Color.White.copy(alpha = 0.85f), modifier = Modifier.padding(start = 10.dp))
+                                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                        chapterAt(item, shown)?.let { Text(it, color = Color.White.copy(alpha = 0.7f), maxLines = 1) }
+                                    }
+                                    Text("-" + clock((duration - shown).toDouble().coerceAtLeast(0.0)), color = Color.White.copy(alpha = 0.85f),
+                                        modifier = Modifier.padding(end = 10.dp))
+                                } else {
                                 Text("${clock(shown.toDouble())} / ${clock(duration.toDouble())}", color = Color.White,
                                     modifier = Modifier.weight(1f))
                                 chapterAt(item, shown)?.let { Text(it, color = Color.White.copy(alpha = 0.8f), maxLines = 1) }
+                                }
                                 if (hasNext) LIconButton(onClick = onNext) { Icon(Icons.Default.SkipNext, "Next episode", tint = app.lumiere.android.ui.pillTint(Color.White)) }
                             }
                         }
@@ -305,12 +334,12 @@ fun PlayerOverlay(
 }
 
 /** The chapter's name at a point, where chapters have names. */
-private fun chapterAt(item: Item?, seconds: Float): String? =
+internal fun chapterAt(item: Item?, seconds: Float): String? =
     item?.chapters?.lastOrNull { it.startSeconds <= seconds }?.name?.takeIf { it.isNotBlank() && !it.startsWith("Chapter") }
 
 /** Small ticks along the bar where chapters begin. */
 @Composable
-private fun ChapterMarks(item: Item?, duration: Float) {
+internal fun ChapterMarks(item: Item?, duration: Float) {
     val chapters = item?.chapters?.filter { it.startSeconds > 1 } ?: return
     if (duration <= 0 || chapters.isEmpty()) return
     BoxWithConstraints(Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 10.dp)) {
@@ -326,7 +355,7 @@ private fun ChapterMarks(item: Item?, duration: Float) {
  * bar: the one there, and dimmer ones either side, as tvOS shows a strip.
  */
 @Composable
-private fun ScrubPreview(server: Server, id: String, t: Trickplay, seconds: Float, x: Float) {
+internal fun ScrubPreview(server: Server, id: String, t: Trickplay, seconds: Float, x: Float) {
     val index = ((seconds * 1000) / t.intervalMs).toInt().coerceIn(0, (t.count - 1).coerceAtLeast(0))
     val w = 192.dp
     val h = w * (t.height.toFloat() / t.width)

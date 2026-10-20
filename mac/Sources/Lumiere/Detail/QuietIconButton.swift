@@ -31,6 +31,8 @@ struct QuietIconButton: View {
                     ProgressView().controlSize(.small)
                 } else {
                     Image(systemName: systemName)
+                        .contentTransition(.symbolEffect(.replace))
+                        .symbolEffect(.bounce, value: isOn)
                         .font(.system(size: 17))
                         .foregroundStyle(tint)
                 }

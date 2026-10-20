@@ -36,6 +36,9 @@ func (h CollectionSuggestHandler) SetSeries(w http.ResponseWriter, r *http.Reque
 		writeJSON(w, http.StatusNotFound, errorBody{"no such collection"})
 		return
 	}
+	if h.isTheme(w, id) {
+		return
+	}
 	h.Store.SetItemValue(id, "tmdb_collection", r.PathValue("tmdb"))
 	ctx, cancel := context.WithTimeout(r.Context(), time.Minute)
 	defer cancel()

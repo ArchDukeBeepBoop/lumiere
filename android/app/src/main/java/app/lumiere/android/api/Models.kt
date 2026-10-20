@@ -46,6 +46,8 @@ data class Item(
     val favorite: Boolean = false,
     val parentId: String? = null,
     val logoTag: String? = null,
+    /** The show's logo, on an episode: drawn only where the show has one. */
+    val seriesLogoTag: String? = null,
     val people: List<Person> = emptyList(),
     val studios: List<String> = emptyList(),
     val extraType: String? = null,
@@ -172,6 +174,7 @@ fun parseItem(o: JSONObject): Item {
         favorite = user?.optBoolean("IsFavorite") ?: false,
         parentId = o.str("ParentId"),
         logoTag = images?.str("Logo"),
+        seriesLogoTag = o.str("ParentLogoImageTag"),
         people = o.optJSONArray("People").objects().map {
             Person(it.optString("Id"), it.optString("Name"), it.str("Role"), it.str("Type"), it.str("PrimaryImageTag"))
         },

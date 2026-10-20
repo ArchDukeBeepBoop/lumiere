@@ -65,7 +65,7 @@ struct CollectionAuthoringSheet: View {
         }
         .padding(Theme.Space.lg)
         .frame(width: 560, height: 620)
-        .background(Theme.Palette.canvas)
+        .glassSheet()
         .task(id: index) { await load() }
         .confirmationDialog(
             "Delete \(draft.name.isEmpty ? "this collection" : draft.name)?",

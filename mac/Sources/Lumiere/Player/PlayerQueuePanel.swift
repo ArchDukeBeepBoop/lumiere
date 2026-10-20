@@ -29,10 +29,10 @@ struct PlayerQueuePanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            Divider().overlay(Theme.PlayerPalette.surfaceStroke)
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: Theme.Space.xxs) {
+                        PlayerQueueSection(model: model, onPlay: onPlayEpisode)
                         rows
                     }
                     .padding(Theme.Space.sm)
@@ -48,32 +48,36 @@ struct PlayerQueuePanel: View {
             }
         }
         .frame(width: width)
-        .playerSurface(cornerRadius: Theme.Radius.playerPanel)
+        .playerSurface(cornerRadius: Theme.Radius.playerGlass)
     }
 
     private var header: some View {
         HStack(spacing: Theme.Space.sm) {
-            Text("Up Next")
-                .font(Theme.Font.playerTab)
-                .foregroundStyle(Theme.Palette.onPlayerChrome)
-            // What the list holds, since it is now long enough that its own length
-            // is not obvious from looking at it.
-            Text(countText)
-                .font(Theme.Font.playerTab)
-                .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Up Next")
+                    .font(Theme.Font.playerSubtitle.weight(.semibold))
+                    .foregroundStyle(Theme.Palette.onPlayerChrome)
+                // What the list holds, since it is now long enough that its own
+                // length is not obvious from looking at it.
+                Text(countText)
+                    .font(Theme.Font.playerDetail)
+                    .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
+            }
             Spacer(minLength: 0)
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
-                    .frame(width: 20, height: 20)
-                    .contentShape(Rectangle())
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(Theme.Palette.onPlayerChrome)
+                    .frame(width: 24, height: 24)
+                    .background(Circle().fill(Theme.PlayerPalette.segmentTrack))
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .labelledHelp("Close")
         }
         .padding(.horizontal, Theme.Space.md)
-        .padding(.vertical, Theme.Space.sm)
+        .padding(.top, Theme.Space.md)
+        .padding(.bottom, Theme.Space.xs)
     }
 
     private var countText: String {
@@ -84,7 +88,8 @@ struct PlayerQueuePanel: View {
         ForEach(Array(model.queue.enumerated()), id: \.element.id) { index, episode in
             PlayerPanelRow(
                 title: episode.item.name,
-                detail: episodeDetail(episode, index: index),
+                detail: nil,
+                subtitle: episodeDetail(episode, index: index),
                 selected: index == model.queueIndex
             ) {
                 guard index != model.queueIndex else { return }

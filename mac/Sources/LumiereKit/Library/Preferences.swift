@@ -104,6 +104,15 @@ public enum Preference {
     /// Minutes idle on Home before the backdrops take over. Zero is never.
     public static let screensaverMinutes = IntKey("screensaverMinutes", default: 5)
     public static let roomBlursCovers = Key("roomBlursCovers", default: true)
+    /// In the room's dark theme, a title page glows at its edges with the
+    /// title's own colours, as visionOS lights a room from the film.
+    public static let roomAmbientGlow = Key("roomAmbientGlow", default: true)
+    /// Double-clicking the left or right third of the picture skips back or
+    /// forward, as on iPhone. Off: a double-click anywhere is full screen.
+    public static let doubleClickSidesSkip = Key("doubleClickSidesSkip", default: true)
+    /// Continue Watching in the desktop and Notification Center widget. The
+    /// server's widget feed is switched off with it.
+    public static let widgetShowsResume = Key("widgetShowsResume", default: true)
     /// In a library named for anime, with no choice made, Japanese audio and
     /// English dialogue subtitles.
     public static let animeDefaultsToJapanese = Key("animeDefaultsToJapanese", default: true)

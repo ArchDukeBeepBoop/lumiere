@@ -16,8 +16,8 @@ struct LumiereControlApp: App {
             MenuView(
                 server: startup.server,
                 lumiere: startup.lumiere,
-                loginItem: startup.loginItem,
-                backups: startup.backups
+                backups: startup.backups,
+                monitor: startup.monitor
             )
         } label: {
             // The iris, as a template image: open while the server is serving,
@@ -26,6 +26,11 @@ struct LumiereControlApp: App {
             Image(nsImage: IrisGlyph.image(running: startup.server.state == .running))
         }
         .menuBarExtraStyle(.window)
+
+        // The window behind "Settings…" — options live here, not in the menu.
+        Settings {
+            SettingsView(loginItem: startup.loginItem, server: startup.server)
+        }
     }
 }
 
@@ -42,6 +47,8 @@ final class Startup: NSObject, NSApplicationDelegate {
     let lumiere = AppLauncher()
     let loginItem = LoginItem()
     let backups = BackupRestorer()
+    let monitor = LibraryMonitor()
+    let notifier = Notifier()
 
     private var watcher: Task<Void, Never>?
 
@@ -71,12 +78,30 @@ final class Startup: NSObject, NSApplicationDelegate {
         // A slow poll: the interesting transitions are ones this app caused and
         // already knows about. This catches only the others — a server that
         // died, or Lumiere quit from its own menu.
+        var beat = 0
+        var reported = false
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(5))
             lumiere.refresh()
             if server.state == .running, await !server.isAnswering() {
                 server.stop()
+                notifier.serverStopped("It stopped answering. Open the menu to start it again.")
+                reported = true
             }
+            // A stop nobody asked for. `.failed` is only ever set by the process
+            // exiting on its own — a Stop from the menu goes to `.stopped` — so
+            // this cannot fire for something the user just did.
+            if case .failed(let why) = server.state, !reported {
+                notifier.serverStopped(why)
+                reported = true
+            }
+            if server.state == .running, reported {
+                notifier.serverBack()
+                reported = false
+            }
+            // Library numbers every 15 s; the menu also refreshes on opening.
+            beat += 1
+            if beat % 3 == 0 { await monitor.refresh() }
         }
     }
 }

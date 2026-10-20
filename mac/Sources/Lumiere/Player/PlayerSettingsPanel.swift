@@ -19,16 +19,15 @@ struct PlayerSettingsPanel: View {
         let size = Theme.PlayerMetric.settingsPanelSize(in: playerSize)
         return HStack(spacing: 0) {
             categories
-            Divider()
+            Rectangle().fill(Theme.PlayerPalette.surfaceStroke).frame(width: 1)
             options
         }
         .frame(width: size.width, height: size.height)
-        .background(Theme.Palette.surface)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.panel))
-        .overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.panel)
-                .strokeBorder(Theme.Palette.border, lineWidth: 1)
-        }
+        // The same smoked glass as every other panel over the film. It was an
+        // opaque page-coloured sheet: white over a dark scene in light mode,
+        // and the one panel that looked like a different app.
+        .playerSurface(cornerRadius: Theme.Radius.playerGlass)
+        .environment(\.colorScheme, .dark)
     }
 
     // MARK: - Left column
@@ -38,8 +37,10 @@ struct PlayerSettingsPanel: View {
             HStack {
                 Button { isPresented = false } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Theme.Palette.textSecondary)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Theme.Palette.onPlayerChrome)
+                        .frame(width: 24, height: 24)
+                        .background(Circle().fill(Theme.PlayerPalette.segmentTrack))
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(.escape, modifiers: [])
@@ -47,11 +48,8 @@ struct PlayerSettingsPanel: View {
             }
             .padding(Theme.Space.md)
 
-            Text("Video")
-                .font(Theme.Font.caption)
-                .foregroundStyle(Theme.Palette.accent)
-                .padding(.horizontal, Theme.Space.lg)
-                .padding(.bottom, Theme.Space.sm)
+            PlayerSectionLabel("Picture & Playback")
+                .padding(.horizontal, Theme.Space.sm)
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
@@ -72,19 +70,29 @@ struct PlayerSettingsPanel: View {
         return Button {
             section = item
         } label: {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.title)
-                    .font(Theme.Font.body)
-                    .foregroundStyle(disabled ? Theme.Palette.textDisabled : Theme.Palette.textPrimary)
-                Text(currentValue(item))
-                    .font(Theme.Font.caption)
-                    .foregroundStyle(Theme.Palette.textMuted)
+            HStack(spacing: Theme.Space.sm) {
+                Image(systemName: item.icon)
+                    .font(.system(size: 12, weight: .medium))
+                    .frame(width: 26, height: 26)
+                    .background(Circle().fill(Theme.PlayerPalette.glyphPlate))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(item.title)
+                        .font(Theme.Font.playerRow.weight(.medium))
+                    Text(currentValue(item))
+                        .font(Theme.Font.playerDetail)
+                        .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
+                        .lineLimit(1)
+                }
             }
+            .foregroundStyle(Theme.Palette.onPlayerChrome)
+            .opacity(disabled ? 0.45 : 1)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Theme.Space.md)
-            .padding(.vertical, Theme.Space.sm)
-            .background(section == item ? Theme.Palette.surfaceRaised : .clear)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control))
+            .padding(.horizontal, Theme.Space.sm)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous)
+                    .fill(section == item ? Theme.PlayerPalette.menuHover : .clear)
+            )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -128,10 +136,11 @@ struct PlayerSettingsPanel: View {
     private var options: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(section.title)
-                .font(Theme.Font.sectionHeader)
-                .foregroundStyle(Theme.Palette.textPrimary)
-                .frame(maxWidth: .infinity)
-                .padding(Theme.Space.md)
+                .font(Theme.Font.playerTitle)
+                .foregroundStyle(Theme.Palette.onPlayerChrome)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, Theme.Space.lg)
+                .padding(.vertical, Theme.Space.md)
 
             ScrollView {
                 VStack(spacing: Theme.Space.xs) {
@@ -179,8 +188,8 @@ struct PlayerSettingsPanel: View {
     private var chapterOptions: some View {
         if model.chapters.isEmpty {
             Text("This file has no chapters.")
-                .font(Theme.Font.body)
-                .foregroundStyle(Theme.Palette.textMuted)
+                .font(Theme.Font.playerRow)
+                .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
                 .padding(.top, Theme.Space.lg)
         } else {
             ForEach(Array(model.chapters.enumerated()), id: \.offset) { index, chapter in
@@ -248,34 +257,6 @@ struct PlayerSettingsPanel: View {
         selected: Bool,
         action: @escaping () -> Void
     ) -> some View {
-        Button(action: action) {
-            HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(title)
-                        .font(Theme.Font.body)
-                        .foregroundStyle(Theme.Palette.textPrimary)
-                    if let detail {
-                        Text(detail)
-                            .font(Theme.Font.caption)
-                            .foregroundStyle(Theme.Palette.textMuted)
-                            .multilineTextAlignment(.leading)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-                Spacer(minLength: Theme.Space.md)
-                if selected {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(Theme.Palette.accent)
-                }
-            }
-            .padding(.horizontal, Theme.Space.md)
-            .padding(.vertical, Theme.Space.sm)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.Palette.surfaceRaised)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        PlayerPanelRow(title: title, detail: nil, subtitle: detail, selected: selected, action: action)
     }
 }

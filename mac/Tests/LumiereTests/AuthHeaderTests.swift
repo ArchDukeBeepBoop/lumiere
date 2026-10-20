@@ -4,7 +4,7 @@ import LumiereKit
 
 /// The header that made signing in impossible.
 ///
-/// macOS names a Mac "Jeremiah’s MacBook Pro" with a curly apostrophe (U+2019), and
+/// macOS names a Mac "Alex’s MacBook Pro" with a curly apostrophe (U+2019), and
 /// that went into the `Authorization` header unaltered. URLSession sends non-ASCII
 /// in a form ASP.NET Core refuses to parse, so Jellyfin returned 400 *before*
 /// checking credentials — no password could ever have worked, and the UI reported it
@@ -18,8 +18,8 @@ func registerAuthHeaderTests(_ t: TestRunner) {
     t.suite("Authorization header") { t in
 
         t.test("a curly apostrophe becomes a plain one rather than breaking the header") {
-            let safe = JellyfinClient.headerSafeValue("Jeremiah’s MacBook Pro")
-            t.expectEqual(safe, "Jeremiah's MacBook Pro")
+            let safe = JellyfinClient.headerSafeValue("Alex’s MacBook Pro")
+            t.expectEqual(safe, "Alex's MacBook Pro")
             t.expect(safe.allSatisfy(\.isASCII), "non-ASCII survived: \(safe)")
         }
 
