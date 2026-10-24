@@ -23,17 +23,23 @@ enum RecentThumbnails {
         let request = QLThumbnailGenerator.Request(
             fileAt: url, size: size, scale: scale, representationTypes: .thumbnail
         )
-        // The completion form, taking only the CGImage across: the
-        // representation object itself is not Sendable.
-        let cgImage: CGImage? = await withCheckedContinuation { continuation in
+        guard let cgImage = await generate(request) else { return nil }
+        let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
+        cache.setObject(image, forKey: key)
+        return image
+    }
+
+    /// Nonisolated on purpose. Quick Look calls the completion on its own
+    /// queue; a closure written inside this main-actor type inherits the main
+    /// actor, and Swift's executor check stopped the app on Quick Look's queue
+    /// at launch (1.2.0, opening on On This Computer). Same failure as the
+    /// MediaPlayer artwork closure in `NowPlaying`. Only the CGImage crosses.
+    nonisolated private static func generate(_ request: QLThumbnailGenerator.Request) async -> CGImage? {
+        await withCheckedContinuation { continuation in
             QLThumbnailGenerator.shared.generateBestRepresentation(for: request) { thumbnail, _ in
                 continuation.resume(returning: thumbnail?.cgImage)
             }
         }
-        guard let cgImage else { return nil }
-        let image = NSImage(cgImage: cgImage, size: NSSize(width: cgImage.width, height: cgImage.height))
-        cache.setObject(image, forKey: key)
-        return image
     }
 }
 
