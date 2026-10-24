@@ -35,6 +35,23 @@ public enum LocalLibrary {
         "m2ts", "ts", "mts", "vob", "ogv", "rmvb", "divx", "asf", "3gp", "m2v"
     ]
 
+    /// Sound files, opened directly. Not part of a folder added in Settings,
+    /// which stays a video library.
+    public static let audioExtensions: Set<String> = [
+        "mp3", "m4a", "aac", "flac", "alac", "wav", "aiff", "aif", "ogg", "oga",
+        "opus", "wma", "ape", "wv", "mka", "dsf", "dff"
+    ]
+
+    public static var playableExtensions: Set<String> { videoExtensions.union(audioExtensions) }
+
+    public static func isPlayable(_ url: URL) -> Bool {
+        playableExtensions.contains(url.pathExtension.lowercased())
+    }
+
+    /// The hidden library that files opened from Finder, the Dock or File › Open
+    /// are written under. See `LibraryRepository.openLocal`.
+    public static let openedLibraryId = "locallib:opened"
+
     /// One spelling of a path, whichever way you arrived at it.
     ///
     /// macOS hands out two names for the same file constantly: `/var/...` and

@@ -35,6 +35,8 @@ if [ -x "$VULNCHECK" ]; then
 	(cd "$HERE/server" && "$VULNCHECK" ./... > /tmp/ship-vuln.log 2>&1) \
 		|| { echo "    govulncheck found something — see /tmp/ship-vuln.log" >&2; exit 1; }
 fi
+echo "==> End to end on a new server"; "$HERE/mac/Scripts/e2e-server.sh" > /tmp/ship-e2e.log 2>&1 \
+    || { tail -5 /tmp/ship-e2e.log; exit 1; }
 echo "==> LumiereControl checks"; (cd "$HERE/control" && ./Scripts/check.sh > /tmp/ship-ctl.log 2>&1) \
     || { tail -20 /tmp/ship-ctl.log; exit 1; }
 if [ -f "$DB" ]; then

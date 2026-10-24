@@ -34,7 +34,7 @@ struct TrickplayPreview: View {
 
             // The chapter under the pointer, named, where the file names its
             // chapters: the ticks on the bar said where, never what.
-            Text(chapterName.map { "\(PlayerModel.timecode(seconds))  ·  \($0)" }
+            Text((bookmarkName ?? chapterName).map { "\(PlayerModel.timecode(seconds))  ·  \($0)" }
                  ?? PlayerModel.timecode(seconds))
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -66,6 +66,15 @@ struct TrickplayPreview: View {
             y: Theme.PlayerMetric.surfaceShadowY
         )
         .allowsHitTesting(false)
+    }
+
+    /// A bookmark under the pointer — within half a percent of the film, or
+    /// five seconds, whichever is more — so hovering its dot names it.
+    private var bookmarkName: String? {
+        let reach = max(5, model.duration * 0.005)
+        return model.bookmarks
+            .min { abs($0.seconds - seconds) < abs($1.seconds - seconds) }
+            .flatMap { abs($0.seconds - seconds) <= reach ? "🔖 " + $0.label : nil }
     }
 
     /// The named chapter at this point, or nil — files with "Chapter 3" for

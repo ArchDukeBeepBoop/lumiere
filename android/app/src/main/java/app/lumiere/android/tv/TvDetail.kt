@@ -171,7 +171,7 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                 Top(state, current, nextUp, Modifier.height(h * 0.86f).onFocusChanged { topFocused = it.hasFocus }, topFirst,
                     inOrder = if (current.type == "BoxSet") children.filter { it.isPlayable }.sortedBy { it.year ?: 9999 }.let { c -> c.firstOrNull { !it.played } ?: c.firstOrNull() } else null,
                     onFavourite = { fav -> scope.launch { server.setFavorite(current.id, fav); item = current.copy(favorite = fav) } },
-                    onPlayed = { p -> scope.launch { server.setPlayed(current.id, p); item = current.copy(played = p) } })
+                    onPlayed = { p -> scope.launch { state.ledger.setPlayed(server, current.id, p); item = current.copy(played = p) } })
             }
             if (seasons.isNotEmpty()) {
                 item {
@@ -202,7 +202,7 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                             LChip(false, {
                                 val all = episodes; val toPlayed = all.any { !it.played }
                                 scope.launch {
-                                    all.forEach { e -> runCatching { server.setPlayed(e.id, toPlayed) } }
+                                    all.forEach { e -> runCatching { state.ledger.setPlayed(server, e.id, toPlayed) } }
                                     episodes = all.map { it.copy(played = toPlayed, positionTicks = 0) }
                                     state.homeRefresh++
                                 }

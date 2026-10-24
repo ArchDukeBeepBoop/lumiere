@@ -21,6 +21,8 @@ struct LaunchView: View {
     var detail: String?
 
     @State private var breathing = false
+    /// Reduce motion holds the icon still.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: Theme.Space.lg) {
@@ -31,10 +33,10 @@ struct LaunchView: View {
                 // A slow pulse rather than a spinner beside the icon. Two things
                 // moving at different rates reads as busier than the work actually
                 // is; one thing breathing reads as alive.
-                .opacity(breathing ? 1 : 0.72)
-                .scaleEffect(breathing ? 1 : 0.97)
+                .opacity(breathing || reduceMotion ? 1 : 0.72)
+                .scaleEffect(breathing || reduceMotion ? 1 : 0.97)
                 .animation(
-                    .easeInOut(duration: 1.6).repeatForever(autoreverses: true),
+                    reduceMotion ? nil : Theme.Motion.slowFade.repeatForever(autoreverses: true),
                     value: breathing
                 )
 

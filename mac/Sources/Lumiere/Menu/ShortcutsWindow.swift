@@ -62,14 +62,19 @@ enum ShortcutsWindow {
         return out + key
     }
 
-    private static let playerKeys: [Row] = [
-        ("Space or K", "Play / Pause"), ("← / →  or  J / L", "Skip back / forward"),
-        ("⇧← / ⇧→", "Long skip"), ("⌥← / ⌥→", "Previous / next chapter or marker"),
-        ("Hold ← / →", "Scan; lands where you let go"), ("0 – 9", "Jump to 0–90%"), ("I", "Info, audio and subtitles"), ("P", "Picture in Picture"),
-        ("↑ / ↓", "Volume"), ("M", "Mute"), ("F", "Full screen"),
-        (", / .", "Paused: step a frame · Playing: slower / faster"),
-        ("Z / ⇧Z", "Subtitles earlier / later"), ("Home / End", "Start / end"), ("Esc", "Close the player"),
-    ].map { Row(menu: "In the player", title: $0.1, keys: $0.0) }
+    /// The fixed keys, then the letter keys as currently bound.
+    @MainActor private static var playerKeys: [Row] {
+        let fixed = [
+            ("Space", "Play / Pause"), ("← / →", "Skip back / forward"),
+            ("⇧← / ⇧→", "Long skip"), ("⌥← / ⌥→", "Previous / next chapter or marker"),
+            ("Hold ← / →", "Scan; lands where you let go"), ("0 – 9", "Jump to 0–90%"),
+            ("↑ / ↓", "Volume"), ("Home / End", "Start / end"), ("Esc", "Close the player"),
+        ].map { Row(menu: "In the player", title: $0.1, keys: $0.0) }
+        let bound = PlayerKeyBinding.allCases.map {
+            Row(menu: "In the player", title: $0.title, keys: PlayerKeyBinding.display($0.key))
+        }
+        return fixed + bound
+    }
 }
 
 private struct ShortcutsList: View {

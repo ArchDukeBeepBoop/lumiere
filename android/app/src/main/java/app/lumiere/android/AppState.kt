@@ -55,6 +55,8 @@ sealed interface Screen {
 class AppState(context: Context) {
     private val prefs = context.getSharedPreferences("lumiere", Context.MODE_PRIVATE)
     val settings = Prefs(context)
+    /** Positions and watched marks kept here first, sent to the Mac after; see WatchLedger. */
+    val ledger = app.lumiere.android.cache.WatchLedger(context)
     lateinit var downloads: app.lumiere.android.downloads.Downloads
     /** The phone's copy of the video libraries, and what keeps it current. See CacheSync. */
     lateinit var cache: app.lumiere.android.cache.LibraryCache

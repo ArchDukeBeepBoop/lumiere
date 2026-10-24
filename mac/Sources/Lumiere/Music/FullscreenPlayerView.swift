@@ -89,7 +89,7 @@ struct FullscreenPlayerView: View {
                     onClose()
                 } label: {
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(Theme.Glyph.lg(.semibold))
                         .foregroundStyle(Theme.Palette.textSecondary)
                         .frame(width: 34, height: 30)
                         .contentShape(Rectangle())
@@ -180,13 +180,14 @@ struct FullscreenPlayerView: View {
 
             Button { music.togglePlayPause() } label: {
                 Image(systemName: music.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 22))
+                    .font(Theme.Glyph.xl())
                     .foregroundStyle(Theme.Palette.playButtonLabel)
                     .frame(width: 58, height: 58)
                     .background(Theme.Palette.playButton, in: Circle())
             }
             .buttonStyle(.plain)
             .keyboardShortcut(.space, modifiers: [])
+            .labelledHelp(music.isPlaying ? "Pause" : "Play")
 
             control("forward.fill", size: 20) { music.next() }
                 .disabled(!music.canGoForward)
@@ -208,6 +209,7 @@ struct FullscreenPlayerView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .labelledHelp(SymbolSpeech.name(icon))
     }
 
     private var sidePanel: some View {

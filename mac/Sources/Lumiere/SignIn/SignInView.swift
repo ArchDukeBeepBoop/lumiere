@@ -48,7 +48,7 @@ struct SignInView: View {
 
     var brand: some View {
         VStack(spacing: Theme.Space.md) {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: Theme.Radius.posterLarge)
                 .fill(Theme.Palette.accent)
                 .frame(width: 52, height: 52)
             Text("Lumiere")

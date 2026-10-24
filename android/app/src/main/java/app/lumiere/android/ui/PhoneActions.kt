@@ -148,11 +148,11 @@ private fun Menu(state: AppState, item: Item) {
                 close()
                 val to = !item.played
                 scope.launch {
-                    runCatching { server.setPlayed(item.id, to) }.onSuccess {
+                    runCatching { state.ledger.setPlayed(server, item.id, to) }.onSuccess {
                         state.justWatched = if (to) state.justWatched + item.id else state.justWatched - item.id
                         refresh()
                         PhoneNotice.show(if (to) "Marked as Watched" else "Marked as Unwatched") {
-                            scope.launch { runCatching { server.setPlayed(item.id, !to) }; state.justWatched = state.justWatched - item.id; refresh() }
+                            scope.launch { state.ledger.setPlayed(server, item.id, !to); state.justWatched = state.justWatched - item.id; refresh() }
                         }
                     }.onFailure { PhoneNotice.show("Couldn't reach the Mac") }
                 }

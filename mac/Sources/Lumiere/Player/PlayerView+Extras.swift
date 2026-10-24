@@ -25,6 +25,8 @@ extension PlayerView {
         case .setSubtitleSize(let size): Task { await model.setSubtitleSize(size) }
         case .startOver: Task { await model.startOver() }
         case .abLoop: Task { await model.stepABLoop() }
+        case .addBookmark: model.addBookmark()
+        case .syncSubtitleLine(let lines): Task { await model.syncSubtitleLine(lines) }
         case .sleep(let minutes): SleepTimer.set(minutes: minutes); model.say(SleepTimer.description)
         case .setAudioDevice(let device): Task { await model.setAudioDevice(device) }
         default: break

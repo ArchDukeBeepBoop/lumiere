@@ -66,7 +66,7 @@ struct PlayerQueuePanel: View {
             Spacer(minLength: 0)
             Button(action: onClose) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.Glyph.sm(.bold))
                     .foregroundStyle(Theme.Palette.onPlayerChrome)
                     .frame(width: 24, height: 24)
                     .background(Circle().fill(Theme.PlayerPalette.segmentTrack))

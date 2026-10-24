@@ -57,7 +57,7 @@ final class PlayQueue {
     /// Only things that play: a show or a collection is not a queue item.
     static func isPlayable(_ entry: LibraryEntry) -> Bool {
         switch entry.item.itemType {
-        case .movie, .episode, .video: return true
+        case .movie, .episode, .video, .audio: return true
         default: return false
         }
     }

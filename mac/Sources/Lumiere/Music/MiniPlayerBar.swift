@@ -107,7 +107,7 @@ struct MiniPlayerBar: View {
         HStack(spacing: Theme.Space.xs) {
             Button { music.toggleMute() } label: {
                 Image(systemName: volumeIcon)
-                    .font(.system(size: 11))
+                    .font(Theme.Glyph.sm())
                     .foregroundStyle(Theme.Palette.textSecondary)
                     .frame(width: 16)
                     .contentShape(Rectangle())
@@ -180,6 +180,7 @@ struct MiniPlayerBar: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .labelledHelp(SymbolSpeech.name(name))
     }
 
     /// Forwards to the one implementation. See `Timecode`.

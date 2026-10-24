@@ -30,9 +30,9 @@ struct GlassMenuButton<Option: Hashable, ID: Hashable>: View {
             }
         } label: {
             HStack(spacing: Theme.Space.xs) {
-                if let icon { Image(systemName: icon).font(.system(size: 12, weight: .semibold)) }
+                if let icon { Image(systemName: icon).font(Theme.Glyph.md(.semibold)) }
                 Text(current).font(Theme.Font.cardTitle).lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down").font(.system(size: 9, weight: .bold))
+                Image(systemName: "chevron.up.chevron.down").font(Theme.Glyph.xs(.bold))
                     .opacity(0.7)
             }
             .foregroundStyle(Theme.Palette.textPrimary)

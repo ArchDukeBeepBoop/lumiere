@@ -12,12 +12,12 @@ struct PlayerGlance: View {
             Spacer()
             Text(model.remainingText)
                 .font(Theme.Font.playerTimecode)
-                .foregroundStyle(.white.opacity(0.85))
+                .foregroundStyle(Theme.Palette.onArtworkTextMuted)
                 .shadow(color: .black.opacity(0.6), radius: 4)
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(.white.opacity(0.25))
-                    Capsule().fill(.white.opacity(0.9))
+                    Capsule().fill(Theme.PlayerPalette.scrubTrack)
+                    Capsule().fill(Theme.PlayerPalette.segmentThumb)
                         .frame(width: geometry.size.width * model.progressFraction)
                 }
             }
@@ -26,7 +26,7 @@ struct PlayerGlance: View {
         .padding(.horizontal, Theme.Space.xxl)
         .padding(.bottom, Theme.Space.xl)
         .opacity(isShown ? 1 : 0)
-        .animation(.easeInOut(duration: 0.6), value: isShown)
+        .animation(Theme.Motion.ambient, value: isShown)
         .allowsHitTesting(false)
     }
 }

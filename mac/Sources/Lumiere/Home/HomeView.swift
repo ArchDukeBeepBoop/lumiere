@@ -180,7 +180,7 @@ struct HomeView: View {
                     .foregroundStyle(Theme.Palette.textSecondary)
             } else {
                 Image(systemName: "film.stack")
-                    .font(.system(size: 40))
+                    .font(Theme.Glyph.display())
                     .foregroundStyle(Theme.Palette.textDisabled)
                 Text("Nothing here yet")
                     .font(Theme.Font.sectionHeader)

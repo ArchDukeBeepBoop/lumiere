@@ -53,7 +53,7 @@ extension FullscreenPlayerView {
                             if let start = line.start { music.seek(to: start) }
                         } label: {
                             Text(line.text.isEmpty ? "♪" : line.text)
-                                .font(.system(size: 22, weight: .bold))
+                                .font(Theme.Glyph.xl(.bold))
                                 .foregroundStyle(line.id == current
                                     ? Theme.Palette.textPrimary : Theme.Palette.textMuted)
                                 .opacity(line.id == current ? 1 : 0.55)
@@ -71,7 +71,7 @@ extension FullscreenPlayerView {
             .scrollIndicators(.hidden)
             .onChange(of: current) {
                 guard let current else { return }
-                withAnimation(.easeInOut(duration: 0.4)) {
+                withAnimation(Theme.Motion.fade) {
                     proxy.scrollTo(current, anchor: UnitPoint(x: 0, y: 0.35))
                 }
             }

@@ -51,7 +51,7 @@ extension PlayerView {
     ) -> some View {
         VStack(spacing: Theme.Space.md) {
             Image(systemName: icon)
-                .font(.system(size: 34))
+                .font(Theme.Glyph.hero())
                 .foregroundStyle(tint)
             Text(title)
                 .font(Theme.Font.playerTitle)

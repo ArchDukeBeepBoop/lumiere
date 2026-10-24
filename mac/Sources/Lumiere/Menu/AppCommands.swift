@@ -14,6 +14,17 @@ struct AppCommands: Commands {
         // shortcuts collide with playback bindings.
         // In their place, the two things a media client's File menu is for.
         CommandGroup(replacing: .newItem) {
+            // VLC's Media menu, the parts worth keeping. See `AppModel+Open`.
+            Button("Open File…") { app.chooseFilesToOpen() }
+                .keyboardShortcut("o", modifiers: .command)
+            Button("Open Folder…") { app.chooseFolderToOpen() }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+            Button("Open Address…") { app.pendingRoute = .computer; NotificationCenter.default.post(name: .askOpenAddress, object: nil) }
+                .keyboardShortcut("l", modifiers: [.command, .shift])
+            Button("Open from Clipboard") { app.openFromClipboard() }
+                .keyboardShortcut("v", modifiers: [.command, .shift])
+            OpenRecentMenu(app: app)
+            Divider()
             Button("Refresh Library") { app.startSync(userInitiated: true) }
                 .keyboardShortcut("r", modifiers: .command)
             // The results arrive by themselves: the change watch sees the

@@ -169,15 +169,20 @@ class Server(val baseUrl: String, private val deviceId: String, var token: Strin
         return url("Videos/$itemId/${mediaSourceId ?: itemId}/Subtitles/$index/Stream.$ext").toString()
     }
 
-    suspend fun report(path: String, itemId: String, positionTicks: Long, sessionId: String, paused: Boolean) {
-        runCatching {
+    /** Where a title was left, outside any playback session — the offline ledger's catch-up. */
+    suspend fun reportStopped(itemId: String, positionTicks: Long): Boolean =
+        report("Sessions/Playing/Stopped", itemId, positionTicks, java.util.UUID.randomUUID().toString().replace("-", ""), false)
+
+    /** True when the server took it. */
+    suspend fun report(path: String, itemId: String, positionTicks: Long, sessionId: String, paused: Boolean): Boolean {
+        return runCatching {
             post(
                 path, JSONObject()
                     .put("ItemId", itemId).put("MediaSourceId", itemId)
                     .put("PositionTicks", positionTicks).put("PlaySessionId", sessionId)
                     .put("IsPaused", paused).put("CanSeek", true)
             )
-        }
+        }.isSuccess
     }
 
     /** An image URL; images need the token too, which the image loader adds. */

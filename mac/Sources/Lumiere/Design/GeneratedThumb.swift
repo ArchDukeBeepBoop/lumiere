@@ -27,7 +27,7 @@ struct GeneratedThumb: View {
             // A faint oversized glyph, so the card reads as "no artwork" rather than
             // as a flat colour swatch someone chose on purpose.
             Image(systemName: "play.tv")
-                .font(.system(size: 44, weight: .light))
+                .font(Theme.Glyph.display(.light))
                 .foregroundStyle(Theme.Palette.onArtwork.opacity(0.18))
 
             VStack(alignment: .leading, spacing: 2) {

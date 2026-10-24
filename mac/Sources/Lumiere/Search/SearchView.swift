@@ -69,7 +69,7 @@ struct SearchView: View {
                 .foregroundStyle(Theme.Palette.textMuted)
             TextField("Search your library", text: $query)
                 .textFieldStyle(.plain)
-                .font(.system(size: 15))
+                .font(Theme.Glyph.lg())
                 .foregroundStyle(Theme.Palette.textPrimary)
                 .focused($isFocused)
                 .onChange(of: query) { search() }
@@ -88,6 +88,7 @@ struct SearchView: View {
                 }
                 .buttonStyle(.plain)
                 .keyboardShortcut(.escape, modifiers: [])
+                .labelledHelp("Clear search")
             }
         }
         .padding(.horizontal, Theme.Space.lg)

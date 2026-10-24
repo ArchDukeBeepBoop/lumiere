@@ -125,7 +125,7 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     }
     var upNextDismissed by remember(id) { mutableStateOf(false) }
     var skipLeft by remember { mutableStateOf(6) }
-    val reporter = remember(id) { Reporter(server, id, scope) { clock } }
+    val reporter = remember(id) { Reporter(server, id, scope, state.ledger) { clock } }
     LaunchedEffect(prefs.subtitleSize, prefs.subtitleStyle, prefs.fillsScreen, prefs.subtitleLift) { SubtitleStyle.apply(view, prefs) }
     // The next two episodes saved on the device while this one plays, when asked —
     // never from a private library.
@@ -194,7 +194,9 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
         val local = state.downloads.playable(id)
         // Offline, a download carries its own copy of the item.
         runCatching { server.item(session.userId, id) }
-            .recoverCatching { e -> state.downloads.find(id)?.item ?: throw e }
+            .recoverCatching { e -> state.downloads.find(id)?.item?.let { state.ledger.apply(it, trustServer = false) } ?: throw e }
+            // Where this device last left it, when the Mac has not heard yet.
+            .map { state.ledger.apply(it) }
             // Asked to play a show or season — the spotlight's Play on a series:
             // its next episode, or the first when nothing is started.
             .mapCatching { found ->
@@ -243,7 +245,10 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
                 trickplay = if (local == null) server.trickplay(session.userId, found.id) else null
                 next = Playback.nextEpisode(server, session.userId, found)
             }
-            .onFailure { error = it.message ?: "Couldn't load this title." }
+            // In words, not the network's: what is wrong and what to do.
+            .onFailure { error = if (it is java.io.IOException)
+                "Can't reach the Mac. Check that this phone is on your home Wi-Fi, and that a VPN, if one is on, allows local connections. Downloaded titles play without it."
+                else it.message ?: "Couldn't load this title." }
     }
 
     // Position for the skip offer, and progress every ten seconds.
@@ -422,7 +427,7 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
             (skip?.type == "Outro" || duration - position < 25)
         // Into the credits counts as watched, even if the player is left before the end.
         val creditsReached = duration > 0 && (skip?.type == "Outro" || duration - position < 25 || position / duration > 0.95)
-        if (creditsReached && item != null) LaunchedEffect(item!!.id) { runCatching { server.setPlayed(item!!.id, true) } }
+        if (creditsReached && item != null) LaunchedEffect(item!!.id) { state.ledger.setPlayed(server, item!!.id, true) }
         // The credits: warm the next episode — its details, previews and the
         // first megabytes of its file — so it starts the moment it is asked for.
         if (inCredits && next != null) LaunchedEffect(next!!.id) { Playback.warm(server, session.userId, next!!) }

@@ -114,7 +114,7 @@ struct AddCollectionItemsSheet: View {
                 PosterCard(entry: entry, serverURL: serverURL, pipeline: pipeline, width: 120)
                 if selected.contains(entry.id) {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 20))
+                        .font(Theme.Glyph.xl())
                         .symbolRenderingMode(.palette)
                         .foregroundStyle(Theme.Palette.canvas, Theme.Palette.accent)
                         .padding(6)

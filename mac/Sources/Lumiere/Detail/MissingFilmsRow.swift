@@ -31,7 +31,7 @@ struct MissingFilmsRow: View {
     }
 
     private func tile(_ title: String) -> some View {
-        RoundedRectangle(cornerRadius: 8)
+        RoundedRectangle(cornerRadius: Theme.Radius.poster)
             .strokeBorder(Theme.Palette.textDisabled, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))
             .frame(width: Theme.Art.shelfPosterWidth * 0.7, height: Theme.Art.shelfPosterWidth * 1.05)
             .overlay {

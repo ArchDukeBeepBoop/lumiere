@@ -105,16 +105,10 @@ struct LatestBrowseView: View {
     }
 
     private var empty: some View {
-        VStack(spacing: Theme.Space.sm) {
-            Image(systemName: "clock")
-                .font(.system(size: 32))
-                .foregroundStyle(Theme.Palette.textDisabled)
-            Text("Nothing added to \(libraryName) yet")
-                .font(Theme.Font.body)
-                .foregroundStyle(Theme.Palette.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Space.xxxl)
+        // The shared empty state, so every empty page reads the same.
+        EmptyStateView(reason: .empty(icon: "clock", title: "Nothing added to \(libraryName) yet",
+                                      detail: "New films and episodes appear here as the server finds them."))
+            .padding(.vertical, Theme.Space.xxxl)
     }
 
     private func load() async {

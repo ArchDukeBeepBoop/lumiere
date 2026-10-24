@@ -98,10 +98,11 @@ struct LocalFoldersCard: View {
                 .disabled(scanning != nil)
             Button { removing = folder } label: {
                 Image(systemName: "trash")
-                    .font(.system(size: 11))
+                    .font(Theme.Glyph.sm())
                     .foregroundStyle(Theme.Palette.danger)
             }
             .buttonStyle(.plain)
+            .labelledHelp("Remove \(folder.name)")
         }
     }
 

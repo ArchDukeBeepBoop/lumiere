@@ -87,6 +87,8 @@ fun LocalPlayerScreen(state: AppState, uri: String, name: String) {
     } ?: LocalAudio.player ?: return
     DisposableEffect(player) { onDispose { if (!audio) player.release() } }
     BackHandler { state.pop() }
+    // A song: Apple Music's Now Playing, the kept player behind it.
+    if (audio) { LocalNowPlaying(state); return }
     Box(Modifier.fillMaxSize().background(Color.Black)) {
         val many = LocalQueue.items.size > 1 && LocalQueue.items.any { it.uri == uri }
         AndroidView({ PlayerView(it).apply {

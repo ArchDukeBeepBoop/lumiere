@@ -23,6 +23,7 @@ extension SettingsView {
 
 
         LocalFoldersCard(app: app)
+        ComputerSettingsCard()
 
         SettingsCard(title: "Server", icon: "server.rack") {
             if let session = app.client?.session {

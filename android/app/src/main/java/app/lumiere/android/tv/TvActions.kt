@@ -153,15 +153,15 @@ fun TvActions(state: AppState) {
                         "uptohere" -> act("Marked watched up to here.") {
                             val eps = server.episodes(userId, item.seriesId!!, null)
                             val at = eps.indexOfFirst { it.id == item.id }
-                            eps.take(at + 1).filter { !it.played }.forEach { runCatching { server.setPlayed(it.id, true) } }
+                            eps.take(at + 1).filter { !it.played }.forEach { runCatching { state.ledger.setPlayed(server, it.id, true) } }
                         }
                         "watched" -> act(if (item.played) "Marked unwatched." else "Marked watched.") {
                             val to = !item.played
-                            server.setPlayed(item.id, to)
+                            state.ledger.setPlayed(server, item.id, to)
                             state.justWatched = if (to) state.justWatched + item.id else state.justWatched - item.id
                             // Five seconds to take it back, as Apple TV offers.
                             state.undo = (if (to) "Marked watched" else "Marked unwatched") to {
-                                scope.launch { runCatching { server.setPlayed(item.id, !to) }
+                                scope.launch { runCatching { state.ledger.setPlayed(server, item.id, !to) }
                                     state.justWatched = state.justWatched - item.id; state.homeRefresh++ }
                             }
                         }

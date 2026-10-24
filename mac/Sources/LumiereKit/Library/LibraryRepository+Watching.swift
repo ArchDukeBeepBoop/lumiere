@@ -10,11 +10,14 @@ import GRDB
 public extension LibraryRepository {
 
     /// Partly-watched items, newest first. Backs the hero and the continue row.
-    func resumeEntries(limit: Int = 20) async throws -> [LibraryEntry] {
+    /// `server` narrows to one server's rows — `LocalLibrary.serverId` for the
+    /// On This Computer page; nil is the signed-in server, as Home wants.
+    func resumeEntries(limit: Int = 20, server: String? = nil) async throws -> [LibraryEntry] {
         // Continue Watching is the single most exposed list in the app: it is the
         // first thing on the home screen and it says what you were doing last.
         let privacy = privacyFilter()
-        return try await database.writer.read { [serverId] db in
+        let serverId = server ?? self.serverId
+        return try await database.writer.read { db in
             // Ordered by when it was last *watched*, not by when the file arrived.
             //
             // This ordered by `item.dateCreated`, so the shelf was sorted by how old

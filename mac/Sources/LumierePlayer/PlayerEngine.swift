@@ -126,6 +126,22 @@ public protocol PlayerEngine: AnyObject, Sendable {
 
     func stop() async
 
+    /// Brightness, contrast, saturation, gamma, rotation, zoom, deinterlace.
+    /// See `PictureAdjustments`. mpv only; the default does nothing.
+    func setPicture(_ picture: PictureAdjustments) async
+    nonisolated var supportsPicture: Bool { get }
+    /// A sound preset. See `SoundPreset`.
+    func setSoundPreset(_ preset: SoundPreset) async
+    /// Subtitles' height on the picture, 0 the top and 100 the bottom.
+    func setSubtitlePosition(_ percent: Int) async
+    /// An exact subtitle scale — 1 is the style's own size — instead of a
+    /// named size. Nil returns to the named size.
+    func setSubtitleScale(_ scale: Double?) async
+    /// Moves subtitle timing so the next line (1) or the previous one (-1)
+    /// shows now — sync by ear, as you hear the line spoken. Returns the
+    /// resulting delay in seconds.
+    func stepSubtitleTiming(lines: Int) async -> Double
+
     /// Fires roughly 4×/second while playing. The progress reporter throttles
     /// this down to one Jellyfin call per 10 seconds.
     ///
@@ -206,3 +222,15 @@ public struct PlaybackRequest: Sendable, Equatable {
 /// Lets a remembered language be matched against this file's tracks. The matching
 /// itself lives in LumiereKit beside the stored preference.
 extension MediaTrack: SubtitleTrackDescribing {}
+
+/// What only mpv can do, as nothing on the AVPlayer engine. The panel greys
+/// these out there by `supportsPicture`, so none is a control that silently
+/// does nothing.
+public extension PlayerEngine {
+    func setPicture(_ picture: PictureAdjustments) async {}
+    nonisolated var supportsPicture: Bool { false }
+    func setSoundPreset(_ preset: SoundPreset) async {}
+    func setSubtitlePosition(_ percent: Int) async {}
+    func setSubtitleScale(_ scale: Double?) async {}
+    func stepSubtitleTiming(lines: Int) async -> Double { 0 }
+}

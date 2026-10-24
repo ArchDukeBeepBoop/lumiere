@@ -88,6 +88,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         playbackMenus = controller
     }
 
+    /// Finder's Open With, a double-click once Lumiere is the default player,
+    /// and a drop on the Dock icon.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        MainActor.assumeIsolated { OpenInbox.shared.receive(urls) }
+    }
+
     @MainActor
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? { DockMenu.menu() }
 

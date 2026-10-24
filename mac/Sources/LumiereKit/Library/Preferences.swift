@@ -46,6 +46,18 @@ public enum Preference {
     /// chapters that borrow from sibling files — and play the episode as one
     /// timeline, the way VLC does. See `PlaybackRequest.linkedFiles`.
     public static let followsLinkedChapters = Key("followsLinkedChapters", default: true)
+    /// A card of what changed, the first launch after an update. See `WhatsNew`.
+    public static let showsWhatsNew = Key("showsWhatsNew", default: true)
+    /// The player's accent follows the artwork of what's playing. See `ArtworkAccent`.
+    public static let playerTintsFromArtwork = Key("playerTintsFromArtwork", default: false)
+    /// On-screen messages name the key that caused them. See `ShortcutEcho`.
+    public static let osdShowsShortcut = Key("osdShowsShortcut", default: true)
+    /// Files and streams opened directly are listed under Recent on the On
+    /// This Computer page. See `OpenRecents`.
+    public static let remembersRecentFiles = Key("remembersRecentFiles", default: true)
+    /// With the server unreachable at launch, open on the On This Computer
+    /// page rather than a Home that can only show the cache.
+    public static let opensComputerWhenOffline = Key("opensComputerWhenOffline", default: true)
     /// Every shelf, ignoring the seven-shelf cap. See `HomeShelfCap`.
     public static let showsAllShelves = Key("homeShowsAllShelves", default: false)
 

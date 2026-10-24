@@ -6,7 +6,7 @@ import LumiereKit
 extension HeroBackdrop {
     func primaryLabel(icon: String, text: String) -> some View {
         HStack(spacing: Theme.Space.sm) {
-            Image(systemName: icon).font(.system(size: 13))
+            Image(systemName: icon).font(Theme.Glyph.md())
             Text(text).font(Theme.Font.cardTitle)
         }
         .foregroundStyle(Theme.Palette.playButtonLabel)

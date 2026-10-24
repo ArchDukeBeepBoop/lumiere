@@ -237,7 +237,7 @@ struct FolderBrowserView: View {
             Button { selection.isActive ? selection.end() : selection.begin() } label: {
                 Image(systemName: selection.isActive
                       ? "checkmark.circle.fill" : "checkmark.circle")
-                    .font(.system(size: 12))
+                    .font(Theme.Glyph.md())
             }
             .buttonStyle(.plain)
             .foregroundStyle(selection.isActive

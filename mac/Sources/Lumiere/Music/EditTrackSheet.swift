@@ -105,7 +105,7 @@ struct EditTrackSheet: View {
                     .frame(height: 150)
                     .scrollContentBackground(.hidden)
                     .padding(Theme.Space.xs)
-                    .background(Theme.Palette.surfaceRaised, in: .rect(cornerRadius: 6))
+                    .background(Theme.Palette.surfaceRaised, in: .rect(cornerRadius: Theme.Radius.control))
                 SettingsNote("Paste in lyrics you already have. Lumiere does not fetch "
                            + "them — they go to the server as a file beside the track, "
                            + "so every client sees them.")

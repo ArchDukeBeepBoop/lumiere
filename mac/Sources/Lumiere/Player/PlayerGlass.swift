@@ -24,7 +24,7 @@ struct PlayerSegmented<Item: Hashable & Identifiable>: View {
                     withAnimation(Theme.Motion.segment) { selection = item }
                 } label: {
                     HStack(spacing: 5) {
-                        if let icon { Image(systemName: icon(item)).font(.system(size: 11, weight: .semibold)) }
+                        if let icon { Image(systemName: icon(item)).font(Theme.Glyph.sm(.semibold)) }
                         Text(title(item)).font(Theme.Font.playerTab).lineLimit(1)
                     }
                     .padding(.horizontal, Theme.Space.sm + 2)
@@ -74,7 +74,7 @@ struct PlayerSwitchRow: View {
     var body: some View {
         HStack(spacing: Theme.Space.sm) {
             Image(systemName: icon)
-                .font(.system(size: 13, weight: .medium))
+                .font(Theme.Glyph.md(.medium))
                 .frame(width: 22, height: 22)
                 .background(Circle().fill(Theme.PlayerPalette.glyphPlate))
             VStack(alignment: .leading, spacing: 1) {
@@ -132,7 +132,7 @@ struct PlayerPanelRow: View {
         Button(action: action) {
             HStack(spacing: Theme.Space.sm) {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 12, weight: .bold))
+                    .font(Theme.Glyph.md(.bold))
                     .foregroundStyle(Theme.Palette.onPlayerChrome)
                     .frame(width: 14)
                     .opacity(selected ? 1 : 0)

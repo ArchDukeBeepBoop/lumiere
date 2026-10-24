@@ -7,6 +7,7 @@ import LumiereKit
 struct PlayerOSD: View {
     let model: PlayerModel?
     @State private var shown: String?
+    @State private var keys: String?
 
     var body: some View {
         Group {
@@ -15,16 +16,25 @@ struct PlayerOSD: View {
                 // and brightness HUDs — not a black lozenge of caption text.
                 HStack(spacing: Theme.Space.sm) {
                     Image(systemName: Self.icon(for: shown))
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(Theme.Glyph.md(.semibold))
                         .contentTransition(.symbolEffect(.replace))
                     Text(shown)
                         .font(Theme.Font.playerRow.weight(.semibold))
                         .contentTransition(.numericText())
+                    if let keys {
+                        Text(keys)
+                            .font(Theme.Font.playerDetail.weight(.semibold).monospaced())
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(RoundedRectangle(cornerRadius: Theme.Radius.badge, style: .continuous)
+                                .fill(Theme.PlayerPalette.segmentTrack))
+                            .accessibilityLabel("Shortcut \(keys)")
+                    }
                 }
                 .foregroundStyle(Theme.Palette.onPlayerChrome)
                 .padding(.horizontal, Theme.Space.md + 2)
                 .padding(.vertical, Theme.Space.sm)
-                .playerSurface(cornerRadius: 22)
+                .playerSurface(cornerRadius: Theme.Radius.playerGlass)
                 .environment(\.colorScheme, .dark)
                 .transition(.scale(scale: 0.9).combined(with: .opacity))
             }
@@ -33,10 +43,13 @@ struct PlayerOSD: View {
         .allowsHitTesting(false)
         .task(id: model?.osd?.at) {
             guard let osd = model?.osd else { return }
-            withAnimation(Theme.Motion.segment) { shown = osd.text }
+            withAnimation(Theme.Motion.segment) {
+                shown = osd.text
+                keys = ShortcutEcho.keys(for: osd.at)
+            }
             try? await Task.sleep(for: .seconds(1.4))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeIn(duration: 0.3)) { shown = nil }
+            withAnimation(Theme.Motion.dismiss) { shown = nil }
         }
     }
 

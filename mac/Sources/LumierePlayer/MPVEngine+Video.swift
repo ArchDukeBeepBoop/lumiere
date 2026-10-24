@@ -90,9 +90,16 @@ extension MPVEngine {
     /// mpv's own filters, set as the whole chain: nothing else here puts a
     /// filter on it, so replacing the chain is replacing the flip.
     public func setFlip(horizontal: Bool, vertical: Bool) async {
+        cachedFlip = (horizontal, vertical)
+        applyVideoFilters()
+    }
+
+    /// The whole software chain — flip and deinterlace — set at once.
+    func applyVideoFilters() {
         var filters: [String] = []
-        if horizontal { filters.append("hflip") }
-        if vertical { filters.append("vflip") }
+        if cachedDeinterlace { filters.append("bwdif") }
+        if cachedFlip.horizontal { filters.append("hflip") }
+        if cachedFlip.vertical { filters.append("vflip") }
         // A flip is a software filter, and zero-copy frames never reach it:
         // mpv logged "Disabling filter hflip … because it has failed" and the
         // picture stayed as it was. While flipped, frames are copied back so

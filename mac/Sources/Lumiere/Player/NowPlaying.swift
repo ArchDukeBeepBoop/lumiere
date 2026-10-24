@@ -32,11 +32,13 @@ final class NowPlaying {
         if artworkFor != model.itemId, let pipeline {
             artworkFor = model.itemId
             artwork = nil
+            ArtworkAccent.clear()
             let request = ImageRequest(serverURL: serverURL, itemId: model.itemId, kind: .primary,
                                        tag: nil, displayWidth: 300, aspectRatio: 16 / 9)
             Task { [weak self] in
                 guard let image = await pipeline.image(for: request) else { return }
                 self?.artwork = Self.artwork(image.cgImage)
+                ArtworkAccent.adopt(image.cgImage)
                 self?.update()
             }
         }
@@ -47,9 +49,9 @@ final class NowPlaying {
     /// on its own queue, and a closure that inherited this class's isolation
     /// tripped Swift's executor check there and crashed the player.
     nonisolated private static func artwork(_ cgImage: CGImage) -> MPMediaItemArtwork {
-        let picture = NSImage(cgImage: cgImage, size: .zero)
         let size = CGSize(width: cgImage.width, height: cgImage.height)
-        return MPMediaItemArtwork(boundsSize: size) { @Sendable _ in picture }
+        // The CGImage crosses into MediaPlayer's queue; the NSImage is made there.
+        return MPMediaItemArtwork(boundsSize: size) { @Sendable _ in NSImage(cgImage: cgImage, size: size) }
     }
 
     /// Called on the player's publishing tick: position, rate and title.
@@ -90,6 +92,7 @@ final class NowPlaying {
         onPrevious = nil
         artwork = nil
         artworkFor = nil
+        ArtworkAccent.clear()
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
         MPNowPlayingInfoCenter.default().playbackState = .stopped
     }

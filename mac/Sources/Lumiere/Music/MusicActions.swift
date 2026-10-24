@@ -81,7 +81,7 @@ struct AddToPlaylistSheet: View {
                     Button { Task { await add(to: playlist.id) } } label: {
                         HStack {
                             Image(systemName: "music.note.list")
-                                .font(.system(size: 12))
+                                .font(Theme.Glyph.md())
                                 .foregroundStyle(Theme.Palette.accent)
                             Text(playlist.item.name)
                                 .font(Theme.Font.body)
@@ -89,7 +89,7 @@ struct AddToPlaylistSheet: View {
                             Spacer()
                         }
                         .padding(Theme.Space.sm)
-                        .background(Theme.Palette.surface, in: .rect(cornerRadius: 8))
+                        .background(Theme.Palette.surface, in: .rect(cornerRadius: Theme.Radius.poster))
                     }
                     .buttonStyle(.plain)
                     .disabled(isWorking)

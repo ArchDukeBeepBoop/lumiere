@@ -46,7 +46,7 @@ extension PlayerView {
             // Ambient mode dims everything *around* the picture rather than the
             // picture itself, so a lit room stops competing with the film.
             if model.ambientMode {
-                Color.black.opacity(0.55).ignoresSafeArea().allowsHitTesting(false)
+                Theme.Palette.onArtwork.ignoresSafeArea().allowsHitTesting(false)
             }
 
             // The scrims fade with the chrome they exist to serve. First in the

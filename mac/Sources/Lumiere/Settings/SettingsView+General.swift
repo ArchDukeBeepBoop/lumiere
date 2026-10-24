@@ -24,6 +24,7 @@ extension SettingsView {
             Divider().padding(.vertical, Theme.Space.xs)
 
             AppIconPicker()
+            AccentPicker()
             GlassBackgroundRows(isGlass: $isGlass, opacity: $glassOpacity)
         }
     }

@@ -47,7 +47,12 @@ if ! codesign --verify --deep --strict "$APP" 2>/tmp/verify-bundle-sign.txt; the
 	complain "signature does not verify: $(head -1 /tmp/verify-bundle-sign.txt)"
 fi
 
-if [ $FAIL -eq 0 ]; then
+# Never launch a build that has no self-test mode: it would open its real
+# window, library and all, until the timer stopped it. Older builds get the
+# library checks above and nothing more.
+if [ $FAIL -eq 0 ] && ! grep -q "smoke test passed" "$BIN"; then
+	echo "    (no --smoke-test in this build; launch not attempted)"
+elif [ $FAIL -eq 0 ]; then
 	# Off Homebrew's paths, so a library the bundle forgot cannot be borrowed
 	# from /usr/local and hide the hole. Bounded: a hang is a failure too.
 	if ! OUT="$(env -i HOME="$HOME" DYLD_FALLBACK_LIBRARY_PATH=/usr/lib \

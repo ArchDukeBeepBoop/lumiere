@@ -40,7 +40,7 @@ struct PlayerPrompt: View {
             // "pressable" looks like.
             Button(action: act) {
                 HStack(spacing: Theme.Space.sm) {
-                    Image(systemName: icon).font(.system(size: 13, weight: .semibold))
+                    Image(systemName: icon).font(Theme.Glyph.md(.semibold))
                     Text(label)
                         .font(Theme.Font.playerSubtitle)
                         // One line, truncated. "Next: " plus an episode title is

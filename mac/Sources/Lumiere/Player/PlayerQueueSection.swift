@@ -30,6 +30,7 @@ struct PlayerQueueSection: View {
                 } label: {
                     Image(systemName: "ellipsis.circle").foregroundStyle(Theme.Palette.onPlayerChrome)
                 }
+                .labelledHelp("Queue options")
                 .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
                 .padding(.trailing, Theme.Space.sm)
             }

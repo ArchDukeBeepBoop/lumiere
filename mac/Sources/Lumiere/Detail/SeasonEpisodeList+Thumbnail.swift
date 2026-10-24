@@ -165,7 +165,7 @@ struct EpisodeThumbnail: View {
                     .frame(width: 48, height: 48)
                     .overlay {
                         Image(systemName: "play.fill")
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(Theme.Glyph.lg(.semibold))
                             .foregroundStyle(Theme.Palette.onPlayerChrome)
                     }
                     .contentShape(Circle())

@@ -263,7 +263,7 @@ extension SeasonEpisodeList {
             Button { Task { await model.selectSeason(next.id) } } label: {
                 VStack(spacing: Theme.Space.xs) {
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(Theme.Glyph.lg(.semibold))
                     Text(next.item.name)
                         .font(Theme.Font.cardTitle)
                         .lineLimit(2)

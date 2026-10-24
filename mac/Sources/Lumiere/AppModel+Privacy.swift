@@ -37,6 +37,9 @@ extension AppModel {
     /// being hidden as much as anything inside it.
     var visibleLibraries: [LibraryRecord] {
         let hidden = privateLibraryIds
+        // Files opened from Finder are rows under a library of their own, which
+        // is bookkeeping, not something to browse. See `LocalLibrary.openedLibraryId`.
+        let libraries = self.libraries.filter { $0.id != LocalLibrary.openedLibraryId }
         // In the room, only its own libraries; outside, everything else.
         guard !isShowingPrivateLibraries else { return libraries.filter { hidden.contains($0.id) } }
         return libraries.filter { !hidden.contains($0.id) }

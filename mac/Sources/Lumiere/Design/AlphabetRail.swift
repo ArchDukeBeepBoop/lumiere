@@ -33,13 +33,13 @@ struct AlphabetRail: View {
             ForEach(AlphabetIndex.letters, id: \.self) { letter in
                 let target = destinations[letter]
                 Text(letter)
-                    .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    .font(Theme.Glyph.sm(.semibold, design: .rounded))
                     .foregroundStyle(colour(for: letter, enabled: target != nil))
                     .frame(width: 22, height: 18)
                     .background(
                         hovered == letter && target != nil
                             ? Theme.Palette.surfaceRaised : .clear,
-                        in: .rect(cornerRadius: 4)
+                        in: .rect(cornerRadius: Theme.Radius.badge)
                     )
                     // The whole cell is the target, not just the glyph. A single
                     // character is a very small thing to hit on the way past.
@@ -106,7 +106,7 @@ struct ShelfSearchField: View {
     var body: some View {
         HStack(spacing: Theme.Space.xs) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 10))
+                .font(Theme.Glyph.sm())
                 .foregroundStyle(Theme.Palette.textMuted)
 
             TextField(placeholder, text: $text)
@@ -133,10 +133,11 @@ struct ShelfSearchField: View {
                     isFocused = false
                 } label: {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 11))
+                        .font(Theme.Glyph.sm())
                         .foregroundStyle(Theme.Palette.textMuted)
                 }
                 .buttonStyle(.plain)
+                .labelledHelp("Clear filter")
             }
         }
         .padding(.horizontal, Theme.Space.sm)

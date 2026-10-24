@@ -121,6 +121,7 @@ codesign --force --sign "$IDENTITY" "$APP"
 
 # A release must prove it launches. See verify-bundle.sh.
 if [ "$CONFIG" = "release" ]; then
+	"$ROOT/Scripts/dylib-lock.sh" check "$APP"
 	"$ROOT/Scripts/verify-bundle.sh" "$APP"
 fi
 

@@ -21,7 +21,7 @@ struct MergedSeriesRow: View {
             HStack(alignment: .top, spacing: Theme.Space.sm) {
                 Button(action: onToggle) {
                     Image(systemName: tickIcon)
-                        .font(.system(size: 14))
+                        .font(Theme.Glyph.md())
                         .foregroundStyle(
                             isDone || isSelected ? Theme.Palette.accent : Theme.Palette.textMuted
                         )
@@ -42,7 +42,7 @@ struct MergedSeriesRow: View {
 
                 Button(action: onExpand) {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 11))
+                        .font(Theme.Glyph.sm())
                         .foregroundStyle(Theme.Palette.textMuted)
                 }
                 .buttonStyle(.plain)

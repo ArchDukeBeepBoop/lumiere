@@ -60,6 +60,12 @@ object LocalAudio {
         private set
     var uri by mutableStateOf<String?>(null)
         private set
+    /** What is playing now and what follows, for the queue on the song's page. */
+    var queue by mutableStateOf<List<LocalEntry>>(emptyList())
+        private set
+    var index by mutableStateOf(0)
+        private set
+    val current: LocalEntry? get() = queue.getOrNull(index)
 
     fun play(context: Context, queue: List<LocalEntry>, start: Int) {
         app.lumiere.android.music.Music.player?.pause()
@@ -69,17 +75,18 @@ object LocalAudio {
                 built.addListener(object : Player.Listener {
                     override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
                     override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
-                        title = item?.mediaMetadata?.title?.toString(); uri = item?.mediaId
+                        title = item?.mediaMetadata?.title?.toString(); uri = item?.mediaId; index = built.currentMediaItemIndex
                     }
                 })
                 player = built
             }
         p.setMediaItems(queue.map { e ->
             MediaItem.Builder().setMediaId(e.uri).setUri(Uri.parse(e.uri))
-                .setMediaMetadata(MediaMetadata.Builder().setTitle(e.name).setArtist("On This Phone").build()).build()
+                .setMediaMetadata(MediaMetadata.Builder().setTitle(e.name).setArtist(e.artist ?: "On This Phone").setAlbumTitle(e.album).build()).build()
         }, start.coerceIn(0, queue.lastIndex), 0)
         p.prepare(); p.play()
         title = queue.getOrNull(start)?.name; uri = queue.getOrNull(start)?.uri
+        this.queue = queue; index = start.coerceIn(0, queue.lastIndex)
         PlaybackService.video = p
         context.startService(Intent(context, PlaybackService::class.java))
     }
@@ -92,7 +99,7 @@ object LocalAudio {
         val p = player ?: return
         p.stop(); p.clearMediaItems()
         if (PlaybackService.video === p) PlaybackService.video = null
-        title = null; uri = null; playing = false
+        title = null; uri = null; playing = false; queue = emptyList(); index = 0
     }
 }
 
@@ -110,7 +117,7 @@ fun LocalMiniBar(state: AppState) {
             }
             Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
                 Text(name, style = IosType.headline, color = Palette.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("On This Phone", style = IosType.footnote, color = Palette.textSecondary)
+                Text(LocalAudio.current?.artist ?: "On This Phone", style = IosType.footnote, color = Palette.textSecondary, maxLines = 1)
             }
             IconButton(onClick = { LocalAudio.toggle() }) {
                 Icon(if (LocalAudio.playing) Icons.Default.Pause else Icons.Default.PlayArrow, "Play or pause", tint = Palette.textPrimary)

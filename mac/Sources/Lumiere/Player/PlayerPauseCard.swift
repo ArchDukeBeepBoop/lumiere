@@ -15,36 +15,36 @@ struct PlayerPauseCard: View {
                 // The whole picture dimmed, then the lower half more, as
                 // Apple TV's pause screen does — the frame stays legible
                 // behind, the words are what is read.
-                Color.black.opacity(0.3)
+                Theme.Palette.videoGround.opacity(0.3)
                 LinearGradient(colors: [.clear, .black.opacity(0.7)],
                                startPoint: .center, endPoint: .bottom)
                 VStack(alignment: .leading, spacing: Theme.Space.xs) {
                     Text(model.title)
                         .font(Theme.Font.detailTitle)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.Palette.onPlayerChrome)
                         .lineLimit(2)
                     if let line = model.subtitleLine {
                         Text(line)
                             .font(Theme.Font.detailMeta)
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(Theme.Palette.onArtworkTextMuted)
                     }
                     if let overview, !overview.isEmpty {
                         Text(overview)
                             .font(Theme.Font.body)
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(Theme.Palette.onArtworkTextMuted)
                             .lineLimit(3)
                             .frame(maxWidth: 640, alignment: .leading)
                             .padding(.top, Theme.Space.xs)
                     }
                     Text("Paused · \(model.remainingText.dropFirst()) left · ends \(endsAt) if resumed now")
                         .font(Theme.Font.body)
-                        .foregroundStyle(.white.opacity(0.65))
+                        .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
                 }
                 .padding(Theme.Space.xxl)
             }
         }
         .allowsHitTesting(false)
-        .animation(.easeInOut(duration: 0.4), value: isShown)
+        .animation(Theme.Motion.fade, value: isShown)
         .task(id: model.itemId) {
             overview = try? await model.repository.entry(id: model.itemId)?.item.overview
         }

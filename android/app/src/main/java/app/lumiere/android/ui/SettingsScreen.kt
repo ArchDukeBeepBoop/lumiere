@@ -105,28 +105,10 @@ fun SettingsScreen(state: AppState) {
         item { Choice("Dialogue boost", listOf("Off", "+3 dB", "+6 dB", "+9 dB"), p.dialogueBoost / 3) { p.dialogueBoost = it * 3 } }
         item { Toggle("Night sound", p.nightSound, "Loud scenes quieter and quiet ones louder.") { p.nightSound = it } }
 
-        item { Section("TV & Projector") }
+        item { Section("Viewing") }
         item { Toggle("Skip Intro counts down and skips by itself", p.skipCountdown) { p.skipCountdown = it } }
-        item {
-            Choice("Screensaver after", listOf("Never", "2 min", "5 min", "10 min", "30 min"),
-                listOf(0, 2, 5, 10, 30).indexOf(p.screensaverMinutes).coerceAtLeast(0)) {
-                p.screensaverMinutes = listOf(0, 2, 5, 10, 30)[it]
-            }
-        }
         item { Toggle("Darker menus from 10 pm to 6 am", p.dimsAtNight) { p.dimsAtNight = it } }
         item { DevicePin(state) }
-        item { LButton(primary = false, onClick = { p.tvTourShown = false; state.tab(app.lumiere.android.Screen.Home) }) { Text("Show the Remote Tour Again") } }
-        item { Text("TV Home rows", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top = 8.dp)) }
-        val order = p.tvRowOrder
-        items(order.size) { i ->
-            val key = order[i]
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LChip(key !in p.tvRowsHidden, { p.tvRowsHidden = if (key in p.tvRowsHidden) p.tvRowsHidden - key else p.tvRowsHidden + key },
-                    { Text(app.lumiere.android.Prefs.TV_ROW_NAMES[key] ?: key) })
-                LButton(primary = false, enabled = i > 0, onClick = { p.tvRowOrder = order.toMutableList().apply { add(i - 1, removeAt(i)) } }) { Text("↑") }
-                LButton(primary = false, enabled = i < order.lastIndex, onClick = { p.tvRowOrder = order.toMutableList().apply { add(i + 1, removeAt(i)) } }) { Text("↓") }
-            }
-        }
 
         item { Section("Private Room") }
         item {
@@ -197,6 +179,7 @@ fun SettingsScreen(state: AppState) {
                 Toggle("Colours from my wallpaper", p.wallpaperColours) { p.wallpaperColours = it }
             }
             item { Toggle("Reduce motion", p.reduceMotion) { p.reduceMotion = it } }
+            item { Toggle("Keep the screen on", p.keepAwake, "The phone won't dim or lock while Lumiere is open.") { p.keepAwake = it } }
             item { Toggle("One Up Next row on Home", p.phoneUpNextMerged) { p.phoneUpNextMerged = it } }
             item { Toggle("Hide spoilers", p.hidesSpoilers) { p.hidesSpoilers = it } }
         }

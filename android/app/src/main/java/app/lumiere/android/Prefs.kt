@@ -37,6 +37,11 @@ class Prefs(context: Context) {
     var wallpaperColours: Boolean get() = _wallpaperColours.value
         set(v) { _wallpaperColours.value = v; put("wallpaperColours", v) }
 
+    private val _awake = flag("keepAwake", false)
+    /** The screen stays on while the app is in front, whatever is showing. */
+    var keepAwake: Boolean get() = _awake.value
+        set(v) { _awake.value = v; put("keepAwake", v) }
+
     private val _skipsIntros = flag("skipsIntros", false)
     /** Skip intros without asking, rather than offering the button. */
     var skipsIntros: Boolean get() = _skipsIntros.value
@@ -442,7 +447,7 @@ class Prefs(context: Context) {
             "burnsInSubtitles" to "Burn in subtitles", "subtitleSize" to "Subtitle size", "subtitleStyle" to "Subtitle style",
             "fillsScreen" to "Fill the screen", "dialogueBoost" to "Dialogue boost", "nightSound" to "Night sound",
             "focusSound" to "Sound on focus", "libraryColumns" to "Library columns", "episodesOpenPage" to "Episodes open their page",
-            "hidesSpoilers" to "Hide spoilers", "phoneRemote" to "Phone as a remote", "remoteTouchpad" to "Swipe pad on the phone's remote", "nightAuto" to "Night mode by itself",
+            "hidesSpoilers" to "Hide spoilers", "phoneRemote" to "Phone as a remote", "keepAwake" to "Keep the screen on", "remoteTouchpad" to "Swipe pad on the phone's remote", "nightAuto" to "Night mode by itself",
             "keepNextReady" to "Keep the next episode ready", "skipCountdown" to "Countdown on Skip", "screensaverMinutes" to "Screensaver after (minutes)",
             "dimsAtNight" to "Dim at night", "reduceMotion" to "Reduce motion", "tvUpNextMerged" to "One Up Next row", "phoneUpNextMerged" to "One Up Next row on the phone",
             "bannerPreviews" to "Moving previews", "tvTopBar" to "Top bar on TV", "textScale" to "Text size", "showsClock" to "Clock",

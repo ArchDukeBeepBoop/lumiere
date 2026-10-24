@@ -33,6 +33,10 @@ public final class MPVEngine: PlayerEngine {
     var seekWaiters: [Int: CheckedContinuation<Void, Never>] = [:]
     var seekTicket = 0
     var cachedAmbientMode = false
+    /// What the picture's software filters need: a flip, deinterlacing. Kept so
+    /// either can be changed without undoing the other. See `applyVideoFilters`.
+    var cachedFlip: (horizontal: Bool, vertical: Bool) = (false, false)
+    var cachedDeinterlace = false
 
     public var onTick: ((Double) -> Void)?
     public var onEnded: (() -> Void)?

@@ -24,27 +24,27 @@ struct UpNextStage: View {
             VStack(alignment: .leading, spacing: Theme.Space.md) {
                 Text("Up Next")
                     .font(Theme.Font.sectionHeader)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
                 RemoteImage(
                     request: .backdrop(for: next, serverURL: serverURL, width: 520, scale: scale),
                     pipeline: pipeline
                 )
                 .aspectRatio(16 / 9, contentMode: .fill)
                 .frame(width: 520, height: 292)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
                 .shadow(color: .black.opacity(0.5), radius: 24, y: 10)
                 VStack(alignment: .leading, spacing: 4) {
                     if let series = next.item.seriesName {
-                        Text(series).font(Theme.Font.detailMeta).foregroundStyle(.white.opacity(0.75))
+                        Text(series).font(Theme.Font.detailMeta).foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
                     }
                     Text(episodeLine)
                         .font(Theme.Font.title)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.Palette.onPlayerChrome)
                         .lineLimit(2)
                     if let overview = next.item.overview {
                         Text(overview)
                             .font(Theme.Font.body)
-                            .foregroundStyle(.white.opacity(0.75))
+                            .foregroundStyle(Theme.Palette.onPlayerChromeSecondary)
                             .lineLimit(3)
                     }
                 }
@@ -53,20 +53,20 @@ struct UpNextStage: View {
                     Button(action: onPlayNow) {
                         Text(countdown.map { "Play Now · \($0)" } ?? "Play Now")
                             .font(Theme.Font.playLabel)
-                            .foregroundStyle(.black)
+                            .foregroundStyle(Theme.PlayerPalette.segmentOnThumb)
                             .padding(.horizontal, Theme.Space.xl)
                             .padding(.vertical, Theme.Space.md)
-                            .background(.white, in: Capsule())
+                            .background(Theme.PlayerPalette.segmentThumb, in: Capsule())
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut(.defaultAction)
                     Button(action: onKeepWatching) {
                         Text("Keep Watching")
                             .font(Theme.Font.playLabel)
-                            .foregroundStyle(.white)
+                            .foregroundStyle(Theme.Palette.onPlayerChrome)
                             .padding(.horizontal, Theme.Space.xl)
                             .padding(.vertical, Theme.Space.md)
-                            .background(.white.opacity(0.18), in: Capsule())
+                            .background(Theme.PlayerPalette.menuHover, in: Capsule())
                     }
                     .buttonStyle(.plain)
                 }

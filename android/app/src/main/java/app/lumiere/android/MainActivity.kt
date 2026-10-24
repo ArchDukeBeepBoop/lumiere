@@ -175,7 +175,7 @@ class MainActivity : ComponentActivity() {
         if (!::state.isInitialized) return super.dispatchKeyEvent(event)
         // Any key ends the screensaver without also doing what it says.
         val minutes = state.settings.screensaverMinutes
-        val saving = minutes > 0 && state.top !is Screen.Player &&
+        val saving = Flavor.tv && minutes > 0 && state.top !is Screen.Player &&
             System.currentTimeMillis() - app.lumiere.android.ui.Idle.last >= minutes * 60_000L
         val shown = app.lumiere.android.ui.Idle.showing
         app.lumiere.android.ui.Idle.poke()
@@ -392,6 +392,12 @@ private fun App(state: AppState, onExit: () -> Unit) {
         app.lumiere.android.remote.RemoteHost.start(ctx, "Lumiere on ${android.os.Build.MODEL}")
     }
     app.lumiere.android.ui.TvLook.on = tvForm
+    // Settings › Keep the screen on: the phone never dims or locks while Lumiere is in front.
+    LaunchedEffect(state.settings.keepAwake) {
+        val w = (activity ?: return@LaunchedEffect).window
+        if (state.settings.keepAwake) w.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else w.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+    }
     app.lumiere.android.ui.PhoneLook.on = !tvForm
     // A crash last time: its report goes to the Mac by itself, once the Mac answers.
     LaunchedEffect(state.server) {
@@ -470,7 +476,8 @@ private fun App(state: AppState, onExit: () -> Unit) {
             }
         }
       }
-        if (state.top !is Screen.Player) app.lumiere.android.ui.Screensaver(state, state.saverPool)
+        // The TV's alone: a phone has its own lock screen.
+        if (Flavor.tv && state.top !is Screen.Player) app.lumiere.android.ui.Screensaver(state, state.saverPool)
         app.lumiere.android.tv.TvActions(state)
         if (!tvForm) app.lumiere.android.ui.PhoneActions(state)
         // The menu closed: the remote goes back to the card it was opened on,

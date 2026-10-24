@@ -20,6 +20,9 @@ extension AppModel {
     }
 
     var feedIsLive: Bool { Feed.live }
+    /// The server keeps a change log and this Mac has read from it: every
+    /// rewritten row arrives that way, so a repair needs no full re-read.
+    var hasChangeFeed: Bool { feedToken > 0 }
 
     private var feedTokenKey: String? {
         client.map { "changeToken.\($0.session.serverId)" }

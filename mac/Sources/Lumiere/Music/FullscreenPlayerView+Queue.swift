@@ -33,7 +33,7 @@ extension FullscreenPlayerView {
                 // is how every music app marks it and needs no colour to be read.
                 Group {
                     if isCurrent {
-                        Image(systemName: "speaker.wave.2.fill").font(.system(size: 9))
+                        Image(systemName: "speaker.wave.2.fill").font(Theme.Glyph.xs())
                     } else {
                         Text("\(index + 1)").font(Theme.Font.caption)
                     }

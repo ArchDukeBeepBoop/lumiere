@@ -8,7 +8,7 @@ extension FullscreenPlayerView {
         HStack(spacing: Theme.Space.sm) {
             Button { music.toggleMute() } label: {
                 Image(systemName: music.isMuted || music.volume <= 0.001 ? "speaker.slash.fill" : "speaker.fill")
-                    .font(.system(size: 12))
+                    .font(Theme.Glyph.md())
                     .frame(width: 18)
                     .contentShape(Rectangle())
             }
@@ -24,7 +24,7 @@ extension FullscreenPlayerView {
             .controlSize(.small)
             .tint(Theme.Palette.textSecondary)
             Image(systemName: "speaker.wave.3.fill")
-                .font(.system(size: 12))
+                .font(Theme.Glyph.md())
                 .frame(width: 22)
         }
         .foregroundStyle(Theme.Palette.textMuted)

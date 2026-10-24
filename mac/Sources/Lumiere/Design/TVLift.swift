@@ -37,7 +37,7 @@ struct TVLift: ViewModifier {
                 case .ended: point = nil
                 }
             }
-            .animation(.easeOut(duration: 0.18), value: point)
+            .animation(Theme.Motion.transition, value: point)
     }
 
     /// Up to 3.5° toward the pointer.

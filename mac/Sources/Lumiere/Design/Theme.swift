@@ -110,7 +110,7 @@ public enum Theme {
         /// The accent where it sits on artwork, which is dark in every theme:
         /// the standard gold, always. Paper's oxblood is an ink for pale
         /// stock and all but vanished on a hero's dark gradient.
-        public static let accentOnArtwork = Color(hex: 0xC9A227)
+        public static let accentOnArtwork = Color.fixedAccent
         public static let onArtworkTextMuted = Color.white.opacity(0.78)
 
         /// The shadow a card casts while it is hovered.

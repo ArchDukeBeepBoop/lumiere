@@ -52,7 +52,7 @@ struct AppIconPicker: View {
                     // The selection ring sits outside the artwork rather than
                     // over it: an icon is being judged here, and a border drawn
                     // across its corners changes the thing you are judging.
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous)
                         .strokeBorder(isSelected ? Theme.Palette.accent : .clear, lineWidth: 2)
                         .padding(-4)
                 }

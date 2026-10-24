@@ -23,7 +23,7 @@ struct ScreensaverHost: View {
                     .transition(.opacity)
             }
         }
-        .animation(.easeInOut(duration: 1.2), value: isShowing)
+        .animation(Theme.Motion.slowFade, value: isShowing)
         .allowsHitTesting(isShowing)
         .onAppear { watchInput() }
         .onDisappear { monitor.map(NSEvent.removeMonitor); monitor = nil }
@@ -62,12 +62,15 @@ struct ScreensaverView: View {
     @State private var index = 0
     @State private var drift = false
     @Environment(\.displayScale) private var scale
+    /// System Settings › Accessibility › Display › Reduce motion: no drift,
+    /// and the pictures change by a cut rather than a crossfade.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let entry = entries[index % entries.count]
         GeometryReader { geometry in
             ZStack(alignment: .bottomLeading) {
-                Color.black
+                Theme.Palette.videoGround
                 RemoteImage(
                     request: .backdrop(for: entry, serverURL: serverURL, width: geometry.size.width,
                                        scale: scale, preferSeriesThumb: true),
@@ -81,7 +84,7 @@ struct ScreensaverView: View {
                 .transition(.opacity)
                 Text(entry.item.seriesName ?? entry.item.name)
                     .font(Theme.Font.title)
-                    .foregroundStyle(.white.opacity(0.85))
+                    .foregroundStyle(Theme.Palette.onArtworkTextMuted)
                     .shadow(color: .black.opacity(0.7), radius: 8)
                     .padding(Theme.Space.xxl)
             }
@@ -90,9 +93,9 @@ struct ScreensaverView: View {
         .task {
             while !Task.isCancelled {
                 drift = false
-                withAnimation(.linear(duration: 11)) { drift = true }
+                if !reduceMotion { withAnimation(Theme.Motion.drift) { drift = true } }
                 try? await Task.sleep(for: .seconds(10))
-                withAnimation(.easeInOut(duration: 1.5)) { index += 1 }
+                withAnimation(reduceMotion ? nil : Theme.Motion.slowFade) { index += 1 }
             }
         }
     }

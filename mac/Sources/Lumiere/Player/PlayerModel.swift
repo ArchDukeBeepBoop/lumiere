@@ -134,6 +134,15 @@ final class PlayerModel {
     )
     var ambientMode = false
     var showsStatisticsHUD = false
+    /// The sidebar's picture, sound and subtitle placement. See PlayerModel+Picture.swift.
+    var picture = PictureAdjustments.neutral
+    var soundPreset = SoundPreset.flat
+    var subtitlePosition = 100
+    /// An exact size, overriding the named one; nil follows `subtitleSize`.
+    var subtitleScale: Double?
+    var bookmarks: [Bookmark] = []
+    /// Whether this show has a saved preset — the sidebar's Save/Forget.
+    var hasShowPreset = false
 
     var statistics = PlaybackStatistics(engineName: "—")
     /// How far ahead of zero the engine holds data, in seconds.

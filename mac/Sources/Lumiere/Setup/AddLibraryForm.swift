@@ -36,6 +36,7 @@ struct AddLibraryForm: View {
                         Spacer()
                         Button { paths.removeAll { $0 == path } } label: { Image(systemName: "xmark.circle.fill") }
                             .buttonStyle(.borderless).foregroundStyle(Theme.Palette.textMuted)
+                            .labelledHelp("Remove this folder")
                     }
                 }
                 Button(paths.isEmpty ? "Choose Folders…" : "Add Another Folder…") { choose() }
@@ -53,7 +54,7 @@ struct AddLibraryForm: View {
             }
         }
         .padding(Theme.Space.md)
-        .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .background(Theme.Palette.surface, in: RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous))
     }
 
     private func kindTile(_ option: LibraryKind) -> some View {

@@ -46,13 +46,13 @@ extension FolderBrowserView {
                 if selection.isActive {
                     Image(systemName: selection.contains(entry.id)
                           ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 13))
+                        .font(Theme.Glyph.md())
                         .foregroundStyle(selection.contains(entry.id)
                                          ? Theme.Palette.accent : Theme.Palette.textMuted)
                 }
 
                 Image(systemName: isFolder ? "folder.fill" : "film")
-                    .font(.system(size: 13))
+                    .font(Theme.Glyph.md())
                     .foregroundStyle(isFolder ? Theme.Palette.accent : Theme.Palette.textMuted)
                     .frame(width: 20)
 
@@ -68,7 +68,7 @@ extension FolderBrowserView {
                 // been watched, stated rather than drawn as a dot in a corner.
                 if !isFolder, entry.isPlayed {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 11))
+                        .font(Theme.Glyph.sm())
                         .foregroundStyle(Theme.Palette.accent)
                 }
                 Text(listDetail(entry))

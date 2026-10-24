@@ -133,7 +133,7 @@ struct HeroBackdrop: View {
             if let reason {
                 HStack(spacing: Theme.Space.xs) {
                     Image(systemName: "sparkle")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(Theme.Glyph.sm(.semibold))
                     Text(reason)
                         .font(Theme.Font.cardTitleLarge)
                         .lineLimit(1)

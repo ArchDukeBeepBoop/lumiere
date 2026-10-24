@@ -265,6 +265,7 @@ final class PlaybackMenuController: NSObject, NSMenuItemValidation, NSMenuDelega
 
     @objc private func performCommand(_ sender: NSMenuItem) {
         guard let command = command(for: sender) else { return }
+        if let event = NSApp.currentEvent { ShortcutEcho.note(event) }
         bridge.send(resolve(command))
     }
 

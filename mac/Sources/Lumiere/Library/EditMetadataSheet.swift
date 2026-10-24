@@ -95,7 +95,7 @@ struct EditMetadataSheet: View {
                 .frame(height: 110)
                 .scrollContentBackground(.hidden)
                 .padding(Theme.Space.xs)
-                .background(Theme.Palette.surfaceRaised, in: .rect(cornerRadius: 6))
+                .background(Theme.Palette.surfaceRaised, in: .rect(cornerRadius: Theme.Radius.control))
         }
     }
 

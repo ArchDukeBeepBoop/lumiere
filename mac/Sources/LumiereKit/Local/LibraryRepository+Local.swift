@@ -82,6 +82,8 @@ public extension LibraryRepository {
         try await database.writer.read { db in
             try LibraryRecord
                 .filter(Column("serverId") == LocalLibrary.serverId)
+                // Opened files are bookkeeping, not a folder anyone added.
+                .filter(Column("id") != LocalLibrary.openedLibraryId)
                 .order(Column("name"))
                 .fetchAll(db)
         }
@@ -127,6 +129,8 @@ public extension LibraryRepository {
                 db, sql: "SELECT path FROM item WHERE id = ?", arguments: [itemId]
             )
         }
+        // A network stream opened by address: played as it is, nothing to check.
+        if let path, path.contains("://"), let url = URL(string: path) { return url }
         guard let path, FileManager.default.fileExists(atPath: path) else { return nil }
         return URL(fileURLWithPath: path)
     }

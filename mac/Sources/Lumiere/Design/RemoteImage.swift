@@ -90,7 +90,7 @@ struct RemoteImage: View {
             .overlay {
                 if didFail || request == nil {
                     Image(systemName: "film")
-                        .font(.system(size: 18))
+                        .font(Theme.Glyph.lg())
                         .foregroundStyle(Theme.Palette.textDisabled)
                 }
             }

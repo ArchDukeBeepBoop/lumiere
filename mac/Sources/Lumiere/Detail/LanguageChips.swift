@@ -35,7 +35,7 @@ struct LanguageChips: View {
 
     private func chip(_ icon: String, _ text: String) -> some View {
         HStack(spacing: 5) {
-            Image(systemName: icon).font(.system(size: 11, weight: .semibold))
+            Image(systemName: icon).font(Theme.Glyph.sm(.semibold))
             Text(text).font(Theme.Font.caption.weight(.medium)).lineLimit(1)
         }
         .foregroundStyle(Theme.Palette.textPrimary)

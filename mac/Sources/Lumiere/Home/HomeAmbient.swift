@@ -67,7 +67,7 @@ struct HomeAmbientBackdrop: View {
         .clipped()
         .ignoresSafeArea()
         .allowsHitTesting(false)
-        .animation(.easeInOut(duration: 0.6), value: HomeAmbient.shared.entry?.id)
+        .animation(Theme.Motion.ambient, value: HomeAmbient.shared.entry?.id)
         .onDisappear { HomeAmbient.shared.clear() }
     }
 }

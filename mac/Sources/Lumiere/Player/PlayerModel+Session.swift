@@ -205,7 +205,7 @@ extension PlayerModel {
             // correction made for one badly-timed track stays with that track.
             subtitleDelay = (try? await repository.subtitleOffset(itemId: itemId)) ?? 0
             if subtitleDelay != 0 { await engine.setSubtitleDelay(subtitleDelay) }
-            await restoreFlip(); await restoreAudioDelay()
+            await restoreFlip(); await restoreAudioDelay(); await applyShowPreset()
             await engine.play()
             state = .playing
             duration = await engine.duration

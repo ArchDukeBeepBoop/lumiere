@@ -194,16 +194,8 @@ struct GenreBrowseView: View {
     }
 
     private var empty: some View {
-        VStack(spacing: Theme.Space.sm) {
-            Image(systemName: "square.stack")
-                .font(.system(size: 32))
-                .foregroundStyle(Theme.Palette.textDisabled)
-            Text("Nothing in \(genre) yet")
-                .font(Theme.Font.body)
-                .foregroundStyle(Theme.Palette.textSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Space.xxxl)
+        EmptyStateView(reason: .empty(icon: "square.stack", title: "Nothing in \(genre) yet", detail: nil))
+            .padding(.vertical, Theme.Space.xxxl)
     }
 
     private func reload() async {

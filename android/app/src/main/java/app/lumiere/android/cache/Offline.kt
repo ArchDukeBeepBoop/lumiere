@@ -17,16 +17,16 @@ private suspend fun <T> orSaved(fromServer: suspend () -> T, saved: () -> T?): T
     }
 
 suspend fun AppState.itemOrSaved(id: String): Item = orSaved(
-    { server!!.item(session!!.userId, id) },
-    { cache.get(id) ?: downloads.find(id)?.item },
+    { ledger.apply(server!!.item(session!!.userId, id)) },
+    { (cache.get(id) ?: downloads.find(id)?.item)?.let { ledger.apply(it, trustServer = false) } },
 )
 
 suspend fun AppState.seasonsOrSaved(seriesId: String): List<Item> = orSaved(
     { server!!.seasons(session!!.userId, seriesId) }, { cache.seasons(seriesId).ifEmpty { null } })
 
 suspend fun AppState.episodesOrSaved(seriesId: String, seasonId: String?): List<Item> = orSaved(
-    { server!!.episodes(session!!.userId, seriesId, seasonId) },
-    { cache.episodes(seriesId, seasonId).ifEmpty { null } })
+    { ledger.apply(server!!.episodes(session!!.userId, seriesId, seasonId)) },
+    { ledger.apply(cache.episodes(seriesId, seasonId), trustServer = false).ifEmpty { null } })
 
 suspend fun AppState.childrenOrSaved(parentId: String): List<Item> = orSaved(
     { server!!.children(session!!.userId, parentId) }, { cache.children(parentId).ifEmpty { null } })

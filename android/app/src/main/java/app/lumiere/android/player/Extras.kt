@@ -61,6 +61,7 @@ object SleepTimer {
  */
 @Composable
 fun QuickPanel(player: ExoPlayer, prefs: Prefs, onTracks: () -> Unit, onClose: () -> Unit) {
+    if (!app.lumiere.android.ui.LocalFormFactor.current.isTv) { PhoneQuickSheet(player, prefs, onTracks, onClose); return }
     val first = remember { FocusRequester() }
     var speed by remember { mutableIntStateOf(((player.playbackParameters.speed) * 100).toInt()) }
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)), contentAlignment = Alignment.BottomCenter) {

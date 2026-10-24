@@ -153,7 +153,7 @@ extension ServerBrowserView {
                 HStack(spacing: Theme.Space.sm) {
                     Image(systemName: selection.contains(entry.id)
                           ? "checkmark.circle.fill" : "circle")
-                        .font(.system(size: 14))
+                        .font(Theme.Glyph.md())
                         .foregroundStyle(selection.contains(entry.id)
                                          ? Theme.Palette.accent : Theme.Palette.textMuted)
                         .padding(.leading, Theme.Space.lg)

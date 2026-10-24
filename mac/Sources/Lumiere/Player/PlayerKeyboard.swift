@@ -120,6 +120,7 @@ final class KeyCaptureNSView: NSView {
         }
         Self.isRepeat = event.isARepeat
         defer { Self.isRepeat = false }
+        ShortcutEcho.note(event)
         if onKey?(key) != true {
             super.keyDown(with: event)
         }
@@ -151,17 +152,11 @@ final class KeyCaptureNSView: NSView {
         default: break
         }
 
+        // The letter keys, as bound in Settings. See `PlayerKeyBinding`.
+        if let typed = event.charactersIgnoringModifiers, let binding = PlayerKeyBinding.binding(for: typed) {
+            return binding.playerKey(shift: shift)
+        }
         switch event.charactersIgnoringModifiers?.lowercased() {
-        case "k": return .k
-        case "j": return .j
-        case "l": return .l
-        case "m": return .m
-        case "f": return .f
-        case "i": return .info
-        case "p": return .pictureInPicture
-        case ",": return .comma
-        case ".": return .period
-        case "z": return shift ? .subtitleLater : .subtitleEarlier
         case let digit? where !option && digit.count == 1 && "0123456789".contains(digit):
             return .digit(Int(digit)!)
         default: return nil

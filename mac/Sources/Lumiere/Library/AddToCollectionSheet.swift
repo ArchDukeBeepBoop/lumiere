@@ -94,7 +94,7 @@ struct AddToCollectionSheet: View {
                             Spacer()
                         }
                         .padding(Theme.Space.sm)
-                        .background(Theme.Palette.surface, in: .rect(cornerRadius: 8))
+                        .background(Theme.Palette.surface, in: .rect(cornerRadius: Theme.Radius.poster))
                     }
                     .buttonStyle(.plain)
                     .disabled(isWorking)

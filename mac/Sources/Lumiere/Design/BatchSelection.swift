@@ -97,7 +97,7 @@ struct SelectionOverlay: View {
                     .strokeBorder(Theme.Palette.accent, lineWidth: 3)
             }
             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 18))
+                .font(Theme.Glyph.lg())
                 .symbolRenderingMode(.palette)
                 .foregroundStyle(
                     isSelected ? Theme.Palette.onAccent : Theme.Palette.onArtwork,

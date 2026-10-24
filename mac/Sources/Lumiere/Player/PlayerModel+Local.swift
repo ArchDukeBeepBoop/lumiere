@@ -54,11 +54,24 @@ extension PlayerModel {
         if subtitleDelay != 0 { await engine.setSubtitleDelay(subtitleDelay) }
         await restoreFlip()
         await restoreAudioDelay()
+        await applyShowPreset()
 
         await engine.play()
         state = .playing
         duration = await engine.duration
         await waitForTracks()
+        await loadLocalNeighbours()
         Diagnostics.log("[playback] \(itemId) local file via mpv")
+    }
+
+    /// Next and Previous for a file with no season: the files beside it in its
+    /// folder, in Finder's name order. Opening episode 3 offers episode 4.
+    func loadLocalNeighbours() async {
+        let siblings = (try? await repository.localSiblings(of: itemId)) ?? []
+        guard let index = siblings.firstIndex(where: { $0.id == itemId }) else { return }
+        queue = siblings
+        queueIndex = index
+        previousEpisode = index > 0 ? siblings[index - 1] : nil
+        nextEpisode = index + 1 < siblings.count ? siblings[index + 1] : nil
     }
 }

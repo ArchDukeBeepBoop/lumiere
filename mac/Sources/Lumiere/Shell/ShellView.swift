@@ -7,6 +7,8 @@ import LumiereKit
 enum Route: Hashable {
     case home
     case favourites
+    /// On This Computer. See `ComputerView`.
+    case computer
     case library(id: String, name: String)
     case search
     case settings
@@ -218,6 +220,8 @@ struct ShellView: View {
             route = requested
             app.pendingRoute = nil
         }
+        .onChange(of: app.connection) { was, now in openComputerIfOffline(was: was, now: now) }
+        .whatsNewAfterUpdate(app: app)
         .onChange(of: route) {
             // Changing section resets the drill-down; otherwise the back button
             // would walk you into the previous section's items.
@@ -227,6 +231,8 @@ struct ShellView: View {
             openLaunchRoute()
             app.applyForcedOfflineIfRequested()
             await app.offerSetupIfNew()
+            CrashNotice.check(app)
+            if app.nowPlayingItemId == nil { await DefaultPlayer.askOnce { app.report($0, actionTitle: "") } }
             // Continue Watching on the Dock icon's menu. See `DockMenu`.
             while !Task.isCancelled {
                 await DockMenu.refresh(app)

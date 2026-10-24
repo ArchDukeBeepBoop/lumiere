@@ -13,7 +13,7 @@ extension JellyfinClient {
     /// This matters more than it looks: `Fields=...` is the difference between a
     /// 400-item page costing 200 KB and costing 12 MB. Grids get `.list`; only the
     /// item you actually opened gets `.detail`.
-    public enum FieldSet {
+    public enum FieldSet: Sendable {
         case list
         /// `list`, plus the alternate files an item carries.
         ///

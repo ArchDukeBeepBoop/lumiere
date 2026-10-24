@@ -77,6 +77,7 @@ extension PlayerControls {
                     .frame(width: width * fraction, height: height)
 
                 chapterMarkers(width: width, height: height)
+                bookmarkMarkers(width: width, height: height)
 
                 handle(width: width, fraction: fraction, active: active)
             }
@@ -171,27 +172,6 @@ extension PlayerControls {
             )
             .frame(width: size, height: size)
             .offset(x: width * fraction - size / 2)
-    }
-
-    /// Chapter boundaries.
-    ///
-    /// Full-height notches rather than the old floating hairlines: at 2pt on a 4pt
-    /// bar they read as artefacts, and they were drawn in the chrome colour, so a
-    /// mark on the played gold and a mark on the empty track were two different
-    /// things. One dark notch punched through the bar reads the same everywhere.
-    @ViewBuilder
-    func chapterMarkers(width: CGFloat, height: CGFloat) -> some View {
-        if model.chapters.count > 1, model.duration > 0 {
-            ForEach(Array(model.chapters.enumerated()), id: \.offset) { _, chapter in
-                let fraction = chapter.startSeconds / model.duration
-                if fraction > 0.001 && fraction < 0.999 {
-                    Capsule()
-                        .fill(Theme.PlayerPalette.chapterMark)
-                        .frame(width: Theme.PlayerMetric.chapterMarkWidth, height: height)
-                        .offset(x: width * fraction - Theme.PlayerMetric.chapterMarkWidth / 2)
-                }
-            }
-        }
     }
 
     private var keyFraction: Double? {

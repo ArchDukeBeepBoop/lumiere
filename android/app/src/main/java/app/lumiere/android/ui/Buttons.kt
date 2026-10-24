@@ -2,6 +2,10 @@
 
 package app.lumiere.android.ui
 
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.RowScope
@@ -40,8 +44,17 @@ private val ring get() = Border(BorderStroke(2.dp, Color.White), shape = Rounded
 fun LButton(onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean = true, enabled: Boolean = true,
             tint: Color? = null, content: @Composable RowScope.() -> Unit) {
     if (!LocalFormFactor.current.isTv) {
-        if (primary) androidx.compose.material3.Button(onClick, modifier, enabled, content = content)
-        else androidx.compose.material3.OutlinedButton(onClick, modifier, enabled, content = content)
+        // The phone's: Apple's capsule — white with dark words for the main action, frosted grey otherwise.
+        val fg = if (primary) Color.Black else Color.White
+        androidx.compose.foundation.layout.Row(modifier.heightIn(min = 44.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (primary) (tint ?: Color.White).copy(alpha = if (enabled) 1f else 0.4f) else Color.White.copy(alpha = if (enabled) 0.14f else 0.07f))
+            .then(if (enabled) Modifier.iosClick(onClick) else Modifier).padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center,
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides fg,
+                androidx.compose.material3.LocalTextStyle provides IosType.headline.copy(color = fg)) { content() }
+        }
         return
     }
     androidx.tv.material3.Button(
@@ -59,7 +72,14 @@ fun LButton(onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean
 fun LTextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true,
                 content: @Composable RowScope.() -> Unit) {
     if (!LocalFormFactor.current.isTv) {
-        androidx.compose.material3.TextButton(onClick, modifier, enabled, content = content)
+        // iOS's plain button: words in the accent, no box.
+        androidx.compose.foundation.layout.Row(modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(8.dp))
+            .then(if (enabled) Modifier.iosClick(onClick) else Modifier).padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            val c = Palette.accent.copy(alpha = if (enabled) 1f else 0.4f)
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides c,
+                androidx.compose.material3.LocalTextStyle provides IosType.headline.copy(color = c)) { content() }
+        }
         return
     }
     LButton(onClick, modifier, primary = false, enabled = enabled, content = content)
@@ -68,7 +88,14 @@ fun LTextButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boo
 @Composable
 fun LChip(selected: Boolean, onClick: () -> Unit, label: @Composable () -> Unit, modifier: Modifier = Modifier) {
     if (!LocalFormFactor.current.isTv) {
-        androidx.compose.material3.FilterChip(selected, onClick, label, modifier)
+        // iOS's capsule filter, as IosChip.
+        val fg = if (selected) Color.Black else Palette.textPrimary
+        androidx.compose.foundation.layout.Box(modifier.clip(RoundedCornerShape(50)).background(if (selected) Color.White else Palette.surface)
+            .iosClick(onClick).padding(horizontal = 14.dp, vertical = 7.dp)) {
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides fg,
+                androidx.compose.material3.LocalTextStyle provides IosType.footnote.copy(color = fg,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)) { label() }
+        }
         return
     }
     androidx.tv.material3.FilterChip(

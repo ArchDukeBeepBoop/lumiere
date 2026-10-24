@@ -39,6 +39,10 @@ enum PlayerCommand: Equatable, Sendable {
     case setSubtitleSize(SubtitleSize)
     case startOver
     case abLoop
+    /// ⌘B. See `PlayerModel.addBookmark`.
+    case addBookmark
+    /// Sync by ear: 1 shows the next line now, -1 the last one again.
+    case syncSubtitleLine(Int)
     /// 0 after this episode, minutes, or -1 to cancel. See SleepTimer.
     case sleep(minutes: Int)
     case setAudioDevice(AudioOutputs.Device?)

@@ -97,7 +97,7 @@ struct ChromeBar: ViewModifier {
 
     func body(content: Content) -> some View {
         if style == .liquid {
-            let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+            let shape = RoundedRectangle(cornerRadius: Theme.Radius.glassCard, style: .continuous)
             content
                 .background {
                     GlassFill(shape: shape, material: .ultraThinMaterial)

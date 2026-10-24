@@ -92,7 +92,7 @@ struct PlayerView: View {
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            Theme.Palette.videoGround.ignoresSafeArea()
 
             if let model {
                 Group {
@@ -104,7 +104,7 @@ struct PlayerView: View {
                                                     style: .continuous))
                         .padding(upNext(model) == nil ? 0 : 48)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .animation(.easeInOut(duration: 0.5), value: upNext(model)?.id)
+                        .animation(Theme.Motion.fade, value: upNext(model)?.id)
                     if let next = upNext(model) {
                         UpNextStage(
                             next: next, pipeline: pipeline, serverURL: client.session.serverURL,

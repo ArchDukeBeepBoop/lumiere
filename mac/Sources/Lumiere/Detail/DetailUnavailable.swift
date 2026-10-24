@@ -12,7 +12,7 @@ struct DetailUnavailable: View {
     var body: some View {
         VStack(spacing: Theme.Space.md) {
             Image(systemName: "questionmark.folder")
-                .font(.system(size: 30))
+                .font(Theme.Glyph.hero())
                 .foregroundStyle(Theme.Palette.textMuted)
             Text("This title didn't open.")
                 .font(Theme.Font.sectionHeader)

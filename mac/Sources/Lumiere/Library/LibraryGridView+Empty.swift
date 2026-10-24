@@ -28,7 +28,7 @@ extension LibraryGridView {
         if !isLoading && entries.isEmpty {
             VStack(spacing: Theme.Space.sm) {
                 Image(systemName: unwatchedOnly ? "checkmark.circle" : "film.stack")
-                    .font(.system(size: 36))
+                    .font(Theme.Glyph.hero())
                     .foregroundStyle(Theme.Palette.textDisabled)
                 Text(emptyTitle)
                     .font(Theme.Font.sectionHeader)
@@ -155,7 +155,7 @@ extension LibraryGridView {
     var tileSizeControl: some View {
         HStack(spacing: Theme.Space.xs) {
             Image(systemName: "square.grid.4x3.fill")
-                .font(.system(size: 10))
+                .font(Theme.Glyph.sm())
                 .foregroundStyle(Theme.Palette.textMuted)
             // Committed on release, not continuously. The width feeds the image
             // request key, so dragging 100→220 re-requested and re-decoded every
@@ -172,7 +172,7 @@ extension LibraryGridView {
             .frame(width: 90)
             .onAppear { draftTileWidth = tileWidth }
             Image(systemName: "square.grid.2x2.fill")
-                .font(.system(size: 13))
+                .font(Theme.Glyph.md())
                 .foregroundStyle(Theme.Palette.textMuted)
         }
         .labelledHelp("Tile size")

@@ -32,7 +32,7 @@ struct UnwatchedCountBadge: View {
     var body: some View {
         Text(count > 999 ? "999+" : "\(count)")
             .font(.system(size: isLarge ? 13 : 11, weight: .bold).monospacedDigit())
-            .foregroundStyle(.white)
+            .foregroundStyle(Theme.Palette.onUnwatched)
             .padding(.horizontal, isLarge ? 8 : 6)
             .padding(.vertical, isLarge ? 3 : 2)
             .background(Theme.Palette.unwatched, in: Capsule())

@@ -49,7 +49,7 @@ struct TechnicalPanel: View {
                     .foregroundStyle(Theme.Palette.textPrimary)
                 Spacer()
                 Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                    .font(.system(size: 11))
+                    .font(Theme.Glyph.sm())
                     .foregroundStyle(Theme.Palette.textMuted)
             }
             .contentShape(Rectangle())

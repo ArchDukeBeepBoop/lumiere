@@ -27,6 +27,8 @@ extension Color {
     ) -> Color {
         Color(nsColor: NSColor(name: nil) { appearance in
             let isDark = appearance.bestMatch(from: [.aqua, .darkAqua]) == .darkAqua
+            // The accent chosen in Settings › Look. See `AccentTheme`.
+            let light = AccentTheme.map(light), dark = AccentTheme.map(dark)
             // The private room: the dark values, drained of colour. See RoomTheme.
             if RoomTheme.isOn {
                 return NSColor(hex: RoomTheme.map(dark), alpha: darkOpacity)
@@ -64,4 +66,13 @@ extension NSColor {
             alpha: CGFloat(alpha)
         )
     }
+}
+
+extension Color {
+    /// The bright accent in either appearance — for the few places drawn over
+    /// video or artwork, which are dark whatever the system says. Follows the
+    /// choice in Settings › Look. See `AccentTheme`.
+    static let fixedAccent = Color(nsColor: NSColor(name: nil) { _ in
+        NSColor(hex: ArtworkAccent.hex ?? AccentTheme.map(0xC9A227), alpha: 1)
+    })
 }

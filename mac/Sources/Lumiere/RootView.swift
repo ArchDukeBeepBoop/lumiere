@@ -15,6 +15,8 @@ struct RootView: View {
     @AppStorage("glassOpacity") private var glassOpacity = 0.62
     /// Standard or Paper. See `PaperTheme`.
     @AppStorage(PaperTheme.storageKey) private var theme = "standard"
+    /// Rebuilds on a change too, for the same reason. See `AccentTheme`.
+    @AppStorage(AccentTheme.storageKey) private var accent = AccentTheme.gold.rawValue
 
     var body: some View {
         Group {
@@ -34,7 +36,7 @@ struct RootView: View {
             } else if app.isSignedIn {
                 // Rebuilt on a theme change: the palette resolves colours when
                 // drawn, and a view that is not redrawn keeps the old ones.
-                ShellView(app: app, bridge: bridge).id(theme)
+                ShellView(app: app, bridge: bridge).id(theme + accent)
             } else {
                 SignInView(model: signIn)
             }
@@ -45,6 +47,20 @@ struct RootView: View {
         // Paper is opaque stock: no desktop showing through it.
         .glassBackground(isGlass && theme != PaperTheme.paper, opacity: glassOpacity)
         .preferredColorScheme(theme == PaperTheme.paper ? .light : nil)
+        // Files opened from Finder, the Dock or a drop. See `OpenInbox`.
+        .onOpenURL { url in
+            if url.isFileURL || StreamPlaylist.isStream(url) { OpenInbox.shared.receive([url]) }
+        }
+        .dropDestination(for: URL.self) { urls, _ in
+            let playable = urls.filter { !$0.isFileURL || LocalLibrary.isPlayable($0) || $0.hasDirectoryPath }
+            guard !playable.isEmpty else { return false }
+            OpenInbox.shared.receive(playable)
+            return true
+        }
+        .task(id: app.repository == nil) {
+            OpenInbox.shared.handler = { [app] in app.open($0) }
+            app.openPending()
+        }
         .onAppear {
             signIn.onSignedIn = { client in
                 Task { await app.signedIn(client) }

@@ -42,6 +42,7 @@ extension PlaybackMenuController {
         put(menuItem("Jump Back 1 Minute", .skip(-60)))
         put(menuItem("Jump Forward 1 Minute", .skip(60)))
         put(menuItem("A-B Loop", .abLoop, key: "l", modifiers: [.command, .option]))
+        put(menuItem("Add Bookmark", .addBookmark, key: "b", modifiers: .command))
         put(.separator())
         put(menuItem("Stop After This Episode", .sleep(minutes: 0)))
         put(menuItem("Stop in 30 Minutes", .sleep(minutes: 30)))
@@ -93,6 +94,10 @@ extension PlaybackMenuController {
         menu.addItem(menuItem("Subtitles Later", .nudgeSubtitleDelay(1),
                               key: "]", modifiers: [.command, .option]))
         menu.addItem(menuItem("Reset Subtitle Delay", .nudgeSubtitleDelay(0)))
+        menu.addItem(menuItem("Show Next Line Now", .syncSubtitleLine(1),
+                              key: "'", modifiers: [.command, .option]))
+        menu.addItem(menuItem("Show Last Line Again", .syncSubtitleLine(-1),
+                              key: ";", modifiers: [.command, .option]))
         menu.addItem(.separator())
         let sizes = NSMenu()
         sizes.delegate = self
@@ -138,8 +143,10 @@ extension PlaybackMenuController {
             return menuState.supportsVideoAdjustments
         case .toggleFlip, .nudgeAudioDelay, .abLoop, .setAudioDevice:
             return menuState.supportsVideoAdjustments
-        case .nudgeSubtitleDelay:
+        case .nudgeSubtitleDelay, .syncSubtitleLine:
             return menuState.supportsSubtitleDelay
+        case .addBookmark:
+            return true
         case .sleep(let minutes):
             return minutes >= 0 || SleepTimer.mode != .off
         default: return nil

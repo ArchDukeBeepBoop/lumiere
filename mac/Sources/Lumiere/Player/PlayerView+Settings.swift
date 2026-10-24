@@ -1,7 +1,7 @@
 import SwiftUI
 import LumiereKit
 
-/// Where the settings panel is drawn.
+/// Where the settings sidebar is drawn.
 ///
 /// Split from PlayerView.swift for the project's 300-line rule.
 extension PlayerView {
@@ -10,9 +10,9 @@ extension PlayerView {
     ///
     /// A sheet covered the film in order to change how the film looks, which is the
     /// wrong way round for every control in it: subtitle delay, aspect, upscaling
-    /// and vertical shift are all judged against the picture, and you cannot judge
-    /// them against a picture behind a modal. Here the frame stays visible and each
-    /// change lands under the panel while you watch it.
+    /// and the picture sliders are all judged against the picture. A sidebar down
+    /// the right edge leaves the frame visible beside it — VLC's redesign made the
+    /// same move — and each change lands while you watch it.
     ///
     /// Not a `.popover` either, for the reason `PlayerTrackPanel` documents: an
     /// AppKit popover takes first responder, and the whole keyboard grammar hangs
@@ -20,26 +20,16 @@ extension PlayerView {
     @ViewBuilder
     func settingsOverlay(_ model: PlayerModel) -> some View {
         if showsSettings {
-            VStack {
+            HStack {
                 Spacer()
-                HStack {
-                    Spacer()
-                    PlayerSettingsPanel(
-                        model: model, isPresented: $showsSettings,
-                        playerSize: playerSize
-                    )
-                }
+                PlayerSidebar(model: model, isPresented: $showsSettings, playerSize: playerSize)
             }
-            .padding(.trailing, Theme.Space.xl)
-            // The same lift the tracks and Up Next panels take, so the three
-            // boxes sit at one height instead of three.
-            //
-            // This used to be `barInset + xxxl`, which is 76 against the bar's
-            // own 136: the panel's bottom edge landed on the scrubber, so the
-            // control you drag to find a moment was underneath the box you
-            // opened to change how that moment looks.
+            .padding(.trailing, Theme.Space.lg)
+            .padding(.top, Theme.PlayerMetric.panelTopMargin)
+            // Clear of the control bar, so the scrubber stays usable with the
+            // sidebar open — the same lift the tracks and Up Next panels take.
             .padding(.bottom, Theme.PlayerMetric.promptLift)
-            .transition(.opacity)
+            .transition(.move(edge: .trailing).combined(with: .opacity))
         }
     }
 }

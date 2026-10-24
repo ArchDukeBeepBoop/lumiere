@@ -29,11 +29,18 @@ public struct LocalLibraryScanner: Sendable {
     /// the whole home directory, a Time Machine volume — cannot spend an hour
     /// writing rows before anyone can stop it.
     public var fileLimit: Int = 50_000
+    /// Which files count. Video for a folder added in Settings; video and audio
+    /// for a folder opened to play, where a song is as playable as a film.
+    public var extensions: Set<String>
 
-    public init(root: URL, libraryId: String, fileLimit: Int = 50_000) {
+    public init(
+        root: URL, libraryId: String, fileLimit: Int = 50_000,
+        extensions: Set<String> = LocalLibrary.videoExtensions
+    ) {
         self.root = root
         self.libraryId = libraryId
         self.fileLimit = fileLimit
+        self.extensions = extensions
     }
 
     public func scan() -> Result {
@@ -65,18 +72,18 @@ public struct LocalLibraryScanner: Sendable {
 
                 if isDirectory {
                     let id = LocalLibrary.id(for: url.path)
-                    records.append(record(
+                    records.append(Self.record(
                         url: url, id: id, parentId: next.parentId,
-                        isFolder: true, created: values?.creationDate
+                        isFolder: true, created: values?.creationDate, libraryId: libraryId
                     ))
                     queue.append((url, id))
-                } else if LocalLibrary.videoExtensions.contains(url.pathExtension.lowercased()) {
+                } else if extensions.contains(url.pathExtension.lowercased()) {
                     guard files < fileLimit else { break }
                     files += 1
-                    records.append(record(
+                    records.append(Self.record(
                         url: url, id: LocalLibrary.id(for: url.path),
                         parentId: next.parentId, isFolder: false,
-                        created: values?.creationDate
+                        created: values?.creationDate, libraryId: libraryId
                     ))
                 }
             }
@@ -92,14 +99,15 @@ public struct LocalLibraryScanner: Sendable {
     /// draws local files by their real filename. Type is `Video` rather than
     /// `Movie`: a loose file is not a matched title, and claiming otherwise puts it
     /// in grids and shelves that promise metadata it does not have.
-    private func record(
-        url: URL, id: String, parentId: String?, isFolder: Bool, created: Date?
+    static func record(
+        url: URL, id: String, parentId: String?, isFolder: Bool, created: Date?, libraryId: String
     ) -> ItemRecord {
         let name = isFolder ? url.lastPathComponent : url.deletingPathExtension().lastPathComponent
+        let isAudio = LocalLibrary.audioExtensions.contains(url.pathExtension.lowercased())
         var item = ItemRecord(
             id: id,
             serverId: LocalLibrary.serverId,
-            type: isFolder ? "Folder" : "Video",
+            type: isFolder ? "Folder" : isAudio ? "Audio" : "Video",
             name: name,
             sortName: ItemRecord.normalizedTitle(name),
             searchKey: SearchKey.normalize(name),

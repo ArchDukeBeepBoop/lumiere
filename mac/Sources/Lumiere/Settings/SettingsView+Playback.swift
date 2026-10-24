@@ -39,6 +39,8 @@ extension SettingsView {
 
             DoubleClickSkipToggle()
 
+            PlayerExtrasSettings()
+
             SeasonRunSettings()
 
             Toggle("Remember a flipped picture for the whole show", isOn: $remembersFlip)
@@ -177,10 +179,12 @@ extension SettingsView {
         }
     }
 
-    /// A reference rather than a rebinding UI. Remapping is real work, and a dead
-    /// editor would be worse than an honest list.
+    /// The letter keys you can change, then the keys every player shares.
+    @ViewBuilder
     var hotKeysForm: some View {
-        SettingsCard(title: "In the player", icon: "keyboard") {
+        // The letter keys, changeable. See `KeyboardSettingsCard`.
+        KeyboardSettingsCard()
+        SettingsCard(title: "Fixed keys", icon: "keyboard.badge.ellipsis") {
             ForEach(hotKeys, id: \.0) { key, action in
                 LabeledContent(action) {
                     Text(key)
@@ -198,12 +202,9 @@ extension SettingsView {
         ("⇧← / ⇧→", "Back or forward \(seekLongStepSeconds) seconds"),
         ("⌥← / ⌥→", "Previous or next chapter"),
         ("Scroll ← / →", "Seek with the trackpad or wheel"),
-        ("J / K / L", "Back, pause, forward"),
         ("↑ / ↓", "Volume up or down"),
-        ("M", "Mute"),
-        ("F", "Full screen"),
-        (", / .", "Slower or faster"),
-        ("Z / ⇧Z", "Subtitles earlier or later"),
+        ("0 – 9", "Jump to that tenth of the way"),
+        ("⌘B", "Bookmark this moment"),
         ("Esc", "Close the player"),
     ] }
 

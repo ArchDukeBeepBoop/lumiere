@@ -65,6 +65,9 @@ extension SyncPanel {
                     ForEach(scannable) { library in
                         libraryRow(library)
                     }
+                    if isSyncing {
+                        SettingsNote("A sync is running. Changes here apply from the next one.")
+                    }
                     SettingsNote("Unticked libraries are skipped by every sync, "
                                + "including the automatic one at launch. Their cached "
                                + "titles stay browsable — nothing is deleted by "
@@ -94,10 +97,9 @@ extension SyncPanel {
             }
         }
         .toggleStyle(.checkbox)
-        // Changing what a running pass reads mid-pass would make the progress
-        // readout lie about what it is doing, and the loop has already resolved
-        // its list. The choice applies to the next scan.
-        .disabled(isSyncing)
+        // Usable while a pass runs: the running pass has already chosen its
+        // libraries, so a change simply applies to the next one. Locking the
+        // boxes for a whole full sync is what made them unreachable.
     }
 
     private var selectionSummary: String {
@@ -127,7 +129,7 @@ extension SyncPanel {
             }
         }
         .font(Theme.Font.caption)
-        .disabled(isSyncing || scannable.isEmpty)
+        .disabled(scannable.isEmpty)
     }
 
     private var allSelected: Bool {

@@ -22,7 +22,7 @@ extension ServerBrowserView {
                     Task { await removeFromPlaylist(entryIds: entryIds) }
                 } label: {
                     Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 15))
+                        .font(Theme.Glyph.lg())
                         .foregroundStyle(Theme.Palette.danger)
                 }
                 .buttonStyle(.plain)
@@ -61,7 +61,7 @@ extension ServerBrowserView {
                 Spacer(minLength: 0)
 
                 Image(systemName: expandedSeries.contains(id) ? "chevron.down" : "chevron.right")
-                    .font(.system(size: 11))
+                    .font(Theme.Glyph.sm())
                     .foregroundStyle(Theme.Palette.textMuted)
             }
             .padding(.horizontal, Theme.Space.lg)
@@ -83,7 +83,7 @@ extension ServerBrowserView {
                     Task { await removeFromPlaylist(entryId: entryId) }
                 } label: {
                     Image(systemName: "minus.circle.fill")
-                        .font(.system(size: 15))
+                        .font(Theme.Glyph.lg())
                         .foregroundStyle(Theme.Palette.danger)
                 }
                 .buttonStyle(.plain)
@@ -143,7 +143,7 @@ extension ServerBrowserView {
                 // library is noise, and the menu is where one gets set.
                 if offersMusicActions, isFavourite(entry) {
                     Image(systemName: "star.fill")
-                        .font(.system(size: 10))
+                        .font(Theme.Glyph.sm())
                         .foregroundStyle(Theme.Palette.accent)
                 }
                 if let runtime = runtimeText(entry) {

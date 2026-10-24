@@ -45,7 +45,7 @@ public extension Theme {
         /// Played. The dark-appearance gold, fixed rather than `Palette.accent`:
         /// that token resolves to a much darker gold in light appearance, which is
         /// right on a white page and nearly invisible on a black scrub track.
-        public static let scrubPlayed = Color(hex: 0xC9A227)
+        public static let scrubPlayed = Color.fixedAccent
         public static let handle = Color.white
         public static let handleShadow = Color.black.opacity(0.55)
         /// A chapter mark. Dark rather than light so one mark reads the same

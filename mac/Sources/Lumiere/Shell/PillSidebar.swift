@@ -41,6 +41,7 @@ struct PillSidebar: View {
                     row("Home", icon: "house", to: .home)
                     row("Search", icon: "magnifyingglass", to: .search)
                     row("Favourites", icon: "star", to: .favourites)
+                    row("On This Computer", icon: "desktopcomputer", to: .computer)
                     action("Shuffle", icon: "shuffle") { Task { await draw() } }
                         .popover(item: $pick, arrowEdge: .trailing) { entry in
                             ShufflePick(entry: entry,
@@ -80,15 +81,15 @@ struct PillSidebar: View {
         .frame(width: isOpen ? Self.expandedWidth : Self.collapsedWidth, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
         .background {
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.Radius.sidebarPill, style: .continuous)
                 .fill(.ultraThinMaterial)
                 .overlay {
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.Radius.sidebarPill, style: .continuous)
                         .fill(Theme.Palette.chrome.opacity(0.55))
                 }
                 .shadow(color: .black.opacity(isOpen && !isPinned ? 0.35 : 0.18), radius: 18, y: 6)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sidebarPill, style: .continuous))
         // ← from the page lands here; → goes back out. See `ShellView`.
         .focusSection()
         .onChange(of: focusedRow) {
@@ -118,7 +119,7 @@ struct PillSidebar: View {
                 Spacer(minLength: 0)
                 Button { isPinned.toggle() } label: {
                     Image(systemName: isPinned ? "pin.fill" : "pin")
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(Theme.Glyph.md(.semibold))
                         .foregroundStyle(Theme.Palette.textSecondary)
                         .frame(width: 28, height: 28)
                         .contentShape(Rectangle())

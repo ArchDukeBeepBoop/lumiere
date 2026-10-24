@@ -111,7 +111,7 @@ extension AppModel {
         // that would make the setting look broken in the one case nobody is watching.
         // Asked once, before the loop. Only lumiered answers; Jellyfin has no
         // such endpoint and the nil is what the rule below expects of it.
-        let repairedAt = (try? await client?.serverScanStatus())?.RepairedAt
+        let repairedAt = hasChangeFeed ? nil : (try? await client?.serverScanStatus())?.RepairedAt  // the change feed carries repaired rows
 
         var selected = syncSelection.libraries(from: libraries)
         // An unticked library is still shown — its shelves, its folders — from

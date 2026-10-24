@@ -189,13 +189,24 @@ private fun DownloadRow(state: AppState, d: Download, wide: Boolean) {
     val server = state.server
     val status = state.downloads.status(d)
     val ready = status == DownloadManager.STATUS_SUCCESSFUL
-    Column(Modifier.fillMaxWidth().combinedClickable(onClick = { if (ready) state.push(Screen.Player(d.id, null)) })
+    // As this device last left it, Mac or no Mac.
+    state.ledger.version.intValue.let { }
+    val seen = state.ledger.apply(d.item, trustServer = false)
+    Column(Modifier.fillMaxWidth().combinedClickable(onLongClick = { app.lumiere.android.ui.PhoneMenu.item = seen },
+        onClick = { if (ready) state.push(Screen.Player(d.id, null)) })
         .padding(start = 16.dp)) {
         androidx.compose.foundation.layout.Row(Modifier.padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.width(if (wide) 112.dp else 58.dp).aspectRatio(if (wide) 16f / 9f else 2f / 3f).clip(RoundedCornerShape(7.dp))
                 .background(Palette.surfaceRaised), contentAlignment = Alignment.Center) {
                 if (server != null) AsyncImage(imageFor(d.item, server, if (wide) CardShape.Wide else CardShape.Poster, 300), null,
                     contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
+                seen.progress?.takeIf { ready }?.let { p ->
+                    Box(Modifier.align(Alignment.BottomStart).padding(5.dp).fillMaxWidth(0.5f).height(3.dp).clip(RoundedCornerShape(50))
+                        .background(Color.White.copy(alpha = 0.35f))) {
+                        Box(Modifier.fillMaxWidth(p).height(3.dp).background(Color.White))
+                    }
+                }
+                if (ready && seen.played) app.lumiere.android.ui.WatchedMark(seen, Modifier.align(Alignment.TopEnd))
                 if (status == DownloadManager.STATUS_RUNNING) {
                     Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.45f)))
                     CircularProgressIndicator(progress = { state.downloads.progress(d) }, color = Color.White,
@@ -207,8 +218,12 @@ private fun DownloadRow(state: AppState, d: Download, wide: Boolean) {
                 if (d.item.seriesName != null) IosCaption(listOfNotNull(episodeShort(d.item), d.item.seriesName).joinToString(" · "))
                 Text(d.item.name, style = IosType.headline, color = Palette.textPrimary, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(when (status) {
-                    DownloadManager.STATUS_SUCCESSFUL -> listOfNotNull(d.item.year?.takeIf { d.item.seriesName == null }?.toString(),
-                        size(d.file.length())).joinToString(" · ")
+                    DownloadManager.STATUS_SUCCESSFUL -> listOfNotNull(
+                        when {
+                            seen.played -> "Watched"
+                            seen.positionTicks > 0 -> "${app.lumiere.android.ui.minutes(((seen.runtimeTicks ?: 0) - seen.positionTicks) / 10_000_000 / 60)} left"
+                            else -> d.item.year?.takeIf { d.item.seriesName == null }?.toString()
+                        }, size(d.file.length())).joinToString(" · ")
                     DownloadManager.STATUS_FAILED -> "Didn't finish — swipe left to delete, then download again"
                     DownloadManager.STATUS_PAUSED, DownloadManager.STATUS_PENDING -> "Waiting for Wi-Fi or the Mac"
                     else -> "Downloading · ${(state.downloads.progress(d) * 100).toInt()}%"

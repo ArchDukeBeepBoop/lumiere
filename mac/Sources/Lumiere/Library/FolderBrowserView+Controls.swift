@@ -40,7 +40,7 @@ extension FolderBrowserView {
             tileShapeRaw = libraries.sorted().joined(separator: ",")
         } label: {
             Image(systemName: isLandscape ? "rectangle" : "square")
-                .font(.system(size: 12))
+                .font(Theme.Glyph.md())
                 .foregroundStyle(Theme.Palette.textSecondary)
         }
         .buttonStyle(.plain)
@@ -53,7 +53,7 @@ extension FolderBrowserView {
     var tileSizeControl: some View {
         HStack(spacing: Theme.Space.xs) {
             Image(systemName: "square.grid.4x3.fill")
-                .font(.system(size: 10))
+                .font(Theme.Glyph.sm())
                 .foregroundStyle(Theme.Palette.textMuted)
             // Committed on release, like the library grid's — and this is the
             // half that "same control and range" missed. The width feeds the
@@ -69,7 +69,7 @@ extension FolderBrowserView {
             .frame(width: 90)
             .onAppear { draftTileWidth = tileWidth }
             Image(systemName: "square.grid.2x2.fill")
-                .font(.system(size: 13))
+                .font(Theme.Glyph.md())
                 .foregroundStyle(Theme.Palette.textMuted)
         }
         .labelledHelp("Tile size")

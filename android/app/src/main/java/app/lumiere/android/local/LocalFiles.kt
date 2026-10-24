@@ -7,7 +7,7 @@ import android.provider.OpenableColumns
 import androidx.compose.runtime.mutableStateOf
 
 /** A file from the phone the app has played: where it is, its name, video or sound. */
-data class LocalEntry(val uri: String, val name: String, val video: Boolean)
+data class LocalEntry(val uri: String, val name: String, val video: Boolean, val artist: String? = null, val album: String? = null)
 
 /**
  * Videos and songs on the phone itself. They are chosen through Android's

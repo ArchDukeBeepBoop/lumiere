@@ -49,4 +49,17 @@ extension ShellView {
             app.nowPlayingItemId = itemId
         }
     }
+
+    /// The server found unreachable at launch: open on On This Computer, where
+    /// everything works, rather than a Home that can only show the cache. Once
+    /// per launch, and only while nobody has gone anywhere yet.
+    func openComputerIfOffline(was: ConnectionState, now: ConnectionState) {
+        guard was == .unknown, now.isOffline, !Self.launchRouteDecided,
+              route == .home, path.isEmpty, Preference.opensComputerWhenOffline.value
+        else { Self.launchRouteDecided = true; return }
+        Self.launchRouteDecided = true
+        route = .computer
+    }
+
+    @MainActor static var launchRouteDecided = false
 }

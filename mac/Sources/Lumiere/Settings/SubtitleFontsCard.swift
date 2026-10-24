@@ -96,7 +96,7 @@ struct SubtitleFontsCard: View {
                 reload()
             } label: {
                 Image(systemName: "trash")
-                    .font(.system(size: 11))
+                    .font(Theme.Glyph.sm())
                     .foregroundStyle(Theme.Palette.danger)
             }
             .buttonStyle(.plain)

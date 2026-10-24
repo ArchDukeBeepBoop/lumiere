@@ -79,7 +79,7 @@ extension FolderBrowserView {
         } label: {
             HStack(spacing: Theme.Space.xs) {
                 Image(systemName: entry.item.isFolder ? "folder.fill" : "film")
-                    .font(.system(size: 11))
+                    .font(Theme.Glyph.sm())
                     .foregroundStyle(isChosen
                                      ? Theme.Palette.textPrimary
                                      : (entry.item.isFolder
@@ -99,7 +99,7 @@ extension FolderBrowserView {
                 // somewhere, before you click it.
                 if entry.item.isFolder {
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 8, weight: .semibold))
+                        .font(Theme.Glyph.xs(.semibold))
                         .foregroundStyle(Theme.Palette.textMuted)
                 }
             }

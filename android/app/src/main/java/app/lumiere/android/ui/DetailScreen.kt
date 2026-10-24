@@ -139,14 +139,14 @@ fun DetailScreen(state: AppState, id: String, refreshKey: Int) {
             item(key = "hero") { Hero(current, state, ground, list) }
             item(key = "actions") {
                 Actions(current, state, next) { played ->
-                    scope.launch { runCatching { server.setPlayed(current.id, played) }.onSuccess { item = current.copy(played = played) } }
+                    scope.launch { state.ledger.setPlayed(server, current.id, played); item = current.copy(played = played) }
                 }
             }
             item(key = "about") { About(current) }
             if (current.isSeries && seasons.isNotEmpty()) item(key = "episodes") {
                 Episodes(state, current, seasons, season, episodes, next, onSeason = { season = it }) { e, played ->
                     scope.launch {
-                        runCatching { server.setPlayed(e.id, played) }
+                        state.ledger.setPlayed(server, e.id, played)
                         episodes = episodes.map { if (it.id == e.id) it.copy(played = played) else it }
                     }
                 }

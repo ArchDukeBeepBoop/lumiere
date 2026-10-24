@@ -172,7 +172,7 @@ object Playback {
  * watched itself once past its watched point.
  */
 class Reporter(private val server: Server, var itemId: String, private val scope: CoroutineScope,
-               private val clock: () -> Clock?) {
+               private val ledger: app.lumiere.android.cache.WatchLedger? = null, private val clock: () -> Clock?) {
     private val session = UUID.randomUUID().toString().replace("-", "")
     private var stopped = false
 
@@ -183,8 +183,12 @@ class Reporter(private val server: Server, var itemId: String, private val scope
         server.report("Sessions/Playing", itemId, ticks(player), session, false)
     }
 
-    fun progress(player: ExoPlayer) = scope.launch {
-        server.report("Sessions/Playing/Progress", itemId, ticks(player), session, !player.isPlaying)
+    fun progress(player: ExoPlayer) {
+        val t = ticks(player)
+        scope.launch {
+            val sent = server.report("Sessions/Playing/Progress", itemId, t, session, !player.isPlaying)
+            ledger?.position(itemId, t, sent)
+        }
     }
 
     fun stopped(player: ExoPlayer, finished: Boolean) {
@@ -193,9 +197,11 @@ class Reporter(private val server: Server, var itemId: String, private val scope
         val position = if (finished) ((clock()?.duration() ?: (player.duration / 1000.0)) * 10_000_000).toLong() else ticks(player)
         // Its own scope: the screen's is being torn down as this runs, and
         // this is the one report that must arrive.
+        val id = itemId
         CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            server.report("Sessions/Playing/Stopped", itemId, position, session, false)
-            if (finished) runCatching { server.setPlayed(itemId, true) }
+            val sent = server.report("Sessions/Playing/Stopped", id, position, session, false)
+            // Kept here too: with no connection, the Mac hears it later (WatchLedger.flush).
+            if (finished) ledger?.setPlayed(server, id, true) else ledger?.position(id, position, sent)
         }
     }
 }

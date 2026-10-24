@@ -123,7 +123,7 @@ struct CollectionAuthoringSheet: View {
                 .frame(height: 100)
                 .scrollContentBackground(.hidden)
                 .padding(Theme.Space.xs)
-                .background(Theme.Palette.surfaceRaised, in: .rect(cornerRadius: 6))
+                .background(Theme.Palette.surfaceRaised, in: .rect(cornerRadius: Theme.Radius.control))
 
             // Says whose paragraph this is. Presenting a borrowed synopsis as the
             // collection's own reads badly the moment you notice it.

@@ -117,7 +117,7 @@ struct HomeOrderCard: View {
             onChange()
         } label: {
             Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
+                .font(Theme.Glyph.sm(.semibold))
                 .frame(width: 22, height: 20)
                 .contentShape(Rectangle())
         }

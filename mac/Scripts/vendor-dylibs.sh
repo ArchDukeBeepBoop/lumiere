@@ -134,4 +134,10 @@ done
 relink "$BIN" "$BIN"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$BIN" 2>/dev/null || true
 
+# What was vendored, by the Homebrew file it came from — the record
+# Scripts/dylib-lock.sh compares against Scripts/dylibs.lock.
+awk -F'\t' '{print $1"\t"$2}' "$ORIGINS" | while IFS=$'\t' read -r name real; do
+	echo "$name $(shasum -a 256 "$real" | awk '{print $1}')"
+done | sort > "$APP/Contents/Resources/vendored-dylibs.txt"
+
 echo "    vendored $COUNT dylibs into $FRAMEWORKS"

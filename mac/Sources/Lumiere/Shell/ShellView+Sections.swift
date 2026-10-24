@@ -105,6 +105,11 @@ extension ShellView {
                     serverURL: serverURL,
                     app: app
                 )
+            case .computer:
+                ComputerView(
+                    repository: repository, pipeline: pipeline, serverURL: serverURL, app: app,
+                    onOpenFolder: { route = .library(id: $0.id, name: $0.name) }
+                )
             case .search:
                 SearchView(
                     repository: repository,

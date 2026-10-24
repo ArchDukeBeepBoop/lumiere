@@ -81,6 +81,8 @@ fun applyRemembered(player: ExoPlayer, prefs: Prefs, seriesId: String?) {
 /** Audio on the left, subtitles on the right; a choice is remembered for the show. */
 @Composable
 fun TrackSheet(player: ExoPlayer, prefs: Prefs, seriesId: String?, note: String? = null, onFind: (() -> Unit)? = null, onSync: (() -> Unit)? = null, onDone: () -> Unit) {
+    // A phone's and the Quest's: the iPhone player's sheet.
+    if (!app.lumiere.android.ui.LocalFormFactor.current.isTv) { PhoneTrackSheet(player, prefs, seriesId, note, onFind, onSync, onDone); return }
     val audio = trackChoices(player, C.TRACK_TYPE_AUDIO)
     val text = trackChoices(player, C.TRACK_TYPE_TEXT)
     val subtitlesOff = text.none { it.selected }

@@ -142,7 +142,7 @@ struct RatingChips: View {
     private func chip(icon: String, tint: Color, text: String) -> some View {
         HStack(spacing: Theme.Space.xs) {
             Image(systemName: icon)
-                .font(.system(size: 11))
+                .font(Theme.Glyph.sm())
                 .foregroundStyle(tint)
             Text(text)
                 .font(Theme.Font.body)

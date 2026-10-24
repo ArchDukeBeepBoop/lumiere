@@ -81,7 +81,7 @@ extension LibraryGridView {
             } label: {
                 Image(systemName: (descending ?? sort.defaultDescending)
                       ? "arrow.down" : "arrow.up")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(Theme.Glyph.sm(.semibold))
             }
             .buttonStyle(.plain)
             .foregroundStyle(Theme.Palette.textSecondary)
@@ -122,7 +122,7 @@ extension LibraryGridView {
         } label: {
             HStack(spacing: Theme.Space.xs) {
                 Image(systemName: "line.3.horizontal.decrease")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(Theme.Glyph.sm(.semibold))
                 Text(activeFilters > 0 ? "Filter · \(activeFilters)" : "Filter")
                     .font(Theme.Font.caption)
             }
@@ -146,10 +146,11 @@ extension LibraryGridView {
             Button("Repair Episode Numbering…") { isScanningMergedSeries = true }
         } label: {
             Image(systemName: "ellipsis.circle")
-                .font(.system(size: 13))
+                .font(Theme.Glyph.md())
                 .foregroundStyle(selection.isActive
                                  ? Theme.Palette.accent : Theme.Palette.textSecondary)
         }
+        .labelledHelp("More options")
         .menuStyle(.borderlessButton)
         .fixedSize()
     }
@@ -193,7 +194,7 @@ extension LibraryGridView {
                 Text("·").foregroundStyle(Theme.Palette.textMuted)
                 Text(text)
                 Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(Theme.Glyph.xs(.bold))
                     .opacity(0.7)
             }
             .font(Theme.Font.caption)

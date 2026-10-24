@@ -47,7 +47,7 @@ struct FranchiseStrip: View {
                 // Seen, started, or not begun — the three states that matter
                 // when you are deciding where to pick a franchise back up.
                 Image(systemName: marker(part.entry))
-                    .font(.system(size: 12))
+                    .font(Theme.Glyph.md())
                     .foregroundStyle(part.entry.isPlayed
                                      ? Theme.Palette.accent : Theme.Palette.textMuted)
                     .frame(width: 18)

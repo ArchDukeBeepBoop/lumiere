@@ -86,6 +86,8 @@ fun HomeScreen(state: AppState, refreshKey: Int) {
         }.onSuccess { if (rows == null) rows = it }
         // The Mac pauses for a minute or two while it re-imports Jellyfin, so
         // a failure is retried quietly for a while before Home says it's offline.
+        // What was watched with no connection reaches the Mac before Home asks it.
+        runCatching { state.ledger.flush(server) }
         var tries = 0
         while (true) {
         val result = runCatching {
@@ -100,7 +102,7 @@ fun HomeScreen(state: AppState, refreshKey: Int) {
                 val latest = views.filter { it.collectionType != "music" }
                     .map { v -> async { v to runCatching { server.latest(session.userId, v.id) }
                     .getOrDefault(emptyList()) } }
-                HomeRows(resume.await(), next.await(), views, latest.map { it.await() }, watched.await())
+                HomeRows(state.ledger.apply(resume.await()), next.await(), views, latest.map { it.await() }, watched.await())
             }
         }.onSuccess {
             rows = it; error = null

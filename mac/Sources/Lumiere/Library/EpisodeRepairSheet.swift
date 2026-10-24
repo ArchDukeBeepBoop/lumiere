@@ -174,7 +174,7 @@ private struct EpisodeRepairRow: View {
 
             if !row.changes {
                 Image(systemName: "checkmark")
-                    .font(.system(size: 11))
+                    .font(Theme.Glyph.sm())
                     .foregroundStyle(Theme.Palette.textMuted)
             }
         }

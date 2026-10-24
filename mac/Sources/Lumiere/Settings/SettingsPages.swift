@@ -55,13 +55,13 @@ struct SettingsPageRow: View {
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(Theme.Glyph.md(.semibold))
                     .foregroundStyle(Theme.Palette.textMuted)
             }
             .padding(.horizontal, Theme.Space.md)
             .padding(.vertical, Theme.Space.sm + 2)
             .background(isHovering ? Theme.Palette.surfaceRaised : Theme.Palette.surface,
-                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.posterLarge, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

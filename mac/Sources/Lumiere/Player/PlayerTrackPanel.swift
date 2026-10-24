@@ -93,7 +93,7 @@ struct PlayerTrackPanel: View {
             Spacer(minLength: 0)
             Button { tab = nil } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 10, weight: .bold))
+                    .font(Theme.Glyph.sm(.bold))
                     .foregroundStyle(Theme.Palette.onPlayerChrome)
                     .frame(width: 24, height: 24)
                     .background(Circle().fill(Theme.PlayerPalette.segmentTrack))

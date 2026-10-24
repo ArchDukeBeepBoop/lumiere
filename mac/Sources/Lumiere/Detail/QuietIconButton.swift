@@ -33,7 +33,7 @@ struct QuietIconButton: View {
                     Image(systemName: systemName)
                         .contentTransition(.symbolEffect(.replace))
                         .symbolEffect(.bounce, value: isOn)
-                        .font(.system(size: 17))
+                        .font(Theme.Glyph.lg())
                         .foregroundStyle(tint)
                 }
             }

@@ -107,7 +107,7 @@ struct RelatedCollectionsSheet: View {
     private var empty: some View {
         VStack(spacing: Theme.Space.sm) {
             Image(systemName: "rectangle.stack.badge.questionmark")
-                .font(.system(size: 32))
+                .font(Theme.Glyph.hero())
                 .foregroundStyle(Theme.Palette.textDisabled)
             Text("Nothing related found")
                 .font(Theme.Font.cardTitle)
@@ -151,7 +151,7 @@ struct RelatedCollectionsSheet: View {
                     .toggleStyle(.checkbox)
                     .padding(Theme.Space.sm)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Theme.Palette.surface, in: .rect(cornerRadius: 8))
+                    .background(Theme.Palette.surface, in: .rect(cornerRadius: Theme.Radius.poster))
                 }
             }
         }

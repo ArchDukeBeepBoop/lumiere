@@ -93,7 +93,7 @@ fun OnThisPhoneScreen(state: AppState) {
     open?.let { (title, list) -> BackHandler { open = null }; SongList(state, title, list) { open = null }; return }
 
     fun play(entries: List<LocalEntry>, at: Int) { LocalQueue.items = entries; state.push(Screen.LocalFile(entries[at].uri, entries[at].name)) }
-    fun songEntries(list: List<PhoneSong>) = list.map { LocalEntry(it.uri, it.title, false) }
+    fun songEntries(list: List<PhoneSong>) = list.map { LocalEntry(it.uri, it.title, false, it.artist, it.album) }
 
     LazyVerticalGrid(GridCells.Fixed(phoneColumns()), Modifier.fillMaxSize().background(Palette.canvas),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
@@ -239,7 +239,7 @@ private fun Line(title: String, sub: String, onClick: () -> Unit) {
 /** An album's or artist's songs, with Play and Shuffle. */
 @Composable
 private fun SongList(state: AppState, title: String, songs: List<PhoneSong>, onBack: () -> Unit) {
-    val entries = songs.map { LocalEntry(it.uri, it.title, false) }
+    val entries = songs.map { LocalEntry(it.uri, it.title, false, it.artist, it.album) }
     fun play(list: List<LocalEntry>, at: Int) { LocalQueue.items = list; state.push(Screen.LocalFile(list[at].uri, list[at].name)) }
     androidx.compose.foundation.lazy.LazyColumn(Modifier.fillMaxSize().background(Palette.canvas),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp)) {

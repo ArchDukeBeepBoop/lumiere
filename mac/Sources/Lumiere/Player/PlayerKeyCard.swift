@@ -22,16 +22,22 @@ struct PlayerKeyCard: View {
 
     let onDismiss: () -> Void
 
-    /// Six, not sixteen. This is the set somebody would otherwise never find;
-    /// the rest are discoverable from the transport or the menus.
-    private let keys: [(String, String)] = [
-        ("Space", "Play or pause"),
-        ("← →", "Back or forward — hold to scan"),
-        (", .", "One frame at a time, while paused"),
-        ("↑ ↓", "Volume"),
-        ("F", "Full screen"),
-        ("Esc", "Close the player"),
-    ]
+    /// Seven, not sixteen. This is the set somebody would otherwise never find;
+    /// the rest are discoverable from the transport or the menus. Letter keys
+    /// as bound in Settings — see `PlayerKeyBinding`.
+    private var keys: [(String, String)] {
+        let frames = PlayerKeyBinding.display(PlayerKeyBinding.frameBack.key) + " "
+            + PlayerKeyBinding.display(PlayerKeyBinding.frameForward.key)
+        return [
+            ("Space", "Play or pause"),
+            ("← →", "Back or forward — hold to scan"),
+            (frames, "One frame at a time, while paused"),
+            ("↑ ↓", "Volume"),
+            (PlayerKeyBinding.display(PlayerKeyBinding.fullScreen.key), "Full screen"),
+            ("⌘B", "Bookmark this moment"),
+            ("Esc", "Close the player"),
+        ]
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.lg) {
@@ -39,7 +45,7 @@ struct PlayerKeyCard: View {
                 Text("A few keys")
                     .font(Theme.Font.title)
                     .foregroundStyle(Theme.Palette.onArtworkText)
-                Text("Shown once. Everything else is in the Playback menu.")
+                Text("Shown once. Everything else is in the Playback menu, and the ⚙ sidebar.")
                     .font(Theme.Font.caption)
                     .foregroundStyle(Theme.Palette.onArtworkTextMuted)
             }

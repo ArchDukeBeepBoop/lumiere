@@ -75,7 +75,7 @@ struct CollectionSeriesSheet: View {
                 Theme.Palette.surface
             }
             .frame(width: 64, height: 96)
-            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
             VStack(alignment: .leading, spacing: 4) {
                 Text(c.name).font(Theme.Font.cardTitleLarge)
                 Text(heldLine(held.count, of: c.parts))
@@ -91,7 +91,7 @@ struct CollectionSeriesSheet: View {
                 .disabled(working != nil || (!isIdentify && held.count < 1))
         }
         .padding(Theme.Space.sm)
-        .background(Theme.Palette.surface.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
+        .background(Theme.Palette.surface.opacity(0.5), in: RoundedRectangle(cornerRadius: Theme.Radius.card))
     }
 
     private func heldLine(_ held: Int, of parts: Int?) -> String {

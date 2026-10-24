@@ -77,7 +77,7 @@ struct MergedSeriesSheet: View {
     private var empty: some View {
         VStack(spacing: Theme.Space.sm) {
             Image(systemName: "checkmark.seal")
-                .font(.system(size: 28))
+                .font(Theme.Glyph.hero())
                 .foregroundStyle(Theme.Palette.accent)
             Text("No merged series left.")
                 .font(Theme.Font.body)

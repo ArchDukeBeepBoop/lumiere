@@ -73,7 +73,7 @@ extension ServerBrowserView {
 
     private var sortArrow: some View {
         Image(systemName: trackSortAscending ? "chevron.up" : "chevron.down")
-            .font(.system(size: 8, weight: .bold))
+            .font(Theme.Glyph.xs(.bold))
     }
 
     /// explaining nothing, and over an album's own page the columns are obvious.
@@ -159,7 +159,7 @@ extension ServerBrowserView {
 
             if isFavourite(entry) {
                 Image(systemName: "star.fill")
-                    .font(.system(size: 10))
+                    .font(Theme.Glyph.sm())
                     .foregroundStyle(Theme.Palette.accent)
             }
 
@@ -170,7 +170,7 @@ extension ServerBrowserView {
                 .frame(width: TrackColumn.duration, alignment: .trailing)
 
             Image(systemName: "play.circle")
-                .font(.system(size: 15))
+                .font(Theme.Glyph.lg())
                 .foregroundStyle(Theme.Palette.textMuted)
         }
         .padding(.leading, indented ? Theme.Space.lg + 28 : Theme.Space.lg)

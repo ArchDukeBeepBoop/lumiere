@@ -39,6 +39,8 @@ struct PlayerControls: View {
     @State var hoverFraction: Double?
     /// The remaining time reads as the clock time it ends at while hovered.
     @State private var isHoveringPlay = false
+    /// The subtitle timing pill. See `SubtitleTimingPill`.
+    @State private var showsTiming = false
 
     var body: some View {
         VStack(spacing: Theme.Space.md) {
@@ -181,6 +183,18 @@ struct PlayerControls: View {
             // anime library, and the icon alone never said what was selected —
             // so checking whether you were on the dub meant opening the panel.
             trackSummaryButton
+            // Only while subtitles are on and the engine can retime them.
+            if model.selectedSubtitleTrack != nil, model.engineRef?.supportsSubtitleDelay == true {
+                PlayerIconButton(systemName: "clock.arrow.2.circlepath", help: "Subtitle timing",
+                                 isActive: showsTiming) {
+                    withAnimation(Theme.Motion.segment) { showsTiming.toggle() }
+                }
+                // Trailing-anchored, so the pill grows leftward over the bar
+                // rather than off the window's right edge.
+                .overlay(alignment: .bottomTrailing) {
+                    if showsTiming { SubtitleTimingPill(model: model).fixedSize().offset(y: -44) }
+                }
+            }
             PlayerIconButton(systemName: "gearshape.fill", help: "Playback settings") {
                 // The sheet covers the panel anyway; leaving it open would put it
                 // back underneath when the sheet is dismissed.

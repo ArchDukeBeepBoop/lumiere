@@ -28,7 +28,7 @@ struct AmbientGlow: View {
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)
-        .animation(.easeInOut(duration: 0.8), value: colours?.top)
+        .animation(Theme.Motion.ambient, value: colours?.top)
         .task(id: request) {
             guard RoomTheme.isOn, isOn, let request else { colours = nil; return }
             let tiny = ImageRequest(serverURL: request.serverURL, itemId: request.itemId, kind: request.kind,

@@ -207,7 +207,7 @@ struct DetailHeader: View {
             // action that changes size mid-open reads as the page redrawing wrong.
             Button(action: onPlay) {
                 HStack(spacing: Theme.Space.sm) {
-                    Image(systemName: "play.fill").font(.system(size: 16))
+                    Image(systemName: "play.fill").font(Theme.Glyph.lg())
                     Text(playLabel).font(Theme.Font.playLabel)
                 }
                 .foregroundStyle(Theme.Palette.playButtonLabel)

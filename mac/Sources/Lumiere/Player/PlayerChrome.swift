@@ -135,7 +135,7 @@ struct PlayerCloseButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "xmark")
-                .font(.system(size: 13, weight: .semibold))
+                .font(Theme.Glyph.md(.semibold))
                 .foregroundStyle(Theme.Palette.onPlayerChrome)
                 .frame(
                     width: Theme.PlayerMetric.closeButton,

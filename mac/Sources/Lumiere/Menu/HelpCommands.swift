@@ -10,6 +10,9 @@ struct HelpCommands: View {
     var body: some View {
         Button("Keyboard Shortcuts") { ShortcutsWindow.show() }
             .keyboardShortcut("/", modifiers: .command)
+        Button("What’s New in Lumiere") {
+            NotificationCenter.default.post(name: .showWhatsNew, object: nil)
+        }
         Divider()
         Button("Show Log in Finder") {
             let log = FileManager.default.homeDirectoryForCurrentUser

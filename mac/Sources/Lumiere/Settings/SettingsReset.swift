@@ -56,6 +56,8 @@ extension View {
 /// The defaults of the sections that carry `.resettable`, in one place.
 enum SettingsDefaults {
     static var home: [String: Any] { [
+        Preference.remembersRecentFiles.name: Preference.remembersRecentFiles.defaultValue,
+        Preference.opensComputerWhenOffline.name: Preference.opensComputerWhenOffline.defaultValue,
         "homeLayout": HomeLayout.classic.rawValue,
         "showsAllShelves": false,
         Preference.latestIncludesVideos.name: Preference.latestIncludesVideos.defaultValue,
@@ -78,6 +80,7 @@ enum SettingsDefaults {
         Preference.seekStepSeconds.name: Preference.seekStepSeconds.defaultValue,
         Preference.seekLongStepSeconds.name: Preference.seekLongStepSeconds.defaultValue,
         Preference.scrollSeeks.name: Preference.scrollSeeks.defaultValue,
+        Preference.osdShowsShortcut.name: Preference.osdShowsShortcut.defaultValue,
         Preference.playsNextAutomatically.name: Preference.playsNextAutomatically.defaultValue,
         Preference.hidesSingleFilmCollections.name: Preference.hidesSingleFilmCollections.defaultValue,
         Preference.homeShowsBackdrop.name: Preference.homeShowsBackdrop.defaultValue,

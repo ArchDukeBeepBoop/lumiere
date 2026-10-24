@@ -129,9 +129,9 @@ struct SetupReadyPage: View {
 
     private func tip(_ keys: String, _ text: String) -> some View {
         HStack(spacing: Theme.Space.sm) {
-            Text(keys).font(.system(size: 12, weight: .semibold, design: .rounded))
+            Text(keys).font(Theme.Glyph.md(.semibold, design: .rounded))
                 .padding(.horizontal, 8).padding(.vertical, 3)
-                .background(Theme.Palette.surfaceRaised, in: RoundedRectangle(cornerRadius: 6))
+                .background(Theme.Palette.surfaceRaised, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
             Text(text).font(Theme.Font.caption).foregroundStyle(Theme.Palette.textSecondary)
         }
     }
