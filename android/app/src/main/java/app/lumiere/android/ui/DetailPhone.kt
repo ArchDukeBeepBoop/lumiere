@@ -135,6 +135,7 @@ private fun EpisodeCard(e: Item, state: AppState) {
                 }
             }
             WatchedMark(e, Modifier.align(Alignment.TopEnd))
+            app.lumiere.android.ui.PendingMark(e.id, Modifier.align(Alignment.TopStart).padding(6.dp))
             if (state.downloads.find(e.id) != null) Text("↓", style = IosType.caption, color = Color.White,
                 modifier = Modifier.align(Alignment.TopStart).padding(6.dp).background(Color.Black.copy(alpha = 0.6f), CircleShape)
                     .padding(horizontal = 7.dp, vertical = 2.dp))

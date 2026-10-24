@@ -439,7 +439,8 @@ private fun App(state: AppState, onExit: () -> Unit) {
       CompositionLocalProvider(app.lumiere.android.ui.LocalCardMenu provides
           if (LocalFormFactor.current.isTv) ({ item: app.lumiere.android.api.Item -> state.actionsFor = item })
           else ({ item: app.lumiere.android.api.Item -> app.lumiere.android.ui.PhoneMenu.item = item }),
-          androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides calm) {
+          androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides calm,
+          app.lumiere.android.ui.LocalLedger provides state.ledger) {
         Shell(state) { screen ->
             when (screen) {
                 Screen.Home -> HomeScreen(state, refresh + state.homeRefresh)

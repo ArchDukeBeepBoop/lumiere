@@ -25,6 +25,8 @@ import app.lumiere.android.AppState
 import app.lumiere.android.Screen
 import app.lumiere.android.ui.LButton
 import app.lumiere.android.ui.Palette
+import app.lumiere.android.ui.PendingMark
+import app.lumiere.android.cache.OfflineShelves
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -54,13 +56,32 @@ fun OfflineHome(state: AppState, reason: String, retry: () -> Unit) {
         }
         if (wake.isEmpty()) Text("To wake the Mac from here, turn on Wake for network access in its Energy settings; Lumiere learns its address the next time it answers.",
             style = MaterialTheme.typography.labelMedium)
-        if (saved.isNotEmpty()) {
-            Text("Downloaded", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 20.dp))
-            LazyRow(contentPadding = PaddingValues(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                items(saved, key = { it.id }) { d ->
-                    LButton(primary = false, modifier = Modifier.width(280.dp), onClick = { state.push(Screen.Player(d.id, null)) }) {
-                        Text(d.item.seriesName?.let { "$it · ${d.item.episodeLabel ?: d.item.name}" } ?: d.item.name, maxLines = 1)
-                    }
+        // As the device last left them: what was being watched, what comes next,
+        // then everything else downloaded. See `OfflineShelves`.
+        val version = state.ledger.version.intValue
+        val items = remember(saved.size, version) { saved.map { state.ledger.apply(it.item, trustServer = false) } }
+        val last: (String) -> Long = { state.ledger.get(it)?.at ?: 0L }
+        val resume = remember(items) { OfflineShelves.resume(items, last) }
+        val upNext = remember(items) { OfflineShelves.upNext(items, last) }
+        val waiting = remember(version) { state.ledger.waiting }
+        if (waiting > 0) Text("$waiting watched ${if (waiting == 1) "mark is" else "marks are"} waiting to reach the Mac — sent as soon as it answers.",
+            style = MaterialTheme.typography.labelMedium)
+        OfflineRow("Continue Watching", resume, state)
+        OfflineRow("Up Next", upNext, state)
+        OfflineRow("Downloaded", items.filter { it !in resume && it !in upNext }, state)
+    }
+}
+
+@Composable
+private fun OfflineRow(title: String, items: List<app.lumiere.android.api.Item>, state: AppState) {
+    if (items.isEmpty()) return
+    Text(title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 20.dp))
+    LazyRow(contentPadding = PaddingValues(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(items, key = { it.id }) { item ->
+            LButton(primary = false, modifier = Modifier.width(300.dp), onClick = { state.push(Screen.Player(item.id, null)) }) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PendingMark(item.id)
+                    Text(item.seriesName?.let { "$it · ${item.episodeLabel ?: item.name}" } ?: item.name, maxLines = 1)
                 }
             }
         }

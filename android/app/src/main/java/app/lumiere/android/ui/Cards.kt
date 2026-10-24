@@ -181,6 +181,7 @@ fun ItemCard(item: Item, server: Server, shape: CardShape, onFocus: (Item) -> Un
                 }
             }
             WatchedMark(item, Modifier.align(Alignment.TopEnd))
+            app.lumiere.android.ui.PendingMark(item.id, Modifier.align(Alignment.TopStart).padding(6.dp))
         }
         Spacer(Modifier.height(6.dp))
         Text(

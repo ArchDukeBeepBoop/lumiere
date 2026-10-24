@@ -547,6 +547,7 @@ private fun WideCard(item: Item, state: AppState, onFocus: () -> Unit, large: Bo
                     modifier = Modifier.align(Alignment.BottomStart).padding(10.dp).height(if (chosen) 46.dp else 34.dp).fillMaxWidth(if (chosen) 0.65f else 0.55f))
             }
             app.lumiere.android.ui.WatchedMark(item, Modifier.align(Alignment.TopEnd))
+            app.lumiere.android.ui.PendingMark(item.id, Modifier.align(Alignment.TopStart).padding(6.dp))
             item.progress?.let { p ->
                 Box(Modifier.align(Alignment.BottomStart).fillMaxWidth().height(4.dp).background(Color.Black.copy(alpha = 0.55f))) {
                     Box(Modifier.fillMaxWidth(p).height(4.dp).background(Palette.accent, RoundedCornerShape(topEnd = 2.dp, bottomEnd = 2.dp)))
@@ -582,6 +583,7 @@ private fun PosterCard(item: Item, state: AppState, rank: Int?, onFocus: () -> U
                 AsyncImage(imageFor(item, server, CardShape.Poster, 300), item.name, contentScale = ContentScale.Crop,
                     modifier = Modifier.matchParentSize())
                 app.lumiere.android.ui.WatchedMark(item, Modifier.align(Alignment.TopEnd))
+                app.lumiere.android.ui.PendingMark(item.id, Modifier.align(Alignment.TopStart).padding(6.dp))
             }
             Spacer(Modifier.height(8.dp))
             Text(if (caption != null) item.seriesName ?: item.name else item.name, maxLines = 1, overflow = TextOverflow.Ellipsis,

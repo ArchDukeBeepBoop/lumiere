@@ -207,6 +207,7 @@ private fun DownloadRow(state: AppState, d: Download, wide: Boolean) {
                     }
                 }
                 if (ready && seen.played) app.lumiere.android.ui.WatchedMark(seen, Modifier.align(Alignment.TopEnd))
+                app.lumiere.android.ui.PendingMark(seen.id, Modifier.align(Alignment.TopStart).padding(6.dp))
                 if (status == DownloadManager.STATUS_RUNNING) {
                     Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.45f)))
                     CircularProgressIndicator(progress = { state.downloads.progress(d) }, color = Color.White,
