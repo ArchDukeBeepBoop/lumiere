@@ -34,6 +34,17 @@ public enum CollectionOrder: String, Sendable, CaseIterable, Identifiable {
 
     public var id: String { rawValue }
 
+    /// Where a collection's chosen order is kept, per collection.
+    public static func storageKey(_ collectionId: String) -> String { "collectionSort.\(collectionId)" }
+
+    /// The order a collection's page is shown in: the one chosen on it, or
+    /// the default from Settings.
+    public static func chosen(for collectionId: String) -> CollectionOrder {
+        let stored = UserDefaults.standard.string(forKey: storageKey(collectionId))
+            ?? Preference.collectionDefaultOrder.value
+        return CollectionOrder(rawValue: stored) ?? .releaseDate
+    }
+
     public var title: String {
         switch self {
         case .manual: return "Collection Order"

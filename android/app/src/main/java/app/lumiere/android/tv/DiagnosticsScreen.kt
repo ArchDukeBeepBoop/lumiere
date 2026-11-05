@@ -29,7 +29,7 @@ import kotlinx.coroutines.withContext
 fun DiagnosticsScreen(state: AppState) {
     var lines by remember { mutableStateOf(listOf("Reading…")) }
     LaunchedEffect(Unit) { lines = withContext(Dispatchers.IO) { Diagnostics.report().lines() } }
-    LazyColumn(Modifier.fillMaxSize().background(Palette.canvas).padding(32.dp)) {
+    LazyColumn(Modifier.fillMaxSize().background(Palette.ground).padding(32.dp)) {
         item { Text("Diagnostics", style = MaterialTheme.typography.headlineLarge) }
         items(lines) { l ->
             Text(l, fontFamily = FontFamily.Monospace, fontSize = 12.sp, color = Palette.textSecondary,

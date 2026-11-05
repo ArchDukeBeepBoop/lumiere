@@ -13,3 +13,9 @@ capture/*.log
 /cmd/*
 !/cmd/lumiered/
 !/cmd/parity/
+
+# Written by tests that run with an empty data directory.
+internal/api/cache/
+
+# Written by tests run before the picture folder was set.
+internal/api/images/

@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/json"
 	"strings"
 )
 
@@ -27,6 +28,10 @@ type Query struct {
 	// names here — so the Artists tab showed most names twice, one of each
 	// pair usually empty. The row with albums filed under it wins.
 	OneArtistPerName bool
+	// credited is filled by Items for a library's artists. See artistsInLibrary.
+	credited []string
+	// dropped is filled by Items when OneArtistPerName. See duplicateArtists.
+	dropped []string
 	// IDs narrows to exactly these items, in any order. `GET /Items?ids=` is
 	// how the client checks a collection still exists after deleting it, and
 	// how it fetches a handful of known rows in one round trip.
@@ -71,6 +76,9 @@ func (q Query) where() (string, []any) {
 	var args []any
 
 	switch {
+	case q.artistsOfLibrary():
+		clause, more := q.artistsInLibrary()
+		clauses, args = append(clauses, clause), append(args, more...)
 	case q.ParentID != "" && q.Recursive:
 		// Recursive means "everything under this library at any depth", and
 		// library_id is Jellyfin's TopParentId — already that answer, so no
@@ -201,12 +209,12 @@ func (q Query) where() (string, []any) {
 		}
 	}
 	if q.OneArtistPerName {
-		clauses = append(clauses, `NOT EXISTS (
-			SELECT 1 FROM item d WHERE d.type = 'MusicArtist' AND d.name = i.name AND d.id <> i.id
-			AND ((EXISTS (SELECT 1 FROM item c WHERE c.parent_id = d.id)
-			      AND NOT EXISTS (SELECT 1 FROM item c WHERE c.parent_id = i.id))
-			  OR ((EXISTS (SELECT 1 FROM item c WHERE c.parent_id = d.id))
-			      = (EXISTS (SELECT 1 FROM item c WHERE c.parent_id = i.id)) AND d.id < i.id)))`)
+		// The duplicates are found once, in Go: see duplicateArtists.
+		// Never "null": json_each('null') is one NULL row, and NOT IN a set
+		// holding NULL is never true — every artist would be dropped.
+		dropped, _ := json.Marshal(append([]string{}, q.dropped...))
+		clauses = append(clauses, `i.id NOT IN (SELECT value FROM json_each(?))`)
+		args = append(args, string(dropped))
 	}
 	for _, f := range q.Filters {
 		switch strings.ToLower(f) {

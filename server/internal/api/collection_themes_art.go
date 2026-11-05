@@ -50,7 +50,7 @@ func themeOverview(t store.Theme) string {
 // themeArt designs the poster and backdrop, again whenever the members it is
 // made from change — unless someone has since chosen artwork of their own.
 func (h CollectionSuggestHandler) themeArt(id string, theme store.Theme, members []string) {
-	dir := filepath.Join(h.DataDir, "cache", "images", "themes")
+	dir := filepath.Join(h.imageDir(), "themes")
 	poster := filepath.Join(dir, id+"-poster.jpg")
 	backdrop := filepath.Join(dir, id+"-backdrop.jpg")
 	var current string

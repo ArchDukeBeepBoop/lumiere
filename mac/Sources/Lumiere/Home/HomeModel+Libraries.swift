@@ -130,6 +130,22 @@ extension HomeModel {
                 // Breaking Bad.
                 releasedBefore: Date().addingTimeInterval(-Self.settlingPeriod)
             )) ?? []
+            if artwork.isEmpty, library.collectionType == "music" {
+                // Music is never synced, so the cache has nothing to show: a
+                // random album or artist instead, chosen once per launch so the
+                // card does not change under you each time Home refreshes.
+                //
+                // Never awaited here. Home rebuilds every few seconds while the
+                // server sends changes, and a request in the middle of this loop
+                // was overtaken by the next rebuild every time — the row was
+                // thrown away before Music's card was added, so the card was
+                // missing. The card is drawn now and its picture patched in.
+                if let chosen = Self.musicCardArt[library.id] {
+                    artwork = chosen
+                } else {
+                    fetchMusicCardArt(for: library)
+                }
+            }
             if artwork.isEmpty {
                 // A folder library — loose video files rather than films or
                 // series — has nothing the type filter above matches, and nothing
@@ -149,5 +165,35 @@ extension HomeModel {
         // After the awaits above, so a superseded load cannot repaint the row.
         guard isCurrent(generation) else { return }
         libraryCards = cards
+        // The pinned collections' rows, refreshed with the cards.
+        await PinnedCollectionRows.shared.load(repository: repository)
+        // Not awaited: a request per recent title, and the banner patches
+        // itself in when it has an answer.
+        let repository = self.repository
+        Task { await ContinueFranchise.shared.load(repository: repository) }
+    }
+}
+
+extension HomeModel {
+    /// The music cards' pictures for this launch. See `loadLibraryCards`.
+    @MainActor static var musicCardArt: [String: [LibraryEntry]] = [:]
+    /// When each music card last asked and found nothing, so an empty answer
+    /// is asked again after a while rather than on every rebuild.
+    @MainActor static var musicCardAsked: [String: Date] = [:]
+
+    /// Asks for the music card's picture once, then patches it into the row.
+    func fetchMusicCardArt(for library: LibraryRecord) {
+        if let asked = Self.musicCardAsked[library.id], Date().timeIntervalSince(asked) < 600 { return }
+        Self.musicCardAsked[library.id] = Date()
+        let repository = self.repository
+        Task { [weak self] in
+            let art = await repository.randomMusicArtwork(libraryId: library.id)
+            guard let self, !art.isEmpty else { return }
+            Self.musicCardArt[library.id] = art
+            if let index = self.libraryCards.firstIndex(where: { $0.id == library.id }) {
+                let card = self.libraryCards[index]
+                self.libraryCards[index] = LibraryCardItem(library: card.library, count: card.count, artwork: art)
+            }
+        }
     }
 }

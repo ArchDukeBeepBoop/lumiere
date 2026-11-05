@@ -7,6 +7,9 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.CaptionStyleCompat
 import androidx.media3.ui.PlayerView
 import app.lumiere.android.Prefs
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 
 /**
  * Plain subtitles (SRT and the like) as films set them: white, with a dark
@@ -33,4 +36,17 @@ object SubtitleStyle {
         view.resizeMode = if (prefs.fillsScreen) androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
             else androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
     }
+}
+
+/** A sample subtitle line in the chosen size and look, shown while choosing them. */
+@androidx.compose.runtime.Composable
+internal fun SubtitleSample(size: Int, look: Int, modifier: androidx.compose.ui.Modifier) {
+    val sp = listOf(18f, 22f, 28f, 34f).getOrElse(size) { 22f }
+    val style = androidx.compose.ui.text.TextStyle(fontSize = androidx.compose.ui.unit.TextUnit(sp, androidx.compose.ui.unit.TextUnitType.Sp),
+        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium, color = androidx.compose.ui.graphics.Color.White,
+        shadow = if (look == 2) null else androidx.compose.ui.graphics.Shadow(androidx.compose.ui.graphics.Color.Black,
+            blurRadius = if (look == 0) 3f else 10f))
+    androidx.compose.material3.Text("This is how subtitles will look.", style = style,
+        modifier = if (look == 2) modifier.then(androidx.compose.ui.Modifier.background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.75f))
+            .padding(horizontal = 10.dp, vertical = 4.dp)) else modifier)
 }

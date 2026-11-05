@@ -65,6 +65,9 @@ extension SyncPanel {
                     ForEach(scannable) { library in
                         libraryRow(library)
                     }
+                    ForEach(musicLibraries) { library in
+                        musicRow(library)
+                    }
                     if isSyncing {
                         SettingsNote("A sync is running. Changes here apply from the next one.")
                     }
@@ -100,6 +103,31 @@ extension SyncPanel {
         // Usable while a pass runs: the running pass has already chosen its
         // libraries, so a change simply applies to the next one. Locking the
         // boxes for a whole full sync is what made them unreachable.
+    }
+
+    /// Music libraries, listed so the box names every library the scan reads.
+    /// Music is never copied into this Mac's cache — its pages ask the server
+    /// as you browse — so there is nothing to tick: the server's scan finds a
+    /// new album, and the next look at Music shows it.
+    private var musicLibraries: [LibraryRecord] {
+        app.libraries.filter { $0.serverId != LocalLibrary.serverId && $0.collectionType == "music" }
+    }
+
+    private func musicRow(_ library: LibraryRecord) -> some View {
+        HStack(spacing: Theme.Space.sm) {
+            Image(systemName: "checkmark.square.fill")
+                .foregroundStyle(Theme.Palette.textMuted)
+                .accessibilityHidden(true)
+            Text(library.name)
+                .font(Theme.Font.body)
+                .foregroundStyle(Theme.Palette.textPrimary)
+            Text("Always scanned · read live, never cached")
+                .font(Theme.Font.caption)
+                .foregroundStyle(Theme.Palette.textMuted)
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+        .labelledHelp("The server’s scan reads this library for new tracks every time. Its artists, albums, genres and tracks come straight from the server as you browse, so there is no copy here to keep in step.")
     }
 
     private var selectionSummary: String {

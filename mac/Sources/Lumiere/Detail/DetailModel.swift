@@ -103,7 +103,7 @@ final class DetailModel {
         }
     }
 
-    static func sortKey(_ collectionId: String) -> String { "collectionSort.\(collectionId)" }
+    static func sortKey(_ collectionId: String) -> String { CollectionOrder.storageKey(collectionId) }
 
     /// Assigns the remembered sort without the observer firing.
     ///

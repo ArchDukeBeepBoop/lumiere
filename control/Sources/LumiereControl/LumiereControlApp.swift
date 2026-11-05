@@ -1,4 +1,5 @@
 import AppKit
+import ControlCore
 import SwiftUI
 
 /// A menu bar controller for Lumiere and its media server.
@@ -20,12 +21,21 @@ struct LumiereControlApp: App {
                 monitor: startup.monitor
             )
         } label: {
-            // The iris, as a template image: open while the server is serving,
-            // shut while it is not. State carried by shape, because a template
+            // The prism, as a template image: holding its play mark while the
+            // server is serving, empty while it is not. State carried by shape, because a template
             // image has no colour to carry it with.
-            Image(nsImage: IrisGlyph.image(running: startup.server.state == .running))
+            Image(nsImage: PrismGlyph.image(running: startup.server.state == .running))
         }
         .menuBarExtraStyle(.window)
+
+        // Every backup with what it holds, opened from the Backups section.
+        Window("Backups", id: BackupBrowser.windowID) {
+            BackupBrowser(backups: startup.backups, server: startup.server)
+        }
+        .windowResizability(.contentMinSize)
+        // Opened from the menu only. Without this SwiftUI may open it at
+        // launch, and a menu bar app that greets you with a window is not one.
+        .defaultLaunchBehavior(.suppressed)
 
         // The window behind "Settings…" — options live here, not in the menu.
         Settings {
@@ -66,6 +76,35 @@ final class Startup: NSObject, NSApplicationDelegate {
         server.stop()
     }
 
+    /// Set when the watchdog stopped trying, so a server it gave up on stays
+    /// down until someone starts it from the menu.
+    private var gaveUp = false
+
+    /// Restarts, or gives up and says so. A server this app did not start is
+    /// only reported: signalling a process found already running is not this
+    /// app's to do.
+    private func act(_ action: Watchdog.Action, why: String) async {
+        switch action {
+        case .none:
+            break
+        case .restart(let pause):
+            guard server.ownsProcess || server.state != .running else {
+                notifier.serverStopped("A server started elsewhere is not answering.")
+                return
+            }
+            server.note("restarting the server: \(why)")
+            await server.stopAndWait()
+            try? await Task.sleep(for: pause)
+            server.start()
+        case .giveUp:
+            gaveUp = true
+            let reason = "Stopped after five restarts in ten minutes. Show Server Log says why."
+            server.note("gave up: \(why), five restarts in ten minutes")
+            server.giveUp(reason)
+            notifier.serverStopped(reason)
+        }
+    }
+
     private func run() async {
         // Adopt before starting, always. A server left running from a terminal
         // or a previous launch would otherwise be met with a second one, and
@@ -79,25 +118,32 @@ final class Startup: NSObject, NSApplicationDelegate {
         // already knows about. This catches only the others — a server that
         // died, or Lumiere quit from its own menu.
         var beat = 0
-        var reported = false
+        var dog = Watchdog()
+        var toldMissing = false
         while !Task.isCancelled {
             try? await Task.sleep(for: .seconds(5))
             lumiere.refresh()
-            if server.state == .running, await !server.isAnswering() {
-                server.stop()
-                notifier.serverStopped("It stopped answering. Open the menu to start it again.")
-                reported = true
+            switch server.state {
+            case .running:
+                let action = dog.probed(answered: await server.isLive(), now: Date())
+                await act(action, why: "it stopped answering for 15 seconds")
+            case .failed(let why) where !server.libraryMissing && !gaveUp:
+                // A stop nobody asked for: `.failed` is only ever set by the
+                // process exiting on its own, never by Stop in the menu.
+                await act(dog.crashed(now: Date()), why: "it stopped by itself (\(why))")
+            default:
+                break
             }
-            // A stop nobody asked for. `.failed` is only ever set by the process
-            // exiting on its own — a Stop from the menu goes to `.stopped` — so
-            // this cannot fire for something the user just did.
-            if case .failed(let why) = server.state, !reported {
-                notifier.serverStopped(why)
-                reported = true
+            // One notification for a missing library — the one stop that needs
+            // a person — and it is withdrawn once the server is back.
+            if server.libraryMissing, !toldMissing {
+                notifier.serverStopped("The library is missing. Open the menu to restore a backup.")
+                toldMissing = true
             }
-            if server.state == .running, reported {
-                notifier.serverBack()
-                reported = false
+            if server.state == .running {
+                if gaveUp || toldMissing { notifier.serverBack() }
+                gaveUp = false
+                toldMissing = false
             }
             // Library numbers every 15 s; the menu also refreshes on opening.
             beat += 1

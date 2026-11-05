@@ -21,20 +21,29 @@ import (
 	"lumiere-server/internal/logfile"
 	"lumiere-server/internal/media"
 	"lumiere-server/internal/scanner"
-	"lumiere-server/internal/store"
 )
 
 func main() {
 	cfg := config.Load()
+	outliveTheController()
 	log := slog.New(slog.NewTextHandler(logfile.Tee(os.Stderr, cfg.DataDir), &slog.HandlerOptions{Level: slog.LevelInfo}))
 
-	db, err := store.Open(cfg.DataDir)
-	if err != nil {
-		log.Error("cannot open the library database", "error", err)
-		os.Exit(1)
-	}
-	db.KeepBackedUp(cfg.DataDir, log)
+	db := openLibrary(&cfg, log)
 	scanner.RepairIfNew(db, log)
+	// Collections and Playlists exist, and every collection is in one. See
+	// store.EnsureContainerLibraries.
+	if homed, err := db.EnsureContainerLibraries(); err != nil {
+		log.Error("could not ensure the Collections and Playlists libraries", "error", err)
+	} else if homed > 0 {
+		log.Info("collections filed into their library", "count", homed)
+	}
+	// Today's list of collections beside the backups, before anything else
+	// can go wrong. See store.WriteCollectionsExport.
+	if path, err := db.WriteCollectionsExport(cfg.BackupDir); err != nil {
+		log.Warn("collections list not written", "error", err)
+	} else {
+		log.Info("collections list written", "path", path)
+	}
 	defer db.Close()
 
 	identity, err := api.ResolveIdentity(cfg.DataDir, cfg.Addr)
@@ -49,15 +58,17 @@ func main() {
 		os.Exit(1)
 	}
 	log.Info("identity", "id", identity.ServerID, "name", identity.ServerName)
+	keepWitness(db, cfg, identity.ServerID, log)
 
 	system := api.SystemHandler{Identity: identity}
 	auth := api.AuthHandler{Store: db, Identity: identity, Log: log, Throttle: api.NewThrottle()}
-	guard := api.Auth{Store: db}
+	guard := api.Auth{Store: db, Log: log}
 
 	mux := http.NewServeMux()
 
 	// Unauthenticated by necessity — reachable before a token; kept this short.
 	mux.HandleFunc("GET /System/Info/Public", system.PublicInfo)
+	mux.HandleFunc("GET /health/live", live)
 	mux.HandleFunc("POST /Users/AuthenticateByName", auth.AuthenticateByName)
 	mux.HandleFunc("GET /Users/Public", auth.PublicUsers)
 	mux.HandleFunc("GET /QuickConnect/Enabled", auth.QuickConnectEnabled)
@@ -67,7 +78,7 @@ func main() {
 
 	// Everything else needs a token.
 	imageCache := &media.ImageCache{
-		Dir:      filepath.Join(cfg.DataDir, "cache", "images"),
+		Dir:      filepath.Join(cfg.CacheDir, "images"),
 		MaxBytes: cfg.ImageCacheMax,
 	}
 	// Sweep once at startup: the cap may have been lowered since the last run,
@@ -103,7 +114,7 @@ func main() {
 	meta := &api.MetadataHandler{
 		Store:    db,
 		DataDir:  cfg.DataDir,
-		ImageDir: filepath.Join(cfg.DataDir, "cache", "images"),
+		ImageDir: filepath.Join(cfg.CacheDir, "images"),
 		Log:      log,
 	}
 	authed.HandleFunc("GET /Metadata/Status", meta.Status)
@@ -141,7 +152,7 @@ func main() {
 	refresh := &api.RefreshHandler{Store: db, Log: log}
 	authed.HandleFunc("POST /Library/Refresh", refresh.Refresh)
 	authed.HandleFunc("GET /Library/Refresh/Status", refresh.Status)
-	registerSchedule(authed, db, cfg, refresh, log)
+	registerSchedule(authed, db, cfg, refresh, meta, log)
 	api.LibrariesHandler{Store: db, Refresh: refresh, Log: log}.Register(authed)
 	api.WidgetHandler{Store: db, Images: images.Image}.Register(mux, authed)
 	authed.HandleFunc("POST /Lumiere/Account/Password", auth.ChangePassword)
@@ -149,9 +160,7 @@ func main() {
 	authed.HandleFunc("DELETE /Lumiere/Devices/{id}", auth.SignOutDevice)
 	registerChanges(authed, db, log)
 
-	authed.HandleFunc("GET /Artists", items.Artists)
-	authed.HandleFunc("GET /Artists/AlbumArtists", items.Artists)
-	authed.HandleFunc("GET /MusicGenres", items.MusicGenres)
+	registerMusic(authed, items)
 	authed.HandleFunc("GET /Genres", items.Genres)
 	authed.HandleFunc("GET /MediaSegments/{id}", items.MediaSegments)
 	authed.HandleFunc("GET /ScheduledTasks", items.ScheduledTasks)
@@ -194,7 +203,7 @@ func main() {
 	identify := api.IdentifyHandler{
 		Store:    db,
 		DataDir:  cfg.DataDir,
-		ImageDir: filepath.Join(cfg.DataDir, "cache", "images"),
+		ImageDir: filepath.Join(cfg.CacheDir, "images"),
 		Log:      log,
 	}
 	authed.HandleFunc("POST /Items/RemoteSearch/Apply/{itemId}", identify.Apply)
@@ -220,7 +229,7 @@ func main() {
 	authed.HandleFunc("POST /Items/Untrash", removal.Untrash)
 	itemRefresh := api.ItemRefreshHandler{
 		Store: db, DataDir: cfg.DataDir,
-		ImageDir: filepath.Join(cfg.DataDir, "cache", "images"), Log: log,
+		ImageDir: filepath.Join(cfg.CacheDir, "images"), Log: log,
 	}
 	authed.HandleFunc("POST /Items/{id}/Refresh", itemRefresh.Refresh)
 
@@ -229,20 +238,19 @@ func main() {
 	artwork := api.ArtworkHandler{
 		Store:    db,
 		DataDir:  cfg.DataDir,
-		ImageDir: filepath.Join(cfg.DataDir, "cache", "images"),
+		ImageDir: filepath.Join(cfg.CacheDir, "images"),
 		Log:      log,
 	}
 	authed.HandleFunc("GET /Items/{id}/RemoteImages", artwork.Remote)
 	authed.HandleFunc("POST /Items/{id}/RemoteImages/Download", artwork.Download)
-	authed.HandleFunc("POST /Items/{id}/Images/{kind}", artwork.Upload)
-	authed.HandleFunc("DELETE /Items/{id}/Images/{kind}", artwork.Delete)
+	registerArtworkEdits(authed, artwork)
 
 	// Episode stills, on the same terms: the client looks them up with its own
 	// TMDB key and names the pictures; this fetches and files them, and only for
 	// episodes that have none.
 	episodeImages := api.EpisodeImagesHandler{
 		Store:    db,
-		ImageDir: filepath.Join(cfg.DataDir, "cache", "images"),
+		ImageDir: filepath.Join(cfg.CacheDir, "images"),
 		Log:      log,
 	}
 	authed.HandleFunc("GET /Shows/{seriesId}/EpisodeImages/Pending", episodeImages.Pending)

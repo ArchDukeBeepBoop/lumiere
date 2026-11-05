@@ -22,9 +22,10 @@ import (
 //	POST /Lumiere/Server            the settings, whole
 //	POST /Lumiere/Server/Previews   make previews now, whatever the hour
 func registerSchedule(authed *http.ServeMux, db *store.Store, cfg config.Config,
-	refresh *api.RefreshHandler, log *slog.Logger) {
-	api.TrickplayRoot = filepath.Join(cfg.DataDir, "cache", "trickplay")
-	keeper := &schedule.Keeper{Store: db, Log: log, Scan: refresh, TrickplayRoot: api.TrickplayRoot}
+	refresh *api.RefreshHandler, meta *api.MetadataHandler, log *slog.Logger) {
+	api.TrickplayRoot = filepath.Join(cfg.CacheDir, "trickplay")
+	keeper := &schedule.Keeper{Store: db, Log: log, Scan: refresh, TrickplayRoot: api.TrickplayRoot,
+		Naming: meta.StartIfPending}
 	// The file being watched gets its previews now. See Keeper.PreviewFor.
 	authed.HandleFunc("POST /Lumiere/Trickplay/{id}", func(w http.ResponseWriter, r *http.Request) {
 		if keeper.PreviewFor(store.NormalizeID(r.PathValue("id"))) {
@@ -82,6 +83,8 @@ func registerSchedule(authed *http.ServeMux, db *store.Store, cfg config.Config,
 	authed.HandleFunc("POST /Lumiere/Diagnostics", android.Diagnostics)
 	authed.HandleFunc("GET /Lumiere/Android/Latest", android.Latest)
 	authed.HandleFunc("GET /Lumiere/Android/lumiere.apk", android.Package)
+	authed.HandleFunc("GET /Lumiere/Android/{channel}/Latest", android.Latest)
+	authed.HandleFunc("GET /Lumiere/Android/{channel}/lumiere.apk", android.Package)
 	// Preferences a person carries between their devices — playback, subtitles,
 	// Home — kept as the app sends them; device-specific ones never come here.
 	authed.HandleFunc("GET /Lumiere/ClientSettings", func(w http.ResponseWriter, r *http.Request) {

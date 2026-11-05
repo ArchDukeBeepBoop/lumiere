@@ -25,3 +25,11 @@ func TestBareFileIsNamedByItsPath(t *testing.T) {
 		t.Errorf("%+v", loose)
 	}
 }
+
+func TestMusicGenresKeepTheSlashInAName(t *testing.T) {
+	probe := []byte(`{"format": {"tags": {"GENRE": "Hip-Hop/Rap; R&B;hip-hop/rap", "title": "x"}}}`)
+	got := ParseMusicTags(probe, "/Music/A/B/01 x.m4a").Genres
+	if len(got) != 2 || got[0] != "Hip-Hop/Rap" || got[1] != "R&B" {
+		t.Fatalf("genres %q", got)
+	}
+}

@@ -28,6 +28,8 @@ extension HomeModel {
         case .topFilms: return topFilms.isEmpty
         case .topSeries: return topSeries.isEmpty
         case .topAnime: return topAnime.isEmpty
+        case .pinnedCollections: return PinnedCollectionRows.shared.rows.isEmpty
+        case .continueFranchise: return ContinueFranchise.shared.banner == nil
         case .latest(let libraryId):
             return libraryShelves
                 .first { $0.library.id == libraryId }?

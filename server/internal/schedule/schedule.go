@@ -1,5 +1,6 @@
 // Package schedule runs the server's background work on its own: a scan of
-// the disk every few hours, and scrubbing previews made in the quiet hours.
+// the disk every few hours, artwork for whatever has none, and scrubbing
+// previews made in the quiet hours.
 //
 // Both wait while anything is playing. The scan is cheap but sets off the
 // naming and frame passes behind it; the previews decode whole files. Neither
@@ -28,6 +29,9 @@ type Keeper struct {
 	Log           *slog.Logger
 	Scan          Scanner
 	TrickplayRoot string
+	// Naming offers a metadata pass when there is anything to look up —
+	// posters, backdrops, season art, episode stills. Nil turns it off.
+	Naming func() bool
 
 	wake chan struct{}
 	mu   sync.Mutex
@@ -111,6 +115,11 @@ func (k *Keeper) runOnce(now time.Time) {
 		if n := scanner.FillStreams(k.Store, 50); n > 0 {
 			k.Log.Info("tracks read for files that had none", "count", n)
 		}
+	}
+	// Artwork, a pass at a time until the backlog is gone. After the tracks,
+	// before the previews: a poster is what the shelves are waiting on.
+	if k.Naming != nil && !k.Scan.Scanning() && k.Naming() {
+		k.Log.Info("looking up artwork and details for what has none")
 	}
 	k.mu.Lock()
 	forced := k.now

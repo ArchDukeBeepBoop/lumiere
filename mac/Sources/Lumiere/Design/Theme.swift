@@ -15,56 +15,57 @@ public enum Theme {
     // MARK: - Colour
 
     public enum Palette {
-        /// Window background. Apple TV's grey in dark — the system greys, untinted,
-        /// from #1C1C1E up through the surfaces — rather than the near-black it
-        /// was; plain white in light, as every macOS content area is.
-        public static let canvas = Color.dynamic(light: 0xFFFFFF, dark: 0x1C1C1E)
+        /// Window background. In dark, the icon's midnight: navy greys stepping
+        /// up from #13162A through the surfaces, where it was Apple TV's
+        /// untinted #1C1C1E — the app wears its icon rather than plain black.
+        /// Plain white in light, as every macOS content area is.
+        public static let canvas = Color.dynamic(light: 0xFFFFFF, dark: 0x13162A)
         /// Sidebar and toolbar chrome.
-        public static let chrome = Color.dynamic(light: 0xF2F2F4, dark: 0x232325)
+        public static let chrome = Color.dynamic(light: 0xF2F2F4, dark: 0x191C33)
         /// Cards, rows, inline panels sitting on the canvas.
-        public static let surface = Color.dynamic(light: 0xF5F5F7, dark: 0x2C2C2E)
+        public static let surface = Color.dynamic(light: 0xF5F5F7, dark: 0x21253F)
         /// Selected rows, hovered cards, popovers.
-        public static let surfaceRaised = Color.dynamic(light: 0xE9E9EE, dark: 0x3A3A3C)
+        public static let surfaceRaised = Color.dynamic(light: 0xE9E9EE, dark: 0x2D3150)
 
-        public static let border = Color.dynamic(light: 0xD9D9DE, dark: 0x38383A)
+        public static let border = Color.dynamic(light: 0xD9D9DE, dark: 0x343957)
         /// The outline on tiles, pills and round buttons: none in dark, as on
         /// Apple TV, where surfaces part by tone alone; kept in light, where
         /// white on white needs an edge.
-        public static let hairline = Color.dynamic(light: 0xD9D9DE, dark: 0x38383A, darkOpacity: 0)
-        public static let borderStrong = Color.dynamic(light: 0xB6B6BE, dark: 0x48484A)
+        public static let hairline = Color.dynamic(light: 0xD9D9DE, dark: 0x343957, darkOpacity: 0)
+        public static let borderStrong = Color.dynamic(light: 0xB6B6BE, dark: 0x484D6E)
 
-        public static let textPrimary = Color.dynamic(light: 0x1D1D1F, dark: 0xF5F5F7)
-        public static let textSecondary = Color.dynamic(light: 0x5C5C63, dark: 0xAEAEB2)
-        public static let textMuted = Color.dynamic(light: 0x86868C, dark: 0x8E8E93)
-        public static let textDisabled = Color.dynamic(light: 0xB0B0B8, dark: 0x5A5A5E)
+        public static let textPrimary = Color.dynamic(light: 0x1D1D1F, dark: 0xF3F4FA)
+        public static let textSecondary = Color.dynamic(light: 0x5C5C63, dark: 0xADB0C6)
+        public static let textMuted = Color.dynamic(light: 0x86868C, dark: 0x8A8EA8)
+        public static let textDisabled = Color.dynamic(light: 0xB0B0B8, dark: 0x585C78)
 
-        /// Warm gold. Used for progress, focus, and exactly one primary action per
-        /// screen — never as a decorative fill.
+        /// Prism periwinkle, the icon's edge light. Used for progress, focus,
+        /// and exactly one primary action per screen — never as a decorative fill.
         ///
-        /// The light value is deliberately darker: the dark-mode gold on white is
-        /// about 2:1 against text, which fails legibility outright.
-        public static let accent = Color.dynamic(light: 0x8A6E12, dark: 0xC9A227)
-        public static let accentMuted = Color.dynamic(light: 0xE2D3A0, dark: 0x5C4F28)
+        /// The light value is deliberately deeper: #9296FF on white is about
+        /// 2.6:1 against text, which fails legibility outright.
+        public static let accent = Color.dynamic(light: 0x4F53C9, dark: 0x9296FF)
+        public static let accentMuted = Color.dynamic(light: 0xD6D8FF, dark: 0x2F3268)
         /// Text and glyphs drawn *on* an accent fill.
-        public static let onAccent = Color.dynamic(light: 0xFFFFFF, dark: 0x0D0F12)
+        public static let onAccent = Color.dynamic(light: 0xFFFFFF, dark: 0x13162A)
 
         /// Badge families for the technical chips (4K DV, TrueHD 7.1, Direct play).
-        /// Colour carries meaning: video gold, audio green, playback route blue.
-        public static let badgeVideo = Color.dynamic(light: 0x715A0F, dark: 0xE8D59A)
-        public static let badgeVideoBorder = Color.dynamic(light: 0xD8C68C, dark: 0x5C4F28)
+        /// Colour carries meaning: video violet, audio green, playback route blue.
+        public static let badgeVideo = Color.dynamic(light: 0x4B3FA0, dark: 0xCBC6FF)
+        public static let badgeVideoBorder = Color.dynamic(light: 0xC9C5F2, dark: 0x3A3670)
         public static let badgeAudio = Color.dynamic(light: 0x1B6349, dark: 0x9FD8C4)
         public static let badgeAudioBorder = Color.dynamic(light: 0x9CD2BD, dark: 0x2A5044)
         public static let badgeStream = Color.dynamic(light: 0x1A5486, dark: 0x9FC2E8)
         public static let badgeStreamBorder = Color.dynamic(light: 0xA3C6E6, dark: 0x294159)
         public static let badgeNeutral = Color.dynamic(light: 0x5C5C63, dark: 0xA8B0BC)
-        public static let badgeNeutralBorder = Color.dynamic(light: 0xC7C7CE, dark: 0x39414D)
+        public static let badgeNeutralBorder = Color.dynamic(light: 0xC7C7CE, dark: 0x393E5A)
 
         public static let danger = Color.dynamic(light: 0xBE2F2C, dark: 0xE24B4A)
         public static let success = Color.dynamic(light: 0x1C8560, dark: 0x5DCAA5)
 
         /// The primary Play action.
         ///
-        /// Untinted rather than gold, matching Infuse: over artwork a neutral pill
+        /// Untinted rather than accented, matching Infuse: over artwork a neutral pill
         /// reads as the one thing to press, where a tinted one competes with
         /// whatever is behind it.
         ///
@@ -73,11 +74,16 @@ public enum Theme {
         /// Lumiere's sits lower, where the backdrop has already faded to the page,
         /// and a white pill on a white page is invisible.
         public static let playButton = Color.dynamic(light: 0x1D1D1F, dark: 0xF2F4F7)
-        public static let playButtonLabel = Color.dynamic(light: 0xFFFFFF, dark: 0x0D0F12)
+        public static let playButtonLabel = Color.dynamic(light: 0xFFFFFF, dark: 0x13162A)
 
         /// Unwatched marker. Infuse uses an orange corner triangle, and it reads
         /// in both appearances without adjustment.
         public static let unwatched = Color.dynamic(light: 0xF07B22, dark: 0xF08A2E)
+
+        /// A Top 10 rank's numeral: the text colour, faint, so the poster
+        /// stays the thing looked at.
+        public static let rankNumeral = Color.dynamic(light: 0x1D1D1F, dark: 0xF3F4FA,
+                                                      lightOpacity: 0.16, darkOpacity: 0.22)
 
         /// Scrims drawn on top of artwork — a progress track on a poster, a play
         /// affordance on a still. Always dark in both appearances, because they
@@ -103,12 +109,12 @@ public enum Theme {
         public static let artworkPlaceholder = Color(nsColor: NSColor(name: nil) { _ in
             // Dark in both, for the white type over it — but warm on Paper,
             // where a cool grey block stands out on the page.
-            PaperTheme.isOn ? NSColor(hex: 0x3A3128) : NSColor(hex: 0x14171B)
+            PaperTheme.isOn ? NSColor(hex: 0x3A3128) : NSColor(hex: 0x161A30)
         })
 
         public static let onArtworkText = Color.white
         /// The accent where it sits on artwork, which is dark in every theme:
-        /// the standard gold, always. Paper's oxblood is an ink for pale
+        /// the standard bright accent, always. Paper's oxblood is an ink for pale
         /// stock and all but vanished on a hero's dark gradient.
         public static let accentOnArtwork = Color.fixedAccent
         public static let onArtworkTextMuted = Color.white.opacity(0.78)
@@ -254,6 +260,8 @@ public enum Theme {
         /// in for it. `hero` (34) is sized for the home hero's 460pt band; a
         /// detail backdrop is a full-width 16:9, roughly twice that tall.
         public static let detailTitle = SwiftUI.Font.system(size: 46, weight: .heavy)
+        /// A Top 10 rank, set beside its poster as the TV app does.
+        public static let rankNumeral = SwiftUI.Font.system(size: 168, weight: .black, design: .rounded)
     }
 
     // MARK: - Motion

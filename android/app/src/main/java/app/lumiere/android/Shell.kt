@@ -1,5 +1,8 @@
 package app.lumiere.android
 
+import app.lumiere.android.ui.pointable
+import app.lumiere.android.ui.hoverFocuses
+
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -46,6 +49,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.tv.material3.NavigationDrawerItem
 import app.lumiere.android.ui.LocalFormFactor
 import app.lumiere.android.ui.Palette
+import app.lumiere.android.ui.questGround
 
 private data class Tab(val label: String, val icon: ImageVector, val screen: () -> Screen?, val owns: (Screen) -> Boolean)
 
@@ -91,15 +95,19 @@ fun Shell(state: AppState, content: @Composable (Screen) -> Unit) {
     // Clear of the status and navigation bars, except for the full-screen players.
     // On a phone each screen keeps clear of the status bar itself, so Home and
     // a title's page can run their artwork up under it.
-    Row(Modifier.fillMaxSize().background(Palette.canvas)
+    // The Quest's window: one colour ground behind every page, which keep theirs clear (Palette.ground).
+    Row(Modifier.fillMaxSize().then(if (Flavor.quest && form.isTv) Modifier.questGround() else Modifier.background(Palette.ground))
         .then(if (fullScreen) Modifier else if (form.isTv) Modifier.systemBarsPadding()
             else Modifier.navigationBarsPadding())) {
         // On a TV the menu is hidden until Back on Home asks for it, so the
         // screen is the library and left never lands in the menu by accident.
-        if (form.isTv && !fullScreen && state.tvMenuOpen && !state.settings.tvTopBar) {
+        // The Quest's window keeps a side navigation always there, as Horizon OS's apps do (QuestRail).
+        if (form.isTv && !Flavor.quest && !fullScreen && state.tvMenuOpen && !state.settings.tvTopBar) {
             TvMenu(items, top, state)
         }
         Column(Modifier.weight(1f)) {
+            // The Quest's places, in a glass capsule at the top, above the page (QuestTabBar).
+            if (Flavor.quest && form.isTv && !fullScreen) app.lumiere.android.ui.QuestTabBar(state, top, Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally))
             // Wherever a screen opens or a panel closes, the remote lands on something:
             // if nothing holds focus a moment later, the first thing down the page takes it.
             var anyFocus by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -148,11 +156,12 @@ fun Shell(state: AppState, content: @Composable (Screen) -> Unit) {
                 }
                 // On a TV the menu bar's Now Playing pill stands in for the bar along the bottom.
                 if (!fullScreen && !form.isTv) { app.lumiere.android.music.MiniPlayer(state); app.lumiere.android.local.LocalMiniBar(state) }
-                if (form.isTv && !fullScreen && state.settings.tvTopBar) {
-                    androidx.compose.animation.AnimatedVisibility(state.tvMenuOpen || (top == Screen.Home && state.tvAtTop),
-                        enter = androidx.compose.animation.slideInVertically { -it } + fadeIn(tween(150)),
-                        exit = androidx.compose.animation.slideOutVertically { -it } + fadeOut(tween(120))) {
-                        app.lumiere.android.tv.TvMenuBar(items.map { app.lumiere.android.tv.BarTab(it.label, it.screen, it.owns) }, top, state)
+                if (form.isTv && !fullScreen && state.settings.tvTopBar && !Flavor.quest) {
+                    // The menu slides in from the left, as the Mac's sidebar, only when asked for.
+                    androidx.compose.animation.AnimatedVisibility(state.tvMenuOpen,
+                        enter = slideInHorizontally { -it } + fadeIn(tween(150)),
+                        exit = slideOutHorizontally { -it } + fadeOut(tween(120))) {
+                        app.lumiere.android.tv.TvMenuBar(items.map { app.lumiere.android.tv.BarTab(it.label, it.screen, it.owns, it.icon) }, top, state)
                     }
                 }
                 if (!fullScreen) app.lumiere.android.ui.NightDim(state)
@@ -212,9 +221,11 @@ private fun TvMenu(items: List<Tab>, top: Screen, state: AppState) {
             Column(Modifier.fillMaxHeight().background(Palette.chrome).padding(12.dp),
                 verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp, androidx.compose.ui.Alignment.CenterVertically)) {
                 items.forEachIndexed { i, t ->
+                    val pick = { state.tvMenuOpen = false; t.screen()?.let(state::tab); Unit }
                     NavigationDrawerItem(
-                        modifier = if (t.owns(top) || (i == 0 && items.none { it.owns(top) })) Modifier.focusRequester(first) else Modifier,
-                        selected = t.owns(top), onClick = { state.tvMenuOpen = false; t.screen()?.let(state::tab) },
+                        modifier = (if (t.owns(top) || (i == 0 && items.none { it.owns(top) })) Modifier.focusRequester(first) else Modifier)
+                            .then(Modifier.pointable(onClick = pick)),
+                        selected = t.owns(top), onClick = pick,
                         leadingContent = { androidx.tv.material3.Icon(t.icon, null) },
                         colors = androidx.tv.material3.NavigationDrawerItemDefaults.colors(
                             contentColor = Palette.textSecondary, selectedContentColor = Palette.accent,

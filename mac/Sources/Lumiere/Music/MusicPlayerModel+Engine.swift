@@ -122,6 +122,9 @@ extension MusicPlayerModel {
             guard let finished else { return }
             MainActor.assumeIsolated {
                 guard let self, self.ourItemIDs.contains(finished) else { return }
+                if self.queue.indices.contains(self.currentIndex) {
+                    self.onTrackFinished?(self.queue[self.currentIndex])
+                }
                 self.advance(automatic: true)
             }
         }

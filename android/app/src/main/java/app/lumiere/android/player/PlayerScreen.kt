@@ -1,9 +1,14 @@
 package app.lumiere.android.player
 
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import app.lumiere.android.api.syncSubtitles
 import app.lumiere.android.api.findSubtitle
 import app.lumiere.android.is3D
 import app.lumiere.android.api.itemJson
+import app.lumiere.android.api.similar
+import androidx.compose.foundation.layout.width
 import app.lumiere.android.ui.LButton
 import app.lumiere.android.ui.LTextButton
 import app.lumiere.android.ui.LChip
@@ -77,10 +82,17 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     val view = remember(id) {
         PlayerView(context).apply { keepScreenOn = true; useController = false }
     }
-    val player = remember(id) {
-        Playback.build(context, server, view.subtitleView!!, prefs.burnsInSubtitles).also { view.player = it }
+    // Burned in where asked; where that can't start (some 10-bit files) the film plays on
+    // without them rather than not at all. Never in the Quest's theater: there the effects
+    // pipeline lost the picture when it moved to the room's screen (sound alone).
+    var burnRefused by remember(id) { mutableStateOf(false) }
+    var resumeAfterRebuild by remember(id) { mutableStateOf<Double?>(null) }
+    val player = remember(id, burnRefused) {
+        Playback.build(context, server, view.subtitleView!!, prefs.burnsInSubtitles && !Theater.enabled && !burnRefused, styled = !Theater.enabled).also { view.player = it }
     }
-    val clock = remember(id) { Clock(player) }
+    val clock = remember(player) { Clock(player) }
+    // On the Quest the picture goes to the room's own screen (Theater), and its captions under it.
+    val inTheater = rememberTheater(view, player, item?.id, item?.name.orEmpty())
     // The phone remote's hold on this title: seeking, skipping, tracks, and what it is told.
     androidx.compose.runtime.DisposableEffect(player, id) {
         fun streamsOf(type: String) = item?.streams.orEmpty().filter { it.type == type }
@@ -116,6 +128,12 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     var showPanel by remember { mutableStateOf(false) }
     var showEpisodes by remember { mutableStateOf(false) }
     var buffering by remember { mutableStateOf(true) }
+    var askResume by remember(id) { mutableStateOf<Double?>(null) }
+    var filmEnded by remember(id) { mutableStateOf(false) }
+    var reconnecting by remember(id) { mutableStateOf(false) }
+    // How long the wait has been, for "Loading… 62 %" and then Try Again.
+    var waited by remember(id) { mutableStateOf(0) }
+    LaunchedEffect(buffering) { waited = 0; while (buffering) { kotlinx.coroutines.delay(1000); waited++ } }
     DisposableEffect(player) {
         val l = object : androidx.media3.common.Player.Listener {
             override fun onPlaybackStateChanged(s: Int) { buffering = s == androidx.media3.common.Player.STATE_BUFFERING || s == androidx.media3.common.Player.STATE_IDLE }
@@ -125,8 +143,14 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     }
     var upNextDismissed by remember(id) { mutableStateOf(false) }
     var skipLeft by remember { mutableStateOf(6) }
-    val reporter = remember(id) { Reporter(server, id, scope, state.ledger) { clock } }
-    LaunchedEffect(prefs.subtitleSize, prefs.subtitleStyle, prefs.fillsScreen, prefs.subtitleLift) { SubtitleStyle.apply(view, prefs) }
+    val reporter = remember(player) { Reporter(server, id, scope, state.ledger) { clock } }
+    // Apple lifts the subtitles clear of the transport while it shows, and lets them back down after.
+    var chromeUp by remember { mutableStateOf(false) }
+    var resting by remember { mutableStateOf(false) }
+    LaunchedEffect(prefs.subtitleSize, prefs.subtitleStyle, prefs.fillsScreen, prefs.subtitleLift, chromeUp) {
+        SubtitleStyle.apply(view, prefs)
+        if (isTv && chromeUp) view.subtitleView?.setBottomPaddingFraction(maxOf(prefs.subtitleLift, 0.30f))
+    }
     // The next two episodes saved on the device while this one plays, when asked —
     // never from a private library.
     LaunchedEffect(item?.id) {
@@ -176,6 +200,15 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     val skipFocus = remember { FocusRequester() }
     var trickplay by remember { mutableStateOf<app.lumiere.android.api.Trickplay?>(null) }
     var showTracks by remember { mutableStateOf(false) }
+    /** The TV's tvOS menu open above its button: "Subtitles", "Audio" or "More". */
+    var popover by remember { mutableStateOf<String?>(null) }
+    var popoverLevel by remember { mutableStateOf<String?>(null) }
+    var moreLikeThis by remember { mutableStateOf<List<app.lumiere.android.api.Item>>(emptyList()) }
+    /** The TV's Info, Chapters and Episodes tabs under the transport. */
+    var showTabs by remember { mutableStateOf(false) }
+    var speedPct by remember { mutableStateOf(100) }
+    /** Skip Intro or Up Next holds the remote; when it goes, the player takes it back. */
+    var offering by remember { mutableStateOf(false) }
     var showInfo by remember { mutableStateOf(false) }
     var subNote by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(item?.id) {
@@ -190,7 +223,7 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
     ImmersiveLandscape(enabled = !isTv)
     if (!isTv) VideoSession(player, item, state)
 
-    LaunchedEffect(id) {
+    LaunchedEffect(id, burnRefused) {
         val local = state.downloads.playable(id)
         // Offline, a download carries its own copy of the item.
         runCatching { server.item(session.userId, id) }
@@ -215,7 +248,7 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
                 val anime = prefs.animeJapanese &&
                     state.views.firstOrNull { it.id == found.libraryId }?.name?.contains("anime", ignoreCase = true) == true
                 Playback.applyTrackPrefs(player, prefs.subtitlesOn, anime, found.seriesId?.let { prefs.tracksFor(it) }, prefs.subtitleLanguage)
-                val resumeAt = startSeconds ?: (found.positionTicks / 10_000_000.0)
+                val resumeAt = resumeAfterRebuild ?: startSeconds ?: (found.positionTicks / 10_000_000.0)
                 val video = found.streams.firstOrNull { it.type == "Video" }
                 val audio = Compatibility.chooseAudio(found, anime, found.seriesId?.let { prefs.tracksFor(it)?.first })
                 Diagnostics.note("play ${found.type}: video ${video?.codec} ${video?.width}x${video?.height} " +
@@ -238,6 +271,8 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
                 } else {
                     Playback.load(player, server, found, resumeAt, local)
                 }
+                // Started before and not asked where to begin: Apple's choice, held paused until made.
+                if (isTv && startSeconds == null && resumeAfterRebuild == null && resumeAt > 60) { askResume = resumeAt; player.playWhenReady = false }
                 reporter.started(player)
                 // After the file is asked for, not before: the skip marks are not
                 // needed for the first seconds, and waiting on them delayed the picture.
@@ -247,7 +282,7 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
             }
             // In words, not the network's: what is wrong and what to do.
             .onFailure { error = if (it is java.io.IOException)
-                "Can't reach the Mac. Check that this phone is on your home Wi-Fi, and that a VPN, if one is on, allows local connections. Downloaded titles play without it."
+                "Can't reach the Mac. Check that this ${if (isTv) "device" else "phone"} is on your home Wi-Fi, and that a VPN, if one is on, allows local connections. Downloaded titles play without it."
                 else it.message ?: "Couldn't load this title." }
     }
 
@@ -276,6 +311,10 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
                 if (tracks.groups.isEmpty()) return
                 player.removeListener(this)
                 applyRemembered(player, prefs, item?.seriesId)
+                // "Signs & Songs" chosen by the player's own preference: the full track of its language instead.
+                val text = trackChoices(player, androidx.media3.common.C.TRACK_TYPE_TEXT)
+                SubtitlePick.better(text, text.firstOrNull { it.selected }, { it.label }, { it.language })
+                    ?.let { choose(player, it, androidx.media3.common.C.TRACK_TYPE_TEXT) }
             }
         }
         player.addListener(once)
@@ -285,6 +324,29 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
         // A file the TV cannot play said so, instead of a black screen.
         val failed = object : androidx.media3.common.Player.Listener {
             override fun onPlayerError(e: androidx.media3.common.PlaybackException) {
+                // The Mac gone mid-film: wait for it, then carry on from the same moment.
+                // Only a lost connection waits: a refusal (401, 404) answered while the server is up
+                // would otherwise retry for ever with nothing said.
+                val lost = e.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
+                    e.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT ||
+                    e.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_UNSPECIFIED
+                if (isTv && lost) {
+                    val at = clock.now()
+                    reconnecting = true
+                    scope.launch {
+                        while (runCatching { server.get("System/Info/Public") }.isFailure) kotlinx.coroutines.delay(5_000)
+                        reconnecting = false
+                        player.prepare(); clock.seek(at); player.play()
+                    }
+                    return
+                }
+                val frames = e.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_VIDEO_FRAME_PROCESSOR_INIT_FAILED ||
+                    e.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_VIDEO_FRAME_PROCESSING_FAILED
+                if (frames && !burnRefused) {
+                    Diagnostics.note("burned-in subtitles refused: playing on without them")
+                    resumeAfterRebuild = clock.now(); subNote = "This file's styled subtitles can't be drawn here."; burnRefused = true
+                    return
+                }
                 error = Playback.explain(e)
                 app.lumiere.android.Diagnostics.note("playback failed: ${e.errorCodeName} ${e.cause?.message}")
                 // Sent to the Mac at once, so a failure never waits for someone to press a button.
@@ -323,8 +385,12 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
                 when {
                     // "End of episode" on the sleep timer: stop here.
                     SleepTimer.endOfEpisode -> { SleepTimer.endOfEpisode = false; state.pop() }
+                    // A film's end on a TV: Watch Again or Done, rather than dropping out.
+                    next == null && isTv && !current.isEpisode -> filmEnded = true
                     next == null -> state.pop()
                     limit > 0 && state.autoStreak + 1 >= limit -> askStillWatching = next
+                    // Three hours of one episode after another also asks, however few episodes that was.
+                    (state.autoSince?.let { System.currentTimeMillis() - it > 3 * 3600_000L } == true) -> askStillWatching = next
                     else -> { state.pop(); state.push(Screen.Player(next.id, 0.0, auto = true)) }
                 }
             }
@@ -354,26 +420,77 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
         AndroidView(factory = { view }, modifier = Modifier.align(Alignment.TopStart)
             .padding(start = (32 * (1 - pictureSize) / 0.58f).dp, top = (32 * (1 - pictureSize) / 0.58f).dp)
             .fillMaxSize(pictureSize))
-        if (veil > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = veil)))
+        if (veil > 0f) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = veil)), contentAlignment = Alignment.Center) {
+            // The title while the stream arrives, as Netflix and Apple open a film.
+            if (isTv) item?.let { cur -> Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.graphicsLayer { alpha = veil }) {
+                Text(if (cur.isEpisode) cur.seriesName ?: cur.name else cur.name, style = app.lumiere.android.ui.TvType.title)
+                if (cur.isEpisode) Text(listOfNotNull(cur.episodeLabel, cur.name).joinToString(" · "), style = app.lumiere.android.ui.TvType.meta)
+            } }
+        }
         // Picture tone: a faint warm or cool veil — the video surface itself
         // cannot be recoloured without the effects pipeline 10-bit files refuse.
-        when (if (prefs.filmsWarm && item?.type == "Movie") 1 else prefs.pictureTone) {
+        // A projector's matter: the headset has no lamp or tone to correct.
+        if (!app.lumiere.android.Flavor.quest) when (if (prefs.filmsWarm && item?.type == "Movie") 1 else prefs.pictureTone) {
             1 -> Box(Modifier.fillMaxSize().background(Color(0x14FF8A00)))
             2 -> Box(Modifier.fillMaxSize().background(Color(0x1200A0FF)))
         }
-        LampBrightness(prefs.lampBright)
+        LampBrightness(prefs.lampBright && !app.lumiere.android.Flavor.quest)
         PlayerOverlay(
             player, clock, item, server, trickplay, isTv, PictureInPicture.inPip, next != null,
-            onBack = { state.pop() }, onTracks = { if (isTv) { infoTab = "Info"; showInfo = true } else showTracks = true },
-            onChapters = if (isTv && !item?.chapters.isNullOrEmpty()) ({ infoTab = "Chapters"; showInfo = true }) else null,
+            onBack = { state.pop() }, onTracks = { if (isTv) showTabs = true else showTracks = true },
+            onChapters = if (isTv && !item?.chapters.isNullOrEmpty()) ({ showTabs = true }) else null,
             onPip = { activity?.let { PictureInPicture.enter(it) } },
             onNext = { next?.let { n -> state.pop(); state.push(Screen.Player(n.id, 0.0)) } },
-            onMenu = { showPanel = true },
+            onMenu = { if (isTv) popover = "More" else showPanel = true },
+            onSubtitles = { popover = "Subtitles" }, onAudio = { popover = "Audio" },
             onEpisodes = if (item?.isEpisode == true) ({ showEpisodes = true }) else null,
+            offering = offering,
+            onChrome = { chromeUp = it }, onResting = { resting = it },
             error = error,
-            modal = showPanel || showTracks || showInfo || showEpisodes || askStillWatching != null,
+            modal = showPanel || showTracks || showInfo || showEpisodes || askStillWatching != null || askResume != null || filmEnded || popover != null || showTabs,
+            tabsOpen = showTabs,
             lift = { prefs.subtitleLift }, onLift = { prefs.subtitleLift = it },
         )
+        // On the Quest, the window shows near your hands only while the player's controls are up.
+        if (inTheater) androidx.compose.runtime.SideEffect {
+            Theater.clock = clock
+            Theater.open = { k -> if (k == "Episodes") showEpisodes = true else popover = k }
+            // The same menus as the popover's, for the room's own (no sheet: the window stays away).
+            Theater.entries = { kind ->
+                when (kind) {
+                    "Subtitles" -> subtitleEntries(player, prefs, item?.seriesId, onMore = null)
+                    "Audio" -> audioEntries(player, prefs, item?.seriesId)
+                    else -> moreEntries(player, prefs, { speedPct }, { v -> speedPct = v; player.setPlaybackSpeed(v / 100f) }, null) +
+                        Theater.menu?.invoke().orEmpty()
+                }
+            }
+            Theater.chromeUp = (chromeUp && !Theater.ownBar) || popover != null || showTabs || showTracks || showPanel || showInfo ||
+                showEpisodes || askResume != null || filmEnded || askStillWatching != null || error != null
+        }
+        if (showTabs) item?.let { cur ->
+            TvTabs(cur, server, session.userId, player, clock, trickplay,
+                onEpisode = { e -> state.pop(); state.push(Screen.Player(e.id, null)) }) { showTabs = false }
+        }
+        // Subtitles step aside while a menu, the tabs or the pause screen is up: running on
+        // behind a menu, each new line flashed through it (checkpoint 2).
+        val subtitlesAside = (isTv && (popover != null || showTabs || resting)) || inTheater
+        LaunchedEffect(subtitlesAside) {
+            view.subtitleView?.visibility = if (subtitlesAside) android.view.View.INVISIBLE else android.view.View.VISIBLE
+        }
+        // The tvOS menus above the bar's buttons (TV_PLAYER_PLAN §7).
+        popover?.let { kind ->
+            TvPopover(kind, PopoverEnd, onLevel = { popoverLevel = it }, entries = {
+                when (kind) {
+                    "Subtitles" -> subtitleEntries(player, prefs, item?.seriesId, onMore = { showTracks = true })
+                    "Audio" -> audioEntries(player, prefs, item?.seriesId)
+                    else -> moreEntries(player, prefs, { speedPct }, { v -> speedPct = v; player.setPlaybackSpeed(v / 100f) }, null) +
+                        (if (inTheater) Theater.menu?.invoke().orEmpty() else emptyList())
+                }
+            }) { popover = null; popoverLevel = null }
+            // Subtitles › Size or Look: a sample line over the picture, in the look being chosen.
+            if (kind == "Subtitles" && popoverLevel in setOf("Size", "Look")) SubtitleSample(prefs.subtitleSize, prefs.subtitleStyle,
+                Modifier.align(Alignment.BottomStart).padding(start = 56.dp, bottom = 190.dp))
+        }
         if (showEpisodes) item?.let { cur ->
             EpisodeStrip(server, session.userId, cur, onPick = { e -> state.pop(); state.push(Screen.Player(e.id, null)) },
                 onClose = { showEpisodes = false })
@@ -402,7 +519,50 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
         if (showInfo) InfoPanel(item, clock, infoTab, onTracks = { showTracks = true }, onMenu = { showPanel = true },
             onEpisodes = if (item?.isEpisode == true) ({ showEpisodes = true }) else null) { showInfo = false }
         if ((item == null || buffering) && error == null) CircularProgressIndicator(Modifier.align(Alignment.Center))
-        if (threeD) Text("3D film — turn on the projector's 3D mode (side by side)", color = Color.White,
+        if (isTv && buffering && error == null && waited >= 4) Column(Modifier.align(Alignment.Center).padding(top = 110.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text("Loading… ${player.bufferedPercentage.coerceIn(0, 100)} %", style = app.lumiere.android.ui.TvType.meta)
+            if (waited >= 15) app.lumiere.android.ui.TvPill({ waited = 0; player.prepare(); player.play() }, selected = true) { Text("Try Again") }
+        }
+        if (reconnecting && state.downloads.playable(id) != null) app.lumiere.android.ui.TvPill({
+            val at = clock.now(); reconnecting = false; state.pop(); state.push(Screen.Player(id, at)) },
+            Modifier.align(Alignment.TopCenter).padding(top = 80.dp), selected = true) { Text("Play the Downloaded Copy") }
+        if (reconnecting) Text("Reconnecting to the Mac…", style = app.lumiere.android.ui.TvType.meta,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 36.dp)
+                .background(Color.Black.copy(alpha = 0.7f), androidx.compose.foundation.shape.RoundedCornerShape(50)).padding(horizontal = 16.dp, vertical = 8.dp))
+        if (filmEnded) Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)), contentAlignment = Alignment.Center) {
+            app.lumiere.android.ui.TvAlertCard(item?.name ?: "", "The end.", listOf(
+                app.lumiere.android.ui.AlertButton("Watch Again") { filmEnded = false; clock.seek(0.0); player.play() },
+                app.lumiere.android.ui.AlertButton("Done") { filmEnded = false; state.pop() },
+            ), focused = 1)
+            // More Like This under the choice, as Apple ends a film.
+            LaunchedEffect(item?.id) {
+                val cur = item ?: return@LaunchedEffect
+                val found: List<app.lumiere.android.api.Item> = runCatching { server.similar(session.userId, cur.id) }.getOrDefault(emptyList())
+                moreLikeThis = found.take(6)
+            }
+            if (moreLikeThis.isNotEmpty()) Column(Modifier.align(Alignment.BottomStart).padding(start = 56.dp, bottom = 28.dp)) {
+                Text("More Like This", style = app.lumiere.android.ui.TvType.row)
+                androidx.compose.foundation.layout.Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    moreLikeThis.forEach { s ->
+                        androidx.compose.foundation.layout.Box(Modifier.width(96.dp)) {
+                            app.lumiere.android.ui.ItemCard(s, server, app.lumiere.android.ui.CardShape.Poster, fill = true) {
+                                filmEnded = false; state.pop(); state.push(Screen.Detail(s.id))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        askResume?.let { at ->
+            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)), contentAlignment = Alignment.Center) {
+                app.lumiere.android.ui.TvAlertCard(item?.name ?: "", null, listOf(
+                    app.lumiere.android.ui.AlertButton("Start from Beginning") { askResume = null; clock.seek(0.0); player.play() },
+                    app.lumiere.android.ui.AlertButton("Resume from ${app.lumiere.android.music.clock(at)}") { askResume = null; player.play() },
+                ), focused = 1)
+            }
+        }
+        if (threeD && !app.lumiere.android.Flavor.quest) Text("3D film — turn on the projector's 3D mode (side by side)", color = Color.White,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 28.dp).background(Color.Black.copy(alpha = 0.7f), androidx.compose.foundation.shape.RoundedCornerShape(50))
                 .padding(horizontal = 18.dp, vertical = 8.dp))
 
@@ -428,11 +588,31 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
         // Into the credits counts as watched, even if the player is left before the end.
         val creditsReached = duration > 0 && (skip?.type == "Outro" || duration - position < 25 || position / duration > 0.95)
         if (creditsReached && item != null) LaunchedEffect(item!!.id) { state.ledger.setPlayed(server, item!!.id, true) }
+        // An episode finishing: the next one saved on this device, so Up Next has
+        // something to play with no connection. Never from a private library.
+        if (creditsReached && prefs.keepNextReady) next?.let { n ->
+            LaunchedEffect(n.id) {
+                if (state.downloads.find(n.id) == null && !state.roomOpen && n.libraryId !in state.privateLibraries)
+                    runCatching { server.itemJson(session.userId, n.id) }.getOrNull()?.let { json ->
+                        state.downloads.start(server, session.userId, json, prefs.downloadsWifiOnly)
+                    }
+            }
+        }
         // The credits: warm the next episode — its details, previews and the
         // first megabytes of its file — so it starts the moment it is asked for.
         if (inCredits && next != null) LaunchedEffect(next!!.id) { Playback.warm(server, session.userId, next!!) }
         val offered = inCredits && !upNextDismissed && askStillWatching == null
         LaunchedEffect(offered) { creditsCorner = offered }
+        val skipShown = !offered && skip != null && !(prefs.skipsIntros && skip.type == "Intro")
+        LaunchedEffect(offered || skipShown) { offering = offered || skipShown }
+        // In the theater the window is out of sight, so the room's bar carries the offer.
+        if (inTheater) androidx.compose.runtime.SideEffect {
+            Theater.offer = when {
+                offered -> "Next Episode" to { val n = next!!; reporter.stopped(player, finished = true); state.pop(); state.push(Screen.Player(n.id, 0.0, auto = true)) }
+                skipShown -> (if (skip!!.type == "Outro") "Skip Credits" else "Skip ${skip.type}") to { clock.seek(skip.endSeconds) }
+                else -> null
+            }
+        }
         if (offered) {
             UpNextCard(next!!, server, counting = prefs.playsNext,
                 onPlay = { val n = next!!; reporter.stopped(player, finished = true); state.pop(); state.push(Screen.Player(n.id, 0.0, auto = true)) },
@@ -447,11 +627,15 @@ fun PlayerScreen(state: AppState, id: String, startSeconds: Double?) {
                 while (skipLeft > 0) { delay(1000); if (player.isPlaying) skipLeft-- }
                 clock.seek(skip.endSeconds)
             }
-            LButton(
-                onClick = { clock.seek(skip.endSeconds) },
-                // Above the seek bar, never under it.
-                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 32.dp, bottom = 132.dp).focusRequester(skipFocus),
-            ) { Text((if (skip.type == "Outro") "Skip Credits" else "Skip ${skip.type}") + if (counting) " · $skipLeft" else "") }
+            val skipLabel = (if (skip.type == "Outro") "Skip Credits" else "Skip ${skip.type}") + if (counting) " · $skipLeft" else ""
+            // Above the seek bar, never under it; on a TV Apple's frosted capsule, white while it has the remote.
+            if (isTv) app.lumiere.android.ui.TvPill({ clock.seek(skip.endSeconds) },
+                Modifier.align(Alignment.BottomEnd).padding(end = 56.dp, bottom = 56.dp).focusRequester(skipFocus)
+                    .background(Color(0xFF2A2A2E).copy(alpha = 0.78f), androidx.compose.foundation.shape.RoundedCornerShape(50))) {
+                Text(skipLabel, style = androidx.compose.ui.text.TextStyle(fontSize = androidx.compose.ui.unit.TextUnit(16f, androidx.compose.ui.unit.TextUnitType.Sp), fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold))
+            }
+            else LButton(onClick = { clock.seek(skip.endSeconds) },
+                modifier = Modifier.align(Alignment.BottomEnd).padding(end = 32.dp, bottom = 132.dp).focusRequester(skipFocus)) { Text(skipLabel) }
             // On a TV, the offer takes focus so one press of OK skips.
             if (isTv) LaunchedEffect(skip) { runCatching { skipFocus.requestFocus() } }
         }

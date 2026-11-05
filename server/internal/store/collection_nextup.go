@@ -81,28 +81,38 @@ func (s *Store) SeriesNext(limit int) ([]string, error) {
 	return ids, rows.Err()
 }
 
-// NextInCollection is the film after this one in release order, in the first
-// collection holding it that has one, and that collection's name.
-func (s *Store) NextInCollection(itemID string) (nextID, collection string) {
+// NextInCollection is the title after this one, and the collection's name:
+// in an anime franchise, the next entry in the order it came out (the
+// collection's own order, which the AniList pass keeps); in any other
+// collection, the next film or show by release date. A franchise is asked
+// first — Monogatari's next arc over a "Vampires" theme that also holds it.
+func (s *Store) NextInCollection(itemID string) (nextID, collection, collectionID string) {
 	rows, err := s.DB.Query(`
-		SELECT b.id, b.name FROM link l JOIN item b ON b.id = l.parent_id AND b.type = 'BoxSet'
-		WHERE l.child_id = ? ORDER BY b.name`, itemID)
+		SELECT b.id, b.name, EXISTS (SELECT 1 FROM item_value v WHERE v.item_id = b.id AND v.kind = 'anilist:franchise')
+		FROM link l JOIN item b ON b.id = l.parent_id AND b.type = 'BoxSet'
+		WHERE l.child_id = ? ORDER BY 3 DESC, b.name`, itemID)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
-	type box struct{ id, name string }
+	type box struct {
+		id, name  string
+		franchise bool
+	}
 	var boxes []box
 	for rows.Next() {
 		var b box
-		rows.Scan(&b.id, &b.name)
+		rows.Scan(&b.id, &b.name, &b.franchise)
 		boxes = append(boxes, b)
 	}
 	rows.Close()
 	for _, b := range boxes {
+		order := `COALESCE(m.premiere_date, printf('%04d', m.production_year), '9999'), m.sort_name`
+		if b.franchise {
+			order = `l.position, ` + order
+		}
 		members, err := s.DB.Query(`
-			SELECT m.id FROM link l JOIN item m ON m.id = l.child_id AND m.type = 'Movie'
-			WHERE l.parent_id = ?
-			ORDER BY COALESCE(m.premiere_date, printf('%04d', m.production_year), '9999'), m.sort_name`, b.id)
+			SELECT m.id FROM link l JOIN item m ON m.id = l.child_id AND m.type IN ('Movie', 'Series')
+			WHERE l.parent_id = ? ORDER BY `+order, b.id)
 		if err != nil {
 			continue
 		}
@@ -115,9 +125,9 @@ func (s *Store) NextInCollection(itemID string) (nextID, collection string) {
 		members.Close()
 		for i, id := range ids {
 			if id == itemID && i+1 < len(ids) {
-				return ids[i+1], b.name
+				return ids[i+1], b.name, b.id
 			}
 		}
 	}
-	return "", ""
+	return "", "", ""
 }

@@ -219,3 +219,32 @@ func TestNameFromJumpsToALetter(t *testing.T) {
 		t.Errorf("%s %v", where, args)
 	}
 }
+
+func TestArtistsOfALibraryAreTheOnesItCredits(t *testing.T) {
+	s := testStore(t)
+	for _, q := range []string{
+		`INSERT INTO item (id, type, name, is_folder, library_id, album_artist, artists, parent_id) VALUES
+			('music', 'CollectionFolder', 'Music', 1, 'music', NULL, NULL, NULL),
+			('album', 'MusicAlbum', 'Rumours', 1, 'music', 'Fleetwood Mac', 'Fleetwood Mac', 'music'),
+			('song', 'Audio', 'Lean On', 0, 'music', NULL, 'Major Lazer; DJ Snake', 'album'),
+			('fm', 'MusicArtist', 'Fleetwood Mac', 1, NULL, NULL, NULL, NULL),
+			('dj', 'MusicArtist', 'DJ Snake', 1, NULL, NULL, NULL, NULL),
+			('nobody', 'MusicArtist', 'Nobody Here', 1, NULL, NULL, NULL, NULL)`,
+	} {
+		if _, err := s.DB.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, total, err := s.Items(Query{ParentID: "music", Types: []string{"MusicArtist"}, Recursive: true,
+		SortBy: []string{"SortName"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, a := range got {
+		names = append(names, a.Name)
+	}
+	if total != 2 || len(names) != 2 || names[0] != "DJ Snake" || names[1] != "Fleetwood Mac" {
+		t.Fatalf("artists in the library: %v (%d)", names, total)
+	}
+}

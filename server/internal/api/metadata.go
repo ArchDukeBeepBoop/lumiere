@@ -1,9 +1,7 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -35,16 +33,22 @@ type MetadataHandler struct {
 	mu       sync.Mutex
 	running  bool
 	progress MetadataProgress
+	// rejected is the key TMDB last refused, so the automatic pass does not
+	// ask again with it every five minutes. See metadata_auto.go.
+	rejected string
 }
 
 // MetadataProgress is what a naming pass says about itself.
 type MetadataProgress struct {
-	Running bool   `json:"Running"`
-	Named   int    `json:"Named"`
-	Missed  int    `json:"Missed"`
-	Pending int    `json:"Pending"`
-	Current string `json:"Current,omitempty"`
-	Error   string `json:"Error,omitempty"`
+	Running bool `json:"Running"`
+	Named   int  `json:"Named"`
+	Missed  int  `json:"Missed"`
+	Pending int  `json:"Pending"`
+	// Unmatched is every film and show with no provider id — what
+	// "identify everything" would ask about. See metadata.UnmatchedClause.
+	Unmatched int    `json:"Unmatched"`
+	Current   string `json:"Current,omitempty"`
+	Error     string `json:"Error,omitempty"`
 	// HasKey says whether a pass can run at all, so the client can offer the
 	// field rather than a button that fails.
 	HasKey bool `json:"HasKey"`
@@ -93,7 +97,6 @@ func (h *MetadataHandler) Start() bool {
 	return true
 }
 
-// Status is GET /Metadata/Status.
 // FramesOnly runs the frame pass by itself, for a scan on a server with no
 // provider key: naming cannot happen, but a bare file can still get a picture.
 func (h *MetadataHandler) FramesOnly() {
@@ -116,6 +119,7 @@ func (h *MetadataHandler) FramesOnly() {
 	}()
 }
 
+// Status is GET /Metadata/Status.
 func (h *MetadataHandler) Status(w http.ResponseWriter, r *http.Request) {
 	h.mu.Lock()
 	progress := h.progress
@@ -125,6 +129,7 @@ func (h *MetadataHandler) Status(w http.ResponseWriter, r *http.Request) {
 	if pending, err := h.pendingCount(); err == nil {
 		progress.Pending = pending
 	}
+	h.Store.DB.QueryRow(`SELECT count(*) FROM item WHERE ` + metadata.UnmatchedClause).Scan(&progress.Unmatched)
 	writeJSON(w, http.StatusOK, progress)
 }
 
@@ -147,6 +152,7 @@ func (h *MetadataHandler) SetKey(w http.ResponseWriter, r *http.Request) {
 	}
 	h.Log.Info("metadata: provider key stored", "cleared", body.Token == "")
 	w.WriteHeader(http.StatusNoContent)
+	h.Start() // a new key is a reason to look now, not in five minutes
 }
 
 // Run is POST /Metadata/Run — name what the scanner found.
@@ -158,142 +164,14 @@ func (h *MetadataHandler) Run(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_ = token
+	if r.URL.Query().Get("scope") == "all" {
+		// Kept in the database rather than in memory, so a pass paused for
+		// playback or a restart picks the request up again. See IdentifyAllKey.
+		if err := h.Store.SetMeta(IdentifyAllKey, time.Now().UTC().Format(time.RFC3339)); err != nil {
+			writeJSON(w, http.StatusInternalServerError, errorBody{"could not record the request"})
+			return
+		}
+	}
 	h.Start()
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func (h *MetadataHandler) run(token string) {
-	defer func() {
-		h.mu.Lock()
-		h.running = false
-		h.progress.Running = false
-		h.progress.Current = ""
-		h.mu.Unlock()
-	}()
-
-	enricher := &metadata.Enricher{
-		Store: h.Store, TMDB: metadata.NewTMDB(token),
-		ImageDir: h.ImageDir, Log: h.Log,
-	}
-	pending, err := enricher.PendingItems(perPass)
-	if err != nil {
-		h.Log.Error("metadata: could not list pending", "error", err)
-		h.mu.Lock()
-		h.progress.Error = err.Error()
-		h.mu.Unlock()
-		return
-	}
-
-	ctx := context.Background()
-	for _, item := range pending {
-		h.mu.Lock()
-		h.progress.Current = item.Name
-		h.mu.Unlock()
-
-		named, err := enricher.Enrich(ctx, item)
-		if err != nil {
-			// One title that will not resolve is not a pass that should stop:
-			// the rest of the library is still worth naming.
-			h.Log.Info("metadata: not named", "item", item.Name, "reason", err)
-		}
-
-		h.mu.Lock()
-		if named {
-			h.progress.Named++
-		} else {
-			h.progress.Missed++
-		}
-		h.mu.Unlock()
-
-		time.Sleep(betweenRequests)
-	}
-	// Then the credits of anything matched before the pass learned to ask
-	// for them — a film named by an earlier version, a show the import
-	// brought without its cast.
-	uncredited, err := enricher.PendingCredits(perPass)
-	if err != nil {
-		h.Log.Error("metadata: could not list uncredited", "error", err)
-	}
-	for _, item := range uncredited {
-		h.mu.Lock()
-		h.progress.Current = item.Name + " — cast"
-		h.mu.Unlock()
-		if _, err := enricher.Credit(ctx, item, item.Type == "Series"); err != nil {
-			h.Log.Info("metadata: credits not fetched", "item", item.Name, "reason", err)
-		}
-		time.Sleep(betweenRequests)
-	}
-
-	// Then the seasons, which borrow the show's poster until they have one of
-	// their own — the reason every season of a new show looks identical.
-	seasons, err := enricher.PendingSeasons(perPass)
-	if err != nil {
-		h.Log.Error("metadata: could not list seasons", "error", err)
-	}
-	for _, season := range seasons {
-		h.mu.Lock()
-		h.progress.Current = season.Series + " — season " + fmt.Sprint(season.Number)
-		h.mu.Unlock()
-
-		got, err := enricher.EnrichSeason(ctx, season)
-		if err != nil {
-			h.Log.Info("metadata: no season art", "series", season.Series, "reason", err)
-		}
-		if got {
-			h.mu.Lock()
-			h.progress.Named++
-			h.mu.Unlock()
-		}
-		time.Sleep(betweenRequests)
-	}
-
-	// Then the episode stills, batched by season: TMDB returns a whole season
-	// in one response, so a season of twenty-four episodes costs one request.
-	batches, err := enricher.PendingEpisodeArt(episodesPerPass)
-	if err != nil {
-		h.Log.Error("metadata: could not list episode art", "error", err)
-	}
-	for _, batch := range batches {
-		h.mu.Lock()
-		h.progress.Current = fmt.Sprintf("%s — season %d artwork",
-			batch.SeriesName, batch.Season)
-		h.mu.Unlock()
-
-		stored, err := enricher.EnrichEpisodes(ctx, batch)
-		if err != nil {
-			h.Log.Info("metadata: no episode art",
-				"series", batch.SeriesName, "reason", err)
-		}
-		h.mu.Lock()
-		h.progress.Named += stored
-		h.mu.Unlock()
-		time.Sleep(betweenRequests)
-	}
-
-	// Then a few shows whose folders follow one of TMDB's other orders. See
-	// metadata.SuggestOrders.
-	if n := enricher.SuggestOrders(ctx, 10); n > 0 {
-		h.Log.Info("metadata: episode orders suggested", "shows", n)
-	}
-
-	// What TMDB could not name keeps the title its file carries. See
-	// store.TitleUnmatchedEpisodes.
-	if titled, err := h.Store.TitleUnmatchedEpisodes(); err != nil {
-		h.Log.Error("metadata: file titles failed", "error", err)
-	} else if titled > 0 {
-		h.Log.Info("metadata: episodes titled from their files", "count", titled)
-	}
-
-	h.Log.Info("metadata pass complete",
-		"named", h.progress.Named, "missed", h.progress.Missed)
-
-	// Whatever is still bare gets a frame. After naming, never before: a
-	// poster is the better picture, and this must only fill what the
-	// providers could not. See media.Frames.
-	h.mu.Lock()
-	h.progress.Current = "Taking frames for files with no picture"
-	h.mu.Unlock()
-	if _, err := media.Frames(h.Store.DB, media.FindFFmpeg(), h.ImageDir, 500, h.Log); err != nil {
-		h.Log.Error("frames: pass failed", "error", err)
-	}
 }

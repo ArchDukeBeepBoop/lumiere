@@ -54,6 +54,9 @@ final class PlayerModel {
     /// Where this session resumed from, while the notice is still worth showing.
     /// Nil for a file that started at the beginning. See `Prompt.resumed`.
     var resumedFrom: Double?
+    /// The item whose credits you chose to watch: its next-episode offer
+    /// stays, without the countdown. See `PlayerPrompt`'s Watch Credits.
+    var watchesCreditsOf: String?
     /// A brief line saying what the player just did on its own, and how to undo
     /// it. A silent ninety-second jump is indistinguishable from a seek bug.
     var lastAction: PlayerAction?

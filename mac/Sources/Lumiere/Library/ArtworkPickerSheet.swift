@@ -18,6 +18,8 @@ struct ArtworkPickerSheet: View {
     let itemId: String
     let client: JellyfinClient
     let onDone: (Bool) -> Void
+    /// A collection's own titles, whose pictures it can take. See `TitleArtworkStrip`.
+    var titles: TitleArtworkStrip.Source?
 
     @State private var imageType: JellyfinImageURL.ImageKind = .primary
     @State private var options: [RemoteImageOption] = []
@@ -97,6 +99,12 @@ struct ArtworkPickerSheet: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
+            if let titles {
+                TitleArtworkStrip(source: titles, kind: imageType, disabled: applying != nil) { title in
+                    Task { await copy(from: title) }
+                }
+            }
+
             if isLoading {
                 ProgressView("Asking the server's providers…")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -125,7 +133,7 @@ struct ArtworkPickerSheet: View {
             }
         }
         .padding(Theme.Space.lg)
-        .frame(width: 620, height: 520)
+        .frame(width: 620, height: titles == nil ? 520 : 680)
         .glassSheet()
         .task { await load() }
     }
@@ -217,6 +225,17 @@ struct ArtworkPickerSheet: View {
             // The picture did change, so closing must still report it.
             changeApplied = true
             return false
+        }
+    }
+
+    private func copy(from title: LibraryEntry) async {
+        applying = title.id
+        defer { applying = nil }
+        do {
+            try await client.copyImage(to: itemId, from: title.id, type: imageType.rawValue)
+            onDone(true)
+        } catch {
+            errorMessage = ConnectionState.message(for: error)
         }
     }
 

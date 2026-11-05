@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -66,7 +67,13 @@ fun SignInScreen(state: AppState) {
         if (found.size == 1 && state.lastServer == null) address = found.first().address
     }
 
+    val userField = remember { androidx.compose.ui.focus.FocusRequester() }
+
     fun signIn() {
+        // Never a dead button: a greyed-out Sign In on a fresh install looked exactly like
+        // one that ignored the press. It says what's missing instead, and goes there.
+        if (needsAccount) { message = "Create your account on the Mac first (see above), then sign in with it here."; return }
+        if (user.isBlank()) { message = "Type your user name first."; runCatching { userField.requestFocus() }; return }
         scope.launch {
             busy = true
             message = null
@@ -108,7 +115,7 @@ fun SignInScreen(state: AppState) {
             )
             OutlinedTextField(
                 value = user, onValueChange = { user = it }, label = { Text("User name") },
-                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                singleLine = true, modifier = Modifier.fillMaxWidth().focusRequester(userField),
             )
             OutlinedTextField(
                 value = password, onValueChange = { password = it }, label = { Text("Password") },
@@ -128,7 +135,7 @@ fun SignInScreen(state: AppState) {
             }
             Spacer(Modifier.height(4.dp))
             LButton(onClick = ::signIn,
-                enabled = !busy && user.isNotBlank() && !needsAccount,
+                enabled = !busy,
                 modifier = Modifier.fillMaxWidth()) {
                 Text(if (busy) "Signing in…" else "Sign In")
             }

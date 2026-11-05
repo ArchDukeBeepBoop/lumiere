@@ -1,5 +1,7 @@
 package app.lumiere.android.ui
 
+import androidx.compose.foundation.layout.heightIn
+
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.padding
@@ -32,7 +34,7 @@ fun TvPill(onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean
            tint: Color = Palette.textPrimary, shape: Shape = RoundedCornerShape(50), focusedScale: Float = 1.04f,
            content: @Composable RowScope.() -> Unit) {
     var focused by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    Surface(onClick = onClick, modifier = modifier.onFocusChanged { focused = it.isFocused },
+    Surface(onClick = onClick, modifier = modifier.pointable(onClick = onClick).onFocusChanged { focused = it.isFocused },
         shape = ClickableSurfaceDefaults.shape(shape),
         scale = ClickableSurfaceDefaults.scale(focusedScale = focusedScale),
         colors = ClickableSurfaceDefaults.colors(
@@ -50,7 +52,8 @@ fun TvPill(onClick: () -> Unit, modifier: Modifier = Modifier, selected: Boolean
         androidx.compose.material3.MaterialTheme(colorScheme = androidx.compose.material3.MaterialTheme.colorScheme, typography = plain) {
         CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides androidx.tv.material3.LocalContentColor.current,
             LocalPillFocused provides focused) {
-            Row(Modifier.padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, content = content)
+            // In the headset a pill is pinched, so it is never shorter than Horizon OS's 48 dp.
+            Row(Modifier.heightIn(min = if (app.lumiere.android.Flavor.quest) 48.dp else 0.dp).padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, content = content)
         }
         }
     }
@@ -79,7 +82,7 @@ fun Modifier.ignoreHeldOk(): Modifier {
 /** Whether the pill around this content has the remote: coloured values turn dark with the text. */
 val LocalPillFocused = androidx.compose.runtime.compositionLocalOf { false }
 
-/** [colour] at rest; the pill's own dark text once the remote is on it, so gold or red never sits on white. */
+/** [colour] at rest; the pill's own dark text once the remote is on it, so the accent or red never sits on white. */
 @Composable
 fun pillTint(colour: Color): Color =
     if (LocalPillFocused.current) androidx.compose.material3.LocalContentColor.current else colour

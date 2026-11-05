@@ -4,7 +4,7 @@ import LumiereKit
 /// Settings › Look › Accent: a row of swatches, as System Settings draws its
 /// own accent colour choice.
 struct AccentPicker: View {
-    @AppStorage(AccentTheme.storageKey) private var choice = AccentTheme.gold.rawValue
+    @AppStorage(AccentTheme.storageKey) private var choice = AccentTheme.prism.rawValue
     @AppStorage(Preference.playerTintsFromArtwork.name) private var tintsFromArtwork
         = Preference.playerTintsFromArtwork.defaultValue
     @AppStorage(Preference.showsWhatsNew.name) private var showsWhatsNew = Preference.showsWhatsNew.defaultValue
@@ -23,7 +23,7 @@ struct AccentPicker: View {
 
     private var swatches: some View {
         SettingsRow(label: "Accent colour",
-                    help: "Buttons, the scrubber, selections and highlights. Gold is Lumiere’s own.") {
+                    help: "Buttons, the scrubber, selections and highlights. Prism is Lumiere’s own; gold was the original.") {
             HStack(spacing: Theme.Space.sm) {
                 ForEach(AccentTheme.allCases) { accent in
                     let selected = choice == accent.rawValue

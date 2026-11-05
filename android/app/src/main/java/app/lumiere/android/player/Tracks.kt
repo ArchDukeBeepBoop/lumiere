@@ -1,5 +1,8 @@
 package app.lumiere.android.player
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import app.lumiere.android.ui.holdsRemote
 import app.lumiere.android.ui.frosted
 
@@ -53,7 +56,9 @@ fun trackChoices(player: ExoPlayer, type: Int): List<TrackChoice> =
 
 /** "English · 5.1 · Commentary" from a format: language first, then what sets it apart. */
 fun describe(f: Format): String {
-    val language = f.language?.let { Locale.forLanguageTag(it).displayLanguage.ifEmpty { it } }
+    // "und" is a file's way of saying no language was set: show none rather than the code.
+    val language = f.language?.takeUnless { it.isBlank() || it == "und" || it == "mul" || it == "zxx" }
+        ?.let { Locale.forLanguageTag(it).displayLanguage.ifEmpty { it } }
     val channels = when (f.channelCount) { 1 -> "Mono"; 2 -> "Stereo"; 6 -> "5.1"; 8 -> "7.1"; else -> null }
     val forced = if (f.selectionFlags and C.SELECTION_FLAG_FORCED != 0) "Forced" else null
     return listOfNotNull(language, f.label?.takeIf { it != language }, channels, forced).joinToString(" · ")
@@ -74,7 +79,29 @@ fun applyRemembered(player: ExoPlayer, prefs: Prefs, seriesId: String?) {
     when (text) {
         null -> Unit
         "off" -> choose(player, null, C.TRACK_TYPE_TEXT)
-        else -> trackChoices(player, C.TRACK_TYPE_TEXT).firstOrNull { it.language == text }?.let { choose(player, it, C.TRACK_TYPE_TEXT) }
+        else -> trackChoices(player, C.TRACK_TYPE_TEXT).let { all -> SubtitlePick.full(all.filter { it.language == text }, { it.label }) }
+            ?.let { choose(player, it, C.TRACK_TYPE_TEXT) }
+    }
+}
+
+/**
+ * A file's subtitles often come as a full track and a "Signs & Songs" one
+ * (only the on-screen text and lyrics), in the same language. The full one is
+ * the one meant; picking the first of a language could pick the other.
+ */
+object SubtitlePick {
+    private val PARTIAL = Regex("sign|song|forced|karaoke|lyric", RegexOption.IGNORE_CASE)
+
+    fun isPartial(label: String): Boolean = PARTIAL.containsMatchIn(label)
+
+    /** The full track among [tracks] (one language), else the first. */
+    fun <T> full(tracks: List<T>, label: (T) -> String): T? = tracks.firstOrNull { !isPartial(label(it)) } ?: tracks.firstOrNull()
+
+    /** The full track to switch to when [selected] is a partial one and its language has a full one; else null. */
+    fun <T> better(tracks: List<T>, selected: T?, label: (T) -> String, language: (T) -> String?): T? {
+        val s = selected ?: return null
+        if (!isPartial(label(s))) return null
+        return tracks.firstOrNull { it != s && language(it) == language(s) && !isPartial(label(it)) }
     }
 }
 
@@ -124,11 +151,14 @@ private fun Column(title: String, rows: List<Pair<String, Boolean>>,
         LazyColumn {
             items(rows.size) { i ->
                 val (label, on) = rows[i]
-                Text((if (on) "✓  " else "    ") + label, style = MaterialTheme.typography.titleMedium,
-                    color = if (on) Palette.accent else Palette.textPrimary,
-                    modifier = Modifier.fillMaxWidth()
-                        .then(if (i == 0 && focus != null) Modifier.focusRequester(focus) else Modifier)
-                        .focusCard { onPick(i) }.padding(10.dp))
+                // The tick sits before the choice on the same line, as Apple's menus mark it.
+                androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth()
+                    .then(if (i == 0 && focus != null) Modifier.focusRequester(focus) else Modifier)
+                    .focusCard { onPick(i) }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(22.dp)) { if (on) app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.check, size = 18.dp) }
+                    Spacer(Modifier.width(8.dp))
+                    Text(label, style = MaterialTheme.typography.titleMedium, color = if (on) Palette.accent else Palette.textPrimary)
+                }
             }
         }
     }

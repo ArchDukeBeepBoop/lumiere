@@ -109,7 +109,7 @@ extension DetailView {
     /// stay absent rather than appearing and doing nothing.
     func relatedActions(_ entry: LibraryEntry, model: DetailModel) -> MetadataActions? {
         guard let app, app.client != nil else { return nil }
-        return MetadataActions(
+        var actions = MetadataActions(
             itemId: entry.item.id,
             title: entry.item.name,
             refresh: { replaceEverything in
@@ -142,5 +142,9 @@ extension DetailView {
                 await model.load()
             } : nil
         )
+        // Identify… on related titles too: a similar title or an extra matched
+        // to the wrong listing was fixable only by opening it first.
+        if entry.isIdentifiable { actions.identify = { identifySeason = entry } }
+        return actions
     }
 }

@@ -50,8 +50,13 @@ android {
         create("quest") {
             dimension = "device"
             applicationIdSuffix = ".quest"
-            manifestPlaceholders["appLabel"] = "Lumiere for Quest"
+            manifestPlaceholders["appLabel"] = "Lumiere"
             buildConfigField("String", "DEVICE", "\"quest\"")
+            // The room (Meta Spatial SDK) needs Horizon OS's Android 14; Quest 3 and 3S are arm64,
+            // so other processors' libraries would only add weight. The phone and TV are unchanged.
+            minSdk = 34
+            ndk { abiFilters += "arm64-v8a" }
+            proguardFile("proguard-quest.pro")
         }
     }
     buildTypes {
@@ -67,6 +72,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { compose = true; buildConfig = true }
+    // New lint findings fail the gate (Scripts/check.sh); the ones already here are
+    // recorded in lint-baseline.xml and paid down over time, never added to.
+    lint {
+        baseline = file("lint-baseline.xml")
+        abortOnError = true
+        warningsAsErrors = false
+        checkDependencies = false
+    }
 }
 
 kotlin {
@@ -95,6 +108,17 @@ dependencies {
     implementation("androidx.tv:tv-material:1.0.0")
     implementation("io.github.peerless2012:ass-media:0.3.0-rc03")
     implementation("androidx.profileinstaller:profileinstaller:1.3.1")
+
+    // The Quest's room, window and Theater (Meta Spatial SDK), in the Quest's app alone.
+    // See docs/QUEST_PLAN.md section 0 and app/src/quest.
+    val spatial = "0.14.0"
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk:$spatial")
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk-toolkit:$spatial")
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk-vr:$spatial")
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk-compose:$spatial")
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk-isdk:$spatial")
+    // Your room's walls from Space Setup, for the screen on your wall.
+    "questImplementation"("com.meta.spatial:meta-spatial-sdk-mruk:$spatial")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")

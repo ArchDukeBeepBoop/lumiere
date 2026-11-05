@@ -33,12 +33,21 @@ struct LibraryGridView: View {
     /// those libraries are actually navigated.
     @State var studio: String?
     @State var studios: [String] = []
+    /// Where the titles come from, as ISO codes; shown by name. See
+    /// `LibraryRepository.countryTallies`.
+    @State var country: String?
+    @State var countries: [String] = []
+    /// An anime season, "2024-4", and the seasons this library has; anime
+    /// libraries only. See `AnimeSeason`.
+    @State var season: String?
+    @State var seasons: [AnimeSeason] = []
     @State var isLoading = true
     /// The shared menu's state: the sheets it opens, and nothing else. Replaces
     /// six separate @State properties this view used to keep for itself.
     @State var entryState = EntryActionState()
     @State var isProposingCollections = false
     @State var isDiscoveringCollections = false
+    @State var isEditingSmartCollections = false
     /// The library-wide merged-series sweep. Not per-library: a merge is a property
     /// of a series, and the scan is cheap enough to always cover everything rather
     /// than making where you opened it from change what it finds.
@@ -195,34 +204,7 @@ struct LibraryGridView: View {
                 )
             }
         }
-        // The movie database's film series, gathered from this room's films.
-        .sheet(isPresented: $isDiscoveringCollections) {
-            if let app, let client = app.client {
-                CollectionSeriesSheet(
-                    mode: .discover, client: client, initialQuery: "",
-                    privateLibraryIds: app.privateLibraryIds, inRoom: app.isShowingPrivateLibraries
-                ) { changed in
-                    isDiscoveringCollections = false
-                    if changed { Task { await reload() } }
-                }
-            }
-        }
-        .sheet(isPresented: $isProposingCollections) {
-            RelatedCollectionsSheet(
-                libraryId: libraryId,
-                libraryName: title,
-                repository: repository,
-                client: app?.client,
-                pipeline: pipeline,
-                serverURL: serverURL,
-                onDone: { created in
-                    isProposingCollections = false
-                    // New collections are items in this library, so the grid has to
-                    // be re-read to show them.
-                    if created { Task { await reload() } }
-                }
-            )
-        }
+        .modifier(CollectionSheets(grid: self))
         .safeAreaInset(edge: .top) { toolbar }
         .safeAreaInset(edge: .bottom) {
             if selection.isActive {
@@ -270,14 +252,7 @@ struct LibraryGridView: View {
             // library that offered nine genres whose grid returns zero rows,
             // "Action" among them, because 8,558 *episodes* carry it and not one
             // series does. Asking the same question one way is the fix.
-            genres = ((try? await repository.genreTallies(
-                types: LibraryRepository.topLevelTypes, libraryId: libraryId
-            )) ?? []).map(\.name).sorted()
-            // Asked the same way, so the menu and the grid agree about what is in
-            // this library — the mistake documented above for genres.
-            studios = ((try? await repository.studioTallies(
-                types: LibraryRepository.topLevelTypes, libraryId: libraryId
-            )) ?? []).map(\.name).sorted()
+            await loadFilterChoices()
             // Which tabs this library has: All, then each kind it holds.
             var tabs: [LibraryTab] = [.all]
             for kind in [LibraryTab.films, .shows, .collections] {

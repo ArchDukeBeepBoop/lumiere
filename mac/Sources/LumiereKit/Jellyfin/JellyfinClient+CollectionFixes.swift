@@ -55,7 +55,9 @@ public extension JellyfinClient {
 public struct NextInCollection: Decodable, Sendable {
     public let id: String
     public let collection: String
-    enum CodingKeys: String, CodingKey { case id = "Id", collection = "Collection" }
+    /// Nil from a server before it named the collection.
+    public let collectionId: String?
+    enum CodingKeys: String, CodingKey { case id = "Id", collection = "Collection", collectionId = "CollectionId" }
 }
 
 public extension JellyfinClient {
@@ -63,6 +65,14 @@ public extension JellyfinClient {
         guard let data = try? await sendData(path: "Lumiere/Collections/NextAfter/\(itemId)"),
               !data.isEmpty else { return nil }
         return try? JSONDecoder().decode(NextInCollection.self, from: data)
+    }
+}
+
+public extension JellyfinClient {
+    /// The cast and crew starred, most credited first, with their photos.
+    func favouritePeople() async throws -> [JellyfinItem] {
+        try await send(ItemsResponse.self, path: "Persons",
+                       query: [URLQueryItem(name: "IsFavorite", value: "true")]).items
     }
 }
 

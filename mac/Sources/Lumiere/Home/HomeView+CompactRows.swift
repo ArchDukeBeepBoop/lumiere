@@ -107,6 +107,16 @@ extension CompactHomeView {
         case .topAnime:
             if !model.topAnime.isEmpty { posterSection("Top 10 Anime", all: model.topAnime) }
 
+        case .continueFranchise:
+            if let banner = ContinueFranchise.shared.banner {
+                ContinueFranchiseBanner(banner: banner, serverURL: serverURL, pipeline: pipeline)
+            }
+
+        case .pinnedCollections:
+            ForEach(PinnedCollectionRows.shared.rows) { row in
+                posterSection(row.name, all: row.entries)
+            }
+
         case .latest(let libraryId):
             if let shelf = model.libraryShelves.first(where: { $0.library.id == libraryId }),
                !shelf.entries.isEmpty {

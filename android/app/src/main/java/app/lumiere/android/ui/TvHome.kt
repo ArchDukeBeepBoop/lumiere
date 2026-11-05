@@ -2,11 +2,16 @@
 
 package app.lumiere.android.ui
 
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
 import app.lumiere.android.api.isNew
 import app.lumiere.android.api.byIds
 import androidx.compose.ui.focus.focusProperties
@@ -109,11 +114,14 @@ private fun pivot(fraction: Float, still: () -> Boolean = { false }) = object : 
 
 private const val GUTTER = 56
 
+/** The share of the screen the information area takes over the rows. */
+private const val HEADER = 0.24f
+
 /** Card widths from the screen's own width: six posters, four Up Next, five libraries, three large across. */
 private data class TvSizes(val poster: androidx.compose.ui.unit.Dp, val wide: androidx.compose.ui.unit.Dp,
                            val library: androidx.compose.ui.unit.Dp, val large: androidx.compose.ui.unit.Dp)
 private val LocalTvSizes = androidx.compose.runtime.compositionLocalOf { TvSizes(150.dp, 300.dp, 260.dp, 360.dp) }
-private val GAP = 32.dp
+private val GAP = 24.dp
 
 /**
  * Home on a TV, laid out as the Mac's: a spotlight across the top with Play
@@ -126,7 +134,8 @@ private val GAP = 32.dp
 internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER") phoneOpen: (Item) -> Unit) {
     // As the Apple TV app: an Up Next card plays; anything else opens its page —
     // an episode its show's, on its season.
-    val play: (Item) -> Unit = { state.push(Screen.Player(it.id, null)) }
+    // A tile that resumes says where, so the player does not ask again.
+    val play: (Item) -> Unit = { state.push(Screen.Player(it.id, it.positionTicks.takeIf { p -> p > 0 }?.let { p -> p / 10_000_000.0 })) }
     val open: (Item) -> Unit = { item ->
         if (item.isEpisode && item.seriesId != null) state.push(Screen.Detail(item.seriesId, item.seasonId))
         else state.push(Screen.Detail(item.id))
@@ -228,7 +237,7 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
     var focused by remember { mutableStateOf<Item?>(null) }
     LaunchedEffect(pages, heroFocused) {
         // Turning by itself, except while the remote rests on More Info — the title is being read.
-        while (heroFocused && pages.size > 1) { delay(9_000); if (!bannerHeld) page = (page + 1) % pages.size }
+        while (heroFocused && pages.size > 1) { delay(8_000); if (!bannerHeld) page = (page + 1) % pages.size }
     }
     val hero = pages.getOrNull(page)
     // The menu bar and panels take the banner's colour, as tvOS's frosted bars take what lies behind.
@@ -258,9 +267,17 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
     // Which row has the remote; up from the first goes back to the spotlight,
     // which a tall page has scrolled out of the list's reach.
     var row by remember { mutableIntStateOf(-1) }
+    var focusedRow by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(heroFocused) { if (heroFocused) { focusedRow = null; state.homePosition = null } }
     LaunchedEffect(heroFocused) { if (heroFocused) { delay(50); list.animateScrollToItem(0) } }
-    BoxWithConstraints(Modifier.fillMaxSize().background(Palette.canvas)) {
+    // On the Quest, colour behind Home rather than the titles' pictures (Settings › Headset).
+    val colourGround = app.lumiere.android.Flavor.quest && !state.settings.questArtBackdrop
+    BoxWithConstraints(Modifier.fillMaxSize().background(Palette.ground)) {
         val screenH = maxHeight
+        // The ground behind the window takes on the spotlight's colour (QuestBackdrop).
+        if (colourGround) LaunchedEffect(hero?.id) {
+            hero?.let { ArtColour.of(server, it) }?.let { QuestGround.tint = QuestGround.glowOf(it) }
+        }
         // Only the banner has a picture, as on Apple TV; below it the ground is plain grey,
         // and nothing behind the rows changes as the remote moves.
         val heroArt by androidx.compose.animation.core.animateFloatAsState(if (heroFocused) 1f else 0f,
@@ -271,24 +288,31 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
             androidx.compose.animation.core.rememberInfiniteTransition(label = "drift").animateFloat(1f, 1.06f,
                 androidx.compose.animation.core.infiniteRepeatable(tween(14_000), androidx.compose.animation.core.RepeatMode.Reverse), label = "zoom").value
         else 1f
-        if (heroArt > 0f) Crossfade(hero, animationSpec = tween(app.lumiere.android.Motion.ms(900)), label = "backdrop") { item ->
-            val art = item?.let { imageFor(it, server, CardShape.Wide, 1600) }
-            if (art != null) AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
-                .graphicsLayer { alpha = heroArt; scaleX = drift; scaleY = drift })
+        // Google TV's banner: the picture held to the top right, fading into the grey on its
+        // left and lower edges, so the title reads on plain ground and the first row of
+        // cards rises over the picture's foot.
+        if (heroArt > 0f && !colourGround) Box(Modifier.fillMaxSize().graphicsLayer { alpha = heroArt }) {
+            Crossfade(hero, animationSpec = tween(app.lumiere.android.Motion.ms(900)), label = "backdrop") { item ->
+                val art = item?.let { imageFor(it, server, CardShape.Wide, 1600) }
+                if (art != null) AsyncImage(art, null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize()
+                    .graphicsLayer { scaleX = drift; scaleY = drift })
+            }
+            // Apple's scrims: a soft darkening from the left for the words, and the picture
+            // falling into the ground at the foot, where the first row peeks up.
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Color.Black.copy(alpha = 0.6f), 0.55f to Color.Transparent)))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.35f to Color.Transparent, 0.55f to Palette.canvas.copy(alpha = 0.75f), 0.66f to Palette.canvas)))
         }
         // A soft dark band under the menu bar, so its tabs read on any picture.
-        Box(Modifier.fillMaxWidth().height(120.dp).graphicsLayer { alpha = heroArt }
+        if (!colourGround) Box(Modifier.fillMaxWidth().height(120.dp).graphicsLayer { alpha = heroArt }
             .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.45f), Color.Transparent))))
-        BannerPreview(state, hero, heroFocused && !state.tvMenuOpen)
+        if (!colourGround) BannerPreview(state, hero, heroFocused && !state.tvMenuOpen)
         // Below the spotlight the rows sit on the app's own ground, as every
         // other screen does; the picture stays only as a faint wash behind them.
         val wash by androidx.compose.animation.core.animateFloatAsState(if (heroFocused) 0f else 0.82f,
             tween(app.lumiere.android.Motion.ms(350)), label = "wash")
-        Box(Modifier.fillMaxSize().background(Palette.canvas.copy(alpha = wash)))
+        if (!colourGround) Box(Modifier.fillMaxSize().background(Palette.canvas.copy(alpha = wash)))
         // Shade where the title and buttons sit, lightening across; then a long fall into the grey below.
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Palette.canvas.copy(alpha = 0.85f), 0.35f to Palette.canvas.copy(alpha = 0.4f), 0.65f to Color.Transparent)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-            (if (heroFocused) 0.4f else 0.1f) to Color.Transparent, 0.62f to Palette.canvas.copy(alpha = 0.55f), 0.8f to Palette.canvas)))
+        // Below the banner, the plain grey the rows sit on.
 
         // The clock and the room live in the menu bar, which shows over the
         // spotlight; nothing focusable sits in a corner for the remote to strand in.
@@ -296,11 +320,22 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
         LaunchedEffect(heroFocused, page) { state.tvAtTop = heroFocused; if (heroFocused) { delay(4_000); state.tvAtTop = false } }
         if (!state.settings.tvTopBar) Row(Modifier.align(Alignment.TopEnd).padding(18.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)) { TvClock(state); RoomButton(state) }
-        val spec = remember { pivot(0.08f) { heroRef[0] } }
+        // Home steers its own scrolling, so nothing else can move it: the column never
+        // scrolls by itself, and each Up or Down puts the chosen row straight under the
+        // information area at the top. (Two rules used to compete, and could throw the
+        // page back to its top between Continue Watching and Up Next.)
+        val spec = remember { object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float) = 0f } }
+        val headerPx = with(androidx.compose.ui.platform.LocalDensity.current) { (screenH * app.lumiere.android.ui.TvSpace.landing).toPx() }
+        LaunchedEffect(focusedRow) {
+            val key = focusedRow ?: return@LaunchedEffect
+            val info = list.layoutInfo.visibleItemsInfo.firstOrNull { it.key == key } ?: return@LaunchedEffect
+            list.animateScrollBy(info.offset - headerPx, tween(app.lumiere.android.Motion.ms(260)))
+        }
         val across = maxWidth - (GUTTER * 2).dp
         val sizes = TvSizes(poster = (across - GAP * 5) / 6, wide = (across - GAP * 3) / 4, library = (across - GAP * 4) / 5,
             large = (across - GAP * 2) / 3)
-        CompositionLocalProvider(LocalBringIntoViewSpec provides spec, LocalTvSizes provides sizes) {
+        CompositionLocalProvider(LocalBringIntoViewSpec provides spec, LocalTvSizes provides sizes, LocalAppStateForShelf provides state) {
             LazyColumn(Modifier.fillMaxSize().onPreviewKeyEvent { e ->
                 // Up from the spotlight: the tabs come down from the top.
                 if (e.nativeKeyEvent.keyCode == android.view.KeyEvent.KEYCODE_DPAD_UP &&
@@ -313,11 +348,11 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                     scope.launch { list.animateScrollToItem(0); delay(80); runCatching { heroPlay.requestFocus() } }
                     true
                 } else false
-            }, state = list, contentPadding = PaddingValues(bottom = 64.dp),
+            }, state = list, contentPadding = PaddingValues(bottom = screenH * 0.74f),
                 verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (nowPlaying != null && app.lumiere.android.music.Music.isPlaying) item(key = "nowplaying") { NowPlayingBanner(state, nowPlaying) }
                 item(key = "hero") {
-                    Hero(state, hero, pages.size, page, { d -> if (pages.isNotEmpty()) page = (page + d + pages.size) % pages.size }, Modifier.height(screenH * 0.68f)
+                    Hero(state, hero, pages.size, page, { d -> if (pages.isNotEmpty()) page = (page + d + pages.size) % pages.size }, Modifier.height(screenH * app.lumiere.android.ui.TvSpace.banner)
                         .onFocusChanged { heroFocused = it.hasFocus; heroRef[0] = it.hasFocus }, heroPlay) { bannerHeld = it }
                 }
                 var index = 0
@@ -328,8 +363,8 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                     if (limit > 0 && index >= limit) return
                     val mine = ++index
                     item(key = key) {
-                        Box(Modifier.onFocusChanged { if (it.hasFocus) row = mine }) {
-                            CompositionLocalProvider(LocalBringIntoViewSpec provides pivot(0.05f)) { block() }
+                        Box(Modifier.onFocusChanged { if (it.hasFocus) { row = mine; focusedRow = key; state.homePosition = "Row $mine of $index" } }) {
+                            block()
                         }
                     }
                 }
@@ -423,6 +458,14 @@ internal fun TvHome(state: AppState, rows: TvRows, @Suppress("UNUSED_PARAMETER")
                 }
             }
         }
+        // Below the banner, the top of the screen tells what the chosen card is — its
+        // picture at the right, its name, facts and story at the left — over a solid
+        // ground that the rows slide under. (Google TV's immersive list.)
+        androidx.compose.animation.AnimatedVisibility(!heroFocused && shown != null,
+            enter = androidx.compose.animation.fadeIn(tween(app.lumiere.android.Motion.ms(250))),
+            exit = androidx.compose.animation.fadeOut(tween(app.lumiere.android.Motion.ms(200)))) {
+            shown?.let { InfoArea(it, server, Modifier.fillMaxWidth().height(screenH * HEADER)) }
+        }
         // Last, so it is drawn over everything and holds the remote.
         app.lumiere.android.tv.TvTour(state)
     }
@@ -440,29 +483,45 @@ private fun Hero(state: AppState, item: Item?, pages: Int, page: Int, onPage: (I
     }
     Box(modifier.fillMaxWidth()) {
         if (item == null) return@Box
+        // On the Quest's colour ground the title's picture is a card of its own at the right,
+        // tipped toward the pointer like every card, rather than the wallpaper (QuestBackdrop).
+        if (app.lumiere.android.Flavor.quest && !state.settings.questArtBackdrop) HeroArt(item, server,
+            Modifier.align(Alignment.CenterEnd).padding(end = GUTTER.dp, top = 40.dp).fillMaxWidth(0.56f))
         // In the private room the banner says so, in the room's own colour, so the two never feel alike.
         if (state.roomOpen) Text("Private Room", style = MaterialTheme.typography.labelLarge, color = Palette.onAccent,
             modifier = Modifier.align(Alignment.TopStart).padding(start = GUTTER.dp, top = 84.dp)
                 .background(Palette.accent, RoundedCornerShape(50)).padding(horizontal = 12.dp, vertical = 4.dp))
-        Column(Modifier.align(Alignment.BottomStart).padding(start = GUTTER.dp, bottom = 28.dp).widthIn(max = 640.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // The Apple TV app's banner, as it stands: logo large at the lower left, a quiet grey
+        // line of what it is with Apple's outlined badges, three lines of story, a white Play
+        // capsule with round frosted + and ⓘ beside it; the page dots at the lower right.
+        Column(Modifier.align(Alignment.BottomStart).padding(start = GUTTER.dp, bottom = 30.dp).widthIn(max = 420.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (item.logoTag != null) {
-                AsyncImage(server.imageUrl(item.id, "Logo", item.logoTag, 760), item.name, contentScale = ContentScale.Fit,
-                    alignment = Alignment.BottomStart, modifier = Modifier.height(120.dp).widthIn(max = 420.dp))
+                AsyncImage(server.imageUrl(item.id, "Logo", item.logoTag, 900), item.name, contentScale = ContentScale.Fit,
+                    alignment = Alignment.BottomStart, modifier = Modifier.height(72.dp).widthIn(max = 300.dp))
             } else {
-                Text(item.name, maxLines = 2, overflow = TextOverflow.Ellipsis, style = TextStyle(fontSize = 48.sp,
-                    fontWeight = FontWeight.SemiBold, color = Color.White, shadow = Shadow(Color.Black.copy(alpha = 0.6f), blurRadius = 12f)))
+                Text(item.name, maxLines = 2, overflow = TextOverflow.Ellipsis, style = app.lumiere.android.ui.TvType.display.copy(
+                    shadow = Shadow(Color.Black.copy(alpha = 0.5f), blurRadius = 16f)))
             }
-            app.lumiere.android.ui.FactPills(item.year?.toString(),
-                item.runtimeTicks?.let { val m = it / TICKS_PER_SECOND / 60; if (m >= 60) "${m / 60}h ${m % 60}m" else "${m}m" },
-                item.officialRating, listOfNotNull(item.genres.take(2).joinToString(", ").ifEmpty { null },
-                    item.communityRating?.let { "★ %.1f".format(it).removeSuffix(".0") }))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val words = listOfNotNull(if (item.isSeries) "TV Show" else if (item.type == "Movie") "Movie" else null,
+                    item.genres.take(2).joinToString(" · ").ifEmpty { null }, item.year?.toString(),
+                    item.runtimeTicks?.takeIf { !item.isSeries }?.let { val m = it / TICKS_PER_SECOND / 60; if (m >= 60) "${m / 60} hr ${m % 60} min" else "$m min" })
+                Text(words.joinToString(" · "), style = app.lumiere.android.ui.TvType.meta, maxLines = 1)
+                val video = item.streams.firstOrNull { it.type == "Video" }
+                listOfNotNull(item.officialRating,
+                    video?.width?.let { w -> if (w >= 3800) "4K" else if (w >= 1200) "HD" else null },
+                    if (item.streams.any { it.type == "Subtitle" }) "CC" else null).forEach { badge ->
+                    Text(badge, style = app.lumiere.android.ui.TvType.badge,
+                        modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.55f), RoundedCornerShape(3.dp)).padding(horizontal = 5.dp, vertical = 1.dp))
+                }
+            }
             item.overview?.let {
-                Text(it, maxLines = 3, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium.copy(
-                    fontSize = 16.sp, lineHeight = 23.sp, color = Color.White.copy(alpha = 0.85f)))
+                Text(it, maxLines = 2, overflow = TextOverflow.Ellipsis, style = app.lumiere.android.ui.TvType.body,
+                    modifier = Modifier.widthIn(max = 380.dp))
             }
-            // Left from Play and right from More Info turn the banner, as Apple TV's top shelf turns.
-            Row(Modifier.onPreviewKeyEvent { e ->
+            // Left from Play and right from ⓘ turn the banner, as Apple TV's top shelf turns.
+            Row(Modifier.padding(top = 4.dp).onPreviewKeyEvent { e ->
                 val k = e.nativeKeyEvent
                 if (k.action != android.view.KeyEvent.ACTION_DOWN || pages < 2) return@onPreviewKeyEvent false
                 when {
@@ -471,31 +530,44 @@ private fun Hero(state: AppState, item: Item?, pages: Int, page: Int, onPage: (I
                     else -> false
                 }
             }, horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                LButton(onClick = { state.push(Screen.Player(item.id, null)) }, modifier = Modifier.focusRequester(play).onFocusChanged { onPlay = it.isFocused }) {
-                    Text(if (item.positionTicks > 0) "▶  Resume" + (item.episodeLabel?.let { " $it" } ?: "") +
-                        " · ${((item.runtimeTicks ?: 0) - item.positionTicks) / TICKS_PER_SECOND / 60} min left" else "▶  Play")
+                val playIt = { state.push(Screen.Player(item.id, item.positionTicks.takeIf { it > 0 }?.let { it / 10_000_000.0 })) }
+                androidx.tv.material3.Surface(onClick = playIt,
+                    modifier = Modifier.focusRequester(play).pointable(onClick = playIt).onFocusChanged { onPlay = it.isFocused; onHold(it.isFocused || onInfo) },
+                    shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                    scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+                    colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(containerColor = Color.White.copy(alpha = 0.92f),
+                        contentColor = Color.Black, focusedContainerColor = Color.White, focusedContentColor = Color.Black)) {
+                    Row(Modifier.height(app.lumiere.android.ui.TvSpace.button).padding(horizontal = 20.dp), verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Default.PlayArrow, null, tint = Color.Black, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(when {
+                            item.positionTicks > 0 -> "Resume" + (item.episodeLabel?.let { " $it" } ?: "")
+                            item.isEpisode -> "Play ${item.episodeLabel ?: ""}".trim()
+                            else -> "Play"
+                        }, style = app.lumiere.android.ui.TvType.button)
+                    }
                 }
-                // Apple's banner: round "+" for Up Next and ⓘ for the title's page beside Play.
                 if (!state.roomOpen && item.positionTicks == 0L) {
                     val queued = item.id in state.settings.watchlist
                     app.lumiere.android.ui.LIconButton(onClick = {
                         state.settings.watchlist = if (queued) state.settings.watchlist - item.id else listOf(item.id) + state.settings.watchlist
-                    }, modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.16f), CircleShape)) {
+                    }, modifier = Modifier.size(app.lumiere.android.ui.TvSpace.button).background(Color.White.copy(alpha = 0.2f), CircleShape)) {
                         androidx.compose.material3.Icon(if (queued) androidx.compose.material.icons.Icons.Default.Check else androidx.compose.material.icons.Icons.Default.Add,
                             if (queued) "In Up Next" else "Add to Up Next", tint = app.lumiere.android.ui.pillTint(Color.White))
                     }
                 }
                 app.lumiere.android.ui.LIconButton(onClick = {
                     state.push(if (item.isEpisode && item.seriesId != null) Screen.Detail(item.seriesId, item.seasonId) else Screen.Detail(item.id))
-                }, modifier = Modifier.size(48.dp).background(Color.White.copy(alpha = 0.16f), CircleShape)
-                    .onFocusChanged { onInfo = it.isFocused; onHold(it.isFocused) }) {
+                }, modifier = Modifier.size(app.lumiere.android.ui.TvSpace.button).background(Color.White.copy(alpha = 0.2f), CircleShape)
+                    .onFocusChanged { onInfo = it.isFocused; onHold(it.isFocused || onPlay) }) {
                     androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Info, "More Info", tint = app.lumiere.android.ui.pillTint(Color.White))
                 }
-                Spacer(Modifier.width(18.dp))
-                repeat(pages) { i ->
-                    Box(Modifier.padding(horizontal = 3.dp).size(if (i == page) 8.dp else 6.dp).clip(CircleShape)
-                        .background(if (i == page) Color.White else Color.White.copy(alpha = 0.35f)))
-                }
+            }
+        }
+        if (pages > 1) Row(Modifier.align(Alignment.BottomEnd).padding(end = GUTTER.dp, bottom = 44.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            repeat(pages) { i ->
+                Box(Modifier.size(6.dp).clip(CircleShape)
+                    .background(if (i == page) Color.White else Color.White.copy(alpha = 0.35f)))
             }
         }
     }
@@ -512,20 +584,40 @@ private fun facts(item: Item): String = listOfNotNull(
 
 @Composable
 private fun TvShelf(title: String, subtitle: String? = null, content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit) {
-    Column(Modifier.padding(top = 18.dp)) {
+    // On the Quest each row sits on a faint glass band over the colour ground, drawn behind it rather than
+    // clipping it, so a lifted card and its shadow still spill past the band's edge.
+    val glass = if (app.lumiere.android.Flavor.quest) Modifier.drawBehind {
+        val inset = (GUTTER / 2).dp.toPx()
+        drawRoundRect(Color.White.copy(alpha = 0.045f), androidx.compose.ui.geometry.Offset(inset, 0f),
+            androidx.compose.ui.geometry.Size(size.width - 2 * inset, size.height), androidx.compose.ui.geometry.CornerRadius(28.dp.toPx()))
+    }.padding(vertical = 10.dp) else Modifier
+    Column(Modifier.fillMaxWidth().padding(top = 6.dp).then(glass)) {
         Row(Modifier.padding(start = GUTTER.dp), verticalAlignment = Alignment.Bottom) {
-            Text(title, style = TextStyle(fontSize = 19.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary.copy(alpha = 0.9f)))
+            Text(title, style = app.lumiere.android.ui.TvType.row)
             subtitle?.let { Text("   $it", style = MaterialTheme.typography.labelMedium) }
         }
         // Back into a row lands on the card it was left on, not the nearest one.
         // The row's ends are walls: Right past the last card stays put
         // instead of leaping up to the spotlight.
+        // The chosen card stays pinned at the margin and the row slides beneath it;
+        // at the end the row stops and the remote walks on. Left from the first card
+        // opens the menu, as the Mac's sidebar sits to the left.
+        val pinPx = with(androidx.compose.ui.platform.LocalDensity.current) { GUTTER.dp.toPx() }
+        val pin = remember(pinPx) { object : androidx.compose.foundation.gestures.BringIntoViewSpec {
+            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float) = offset - pinPx } }
+        val state = LocalAppStateForShelf.current
+        CompositionLocalProvider(LocalBringIntoViewSpec provides pin) {
         LazyRow(Modifier.focusRestorer().focusProperties {
                 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-                exit = { d -> if (d == androidx.compose.ui.focus.FocusDirection.Left || d == androidx.compose.ui.focus.FocusDirection.Right)
-                    androidx.compose.ui.focus.FocusRequester.Cancel else androidx.compose.ui.focus.FocusRequester.Default }
-            }, contentPadding = PaddingValues(horizontal = GUTTER.dp, vertical = 14.dp),
+                exit = { d -> when (d) {
+                    // On the Quest, Left goes on to the side navigation beside the page.
+                    androidx.compose.ui.focus.FocusDirection.Left -> if (app.lumiere.android.Flavor.quest) androidx.compose.ui.focus.FocusRequester.Default
+                        else { state?.tvMenuOpen = true; androidx.compose.ui.focus.FocusRequester.Cancel }
+                    androidx.compose.ui.focus.FocusDirection.Right -> androidx.compose.ui.focus.FocusRequester.Cancel
+                    else -> androidx.compose.ui.focus.FocusRequester.Default } }
+            }, contentPadding = PaddingValues(start = GUTTER.dp, end = GUTTER.dp, top = 10.dp, bottom = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(GAP), content = content)
+        }
     }
 }
 
@@ -630,3 +722,5 @@ private fun NowPlayingBanner(state: AppState, track: Item) {
         }
     }
 }
+
+private val LocalAppStateForShelf = androidx.compose.runtime.compositionLocalOf<AppState?> { null }

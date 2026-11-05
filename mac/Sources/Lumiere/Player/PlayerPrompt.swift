@@ -18,6 +18,10 @@ struct PlayerPrompt: View {
     let onNextEpisode: () -> Void
     /// Whether the picture is moving; the countdown waits while it is not.
     var isPlaying = true
+    /// Watch Credits: true once chosen for this episode, which stops the
+    /// countdown; the next episode then starts only when this one ends.
+    var watchesCredits = false
+    var onWatchCredits: (() -> Void)?
 
     @State private var isHovering = false
     /// Seconds left before the next episode starts by itself, when "Play the
@@ -96,18 +100,32 @@ struct PlayerPrompt: View {
         }
         // The edge inset belongs to the caller — see `PlayerMetric.promptInset`.
         .transition(.move(edge: .trailing).combined(with: .opacity))
+        .overlay(alignment: .topLeading) {
+            // Beside a running countdown only: the way to stay for the credits.
+            if countdown != nil, let onWatchCredits {
+                Button("Watch Credits") { countdown = nil; onWatchCredits() }
+                    .font(Theme.Font.caption.weight(.semibold))
+                    .foregroundStyle(Theme.Palette.onPlayerChrome)
+                    .buttonStyle(.plain)
+                    .padding(.horizontal, Theme.Space.md)
+                    .padding(.vertical, Theme.Space.xs)
+                    .background(Theme.Palette.playerChrome, in: Capsule())
+                    .offset(y: -Theme.Space.xxl)
+                    .labelledHelp("Stay for the credits; the next episode starts when this one ends")
+            }
+        }
         .task(id: isPlaying) { await countDown() }
     }
 
     /// Ten seconds, paused while the picture is, then the next episode.
     private func countDown() async {
-        guard autoplays, SleepTimer.mode != .afterEpisode, case .nextEpisode = prompt,
+        guard autoplays, !watchesCredits, SleepTimer.mode != .afterEpisode, case .nextEpisode = prompt,
               !StillWatching.isAsking
         else { countdown = nil; return }
         if countdown == nil { countdown = 10 }
         while isPlaying, let left = countdown, left > 0 {
             try? await Task.sleep(for: .seconds(1))
-            guard !Task.isCancelled, isPlaying else { return }
+            guard !Task.isCancelled, isPlaying, countdown != nil else { return }
             countdown = left - 1
         }
         if countdown == 0 {

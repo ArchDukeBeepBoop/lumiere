@@ -32,6 +32,8 @@ public struct PlaybackDecision: Sendable, Equatable {
         case resolutionOverDecoderLimit
         case noCompatibleEngine
         case userForcedTranscode
+        /// AVFoundation could play it; mpv was chosen in Settings › Playback.
+        case mpvPreferred
 
         /// One sentence, shown in the player's info panel.
         public var explanation: String {
@@ -56,6 +58,8 @@ public struct PlaybackDecision: Sendable, Equatable {
                 return "Neither player can handle this file as-is."
             case .userForcedTranscode:
                 return "Transcoding because you asked for it."
+            case .mpvPreferred:
+                return "Playing the original file directly, in mpv."
             }
         }
     }
@@ -101,30 +105,6 @@ public struct PlaybackDecision: Sendable, Equatable {
 /// the system; mpv covers the rest; the server is asked to work only when both
 /// genuinely cannot.
 public enum PlaybackPlanner {
-
-    public struct Options: Sendable, Equatable {
-        /// False only if libmpv failed to load, which turns a direct play into a
-        /// server transcode — worth surfacing loudly if it ever happens.
-        public var mpvAvailable: Bool
-        /// The subtitle stream the user has chosen, if any.
-        public var selectedSubtitleIndex: Int?
-        /// Bits per second, from settings. Nil means unlimited, which is the
-        /// right default on a LAN.
-        public var maxBitrate: Int?
-        public var forceTranscode: Bool
-
-        public init(
-            mpvAvailable: Bool = true,
-            selectedSubtitleIndex: Int? = nil,
-            maxBitrate: Int? = nil,
-            forceTranscode: Bool = false
-        ) {
-            self.mpvAvailable = mpvAvailable
-            self.selectedSubtitleIndex = selectedSubtitleIndex
-            self.maxBitrate = maxBitrate
-            self.forceTranscode = forceTranscode
-        }
-    }
 
     // MARK: - Compatibility tables
 
@@ -234,7 +214,11 @@ public enum PlaybackPlanner {
             return mpvOr(.audioCodecUnsupportedByAVFoundation, .audioCodecUnsupportedByAVFoundation)
         }
 
-        // 9. Everything AVFoundation can take, it takes.
+        // 9. Everything AVFoundation can take, it takes — unless mpv is the
+        //    player chosen in Settings, which is the default.
+        if options.prefersMPV, options.mpvAvailable {
+            return mpvOr(.nativelySupported, .mpvPreferred)
+        }
         return PlaybackDecision(
             route: .directPlay, engine: .avPlayer, reason: .nativelySupported,
             toneMapDolbyVision: false, softwareDecode: software

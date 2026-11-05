@@ -233,7 +233,7 @@ private fun Touchpad() {
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(androidx.compose.foundation.shape.RoundedCornerShape(28.dp))
             .background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF2A2A2D),
-                androidx.compose.ui.graphics.Color(0xFF1C1C1E))))
+                androidx.compose.ui.graphics.Color(0xFF21253F))))
             .drawBehind {
                 if (glow > 0f) drawCircle(androidx.compose.ui.graphics.Brush.radialGradient(
                     listOf(androidx.compose.ui.graphics.Color.White.copy(alpha = 0.16f * glow), androidx.compose.ui.graphics.Color.Transparent),

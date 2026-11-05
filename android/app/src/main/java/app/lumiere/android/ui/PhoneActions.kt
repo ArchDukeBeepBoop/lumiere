@@ -205,7 +205,7 @@ private fun Menu(state: AppState, item: Item) {
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Preview(state, item)
         Spacer(Modifier.height(14.dp))
-        Column(Modifier.width(270.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF252527).copy(alpha = 0.97f))) {
+        Column(Modifier.width(270.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF21253F).copy(alpha = 0.97f))) {
             groups.forEachIndexed { g, entries ->
                 if (g > 0) Box(Modifier.fillMaxWidth().height(7.dp).background(Color.Black.copy(alpha = 0.35f)))
                 entries.forEachIndexed { i, e ->
@@ -248,7 +248,7 @@ private fun Notice() {
     if (text != null) last.value = text
     Box(Modifier.fillMaxSize().statusBarsPadding(), contentAlignment = Alignment.TopCenter) {
         AnimatedVisibility(text != null, enter = slideInVertically { -it } + fadeIn(), exit = slideOutVertically { -it } + fadeOut()) {
-            Row(Modifier.padding(top = 8.dp).clip(RoundedCornerShape(50)).background(Color(0xFF2C2C2E).copy(alpha = 0.97f))
+            Row(Modifier.padding(top = 8.dp).clip(RoundedCornerShape(50)).background(Color(0xFF262A47).copy(alpha = 0.97f))
                 .padding(start = 16.dp, end = if (PhoneNotice.undo != null) 6.dp else 18.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Icon(Icons.Default.CheckCircle, null, tint = Palette.accent, modifier = Modifier.size(18.dp))

@@ -345,3 +345,14 @@ CREATE TABLE IF NOT EXISTS repair_log (
     created     INTEGER NOT NULL DEFAULT 0,   -- 1: a row the repair made
     at          TEXT NOT NULL
 );
+
+-- A collection's watch order, arranged by hand ("My Watch Order"): the order
+-- every app plays and shows "next" in. It lived on the Mac alone, so the phone,
+-- TV and headset each had their own idea of what came next; here it's shared.
+CREATE TABLE IF NOT EXISTS watch_order (
+    collection_id TEXT NOT NULL,
+    item_id       TEXT NOT NULL,
+    rank          INTEGER NOT NULL,
+    updated_at    TEXT NOT NULL,
+    PRIMARY KEY (collection_id, item_id)
+);

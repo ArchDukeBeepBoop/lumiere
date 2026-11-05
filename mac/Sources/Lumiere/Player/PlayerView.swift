@@ -204,7 +204,7 @@ struct PlayerView: View {
             NowPlaying.shared.detach()
             // Leaving the player with the pointer still hidden would strand it
             // invisible over the library.
-            NSCursor.unhide()
+            PlayerPointer.show(force: true)
             // Playback menus grey out rather than acting on a player that is gone.
             bridge.menuState = PlayerMenuState()
             // The resume position is written here. Closing the window must not

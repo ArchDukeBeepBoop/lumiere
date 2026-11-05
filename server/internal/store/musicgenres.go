@@ -31,12 +31,18 @@ func (s *Store) genres(parentID, types string) ([]string, error) {
 		}
 	}
 
+	// Scoped, the library's items come first and their genres after: CROSS
+	// JOIN keeps SQLite to that order. Left to choose, it started from all
+	// 86,000 genre values — nearly all of them on films and episodes — and
+	// threw away everything not in the library, for a list of 128 names.
+	from := `FROM item_value v JOIN item i ON i.id = v.item_id WHERE v.kind = 'genre' AND`
+	if scope != "" {
+		from = `FROM item i CROSS JOIN item_value v ON v.item_id = i.id AND v.kind = 'genre' WHERE`
+	}
 	rows, err := s.DB.Query(`
-		SELECT DISTINCT v.value
-		FROM item_value v
-		JOIN item i ON i.id = v.item_id
-		WHERE v.kind = 'genre' AND i.type IN (`+types+`)`+scope+`
-		ORDER BY v.value COLLATE NOCASE`, args...)
+		SELECT MIN(v.value) `+from+` i.type IN (`+types+`)`+scope+`
+		GROUP BY lower(v.value)
+		ORDER BY 1 COLLATE NOCASE`, args...)
 	if err != nil {
 		return nil, err
 	}

@@ -39,14 +39,14 @@ cp "$BIN" "$APP/Contents/MacOS/Lumiere"
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 printf 'APPL????' > "$APP/Contents/PkgInfo"
 
-# The icon. Regenerate with Scripts/make-icon.py if it is missing — an app with no
-# icon gets the blank-page placeholder, which looks broken rather than unfinished.
+# The icon, drawn fresh every build — an app with no icon gets the blank-page
+# placeholder, which looks broken rather than unfinished.
 echo "==> Rendering the icon"
-# Compiled with the app's own IrisArt, so the Dock icon and the icon Settings
-# draws are one geometry rather than two that agree until someone edits one.
+# Compiled from the app's own PrismArt, the one geometry of the prism icon;
+# LumiereControl and the Android launcher icons are rendered from the same.
 ICONS="$ROOT/build/icons"
 rm -rf "$ICONS" && mkdir -p "$ICONS"
-swiftc -O "$ROOT/Tools/RenderIcon.swift" "$ROOT/Sources/Lumiere/Design/IrisArt.swift" \
+swiftc -O "$ROOT/Tools/RenderIcon.swift" "$ROOT/Sources/Lumiere/Design/PrismArt.swift" \
 	-o "$ROOT/build/rendericon"
 "$ROOT/build/rendericon" "$ICONS"
 
@@ -62,7 +62,7 @@ iconutil -c icns -o "$ROOT/Resources/Lumiere.icns" "$SET"
 if [ -f "$ROOT/Resources/Lumiere.icns" ]; then
 	cp "$ROOT/Resources/Lumiere.icns" "$APP/Contents/Resources/Lumiere.icns"
 else
-	echo "    warning: no Resources/Lumiere.icns — run ./Scripts/make-icon.py" >&2
+	echo "    warning: no Resources/Lumiere.icns — the icon render above failed" >&2
 fi
 
 # Subtitle fonts, vendored so a styled subtitle looks the same on any machine.

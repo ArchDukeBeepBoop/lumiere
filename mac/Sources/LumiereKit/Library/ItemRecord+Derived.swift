@@ -109,3 +109,8 @@ public extension ItemRecord {
         return studios.components(separatedBy: "\n").first
     }
 }
+
+extension String {
+    /// Nil for an empty string — how a decoded field reaches an optional column.
+    var nilIfEmpty: String? { isEmpty ? nil : self }
+}

@@ -35,7 +35,7 @@ extension LibraryGridView {
         total = (try? await repository.count(
             types: tab.types,
             libraryId: libraryId, searchTerm: activeFilter,
-            genre: genre, studio: studio, unwatchedOnly: unwatchedOnly
+            genre: genre, studio: studio, country: country, season: season, unwatchedOnly: unwatchedOnly
         )) ?? 0
         // The rail describes the whole library, so it is rebuilt whenever what
         // "first" means changes — a genre filter or a different sort.
@@ -45,6 +45,8 @@ extension LibraryGridView {
             sort: sort,
             genre: genre,
             studio: studio,
+            country: country,
+            season: season,
             // The same two the grid is filtered by, so the rail counts the rows
             // that are actually on screen rather than the whole library.
             searchTerm: activeFilter,
@@ -84,6 +86,8 @@ extension LibraryGridView {
             searchTerm: activeFilter,
             genre: genre,
             studio: studio,
+            country: country,
+            season: season,
             unwatchedOnly: unwatchedOnly,
             // The grid keeps every row it pages in, and a full library is tens of
             // thousands of them. See `LibraryRepository.Projection`: 51.7 MB of
@@ -106,5 +110,33 @@ extension LibraryGridView {
               let index = entries.firstIndex(where: { $0.id == entry.id }),
               index >= entries.count - 12 else { return }
         await loadPage()
+    }
+
+    /// The genre, studio and country menus, each asked the way the grid is
+    /// filtered so a menu never offers a choice with nothing behind it.
+    /// Moved from LibraryGridView.swift for the 300-line rule.
+    func loadFilterChoices() async {
+        genres = ((try? await repository.genreTallies(
+            types: LibraryRepository.topLevelTypes, libraryId: libraryId
+        )) ?? []).map(\.name).sorted()
+        // Asked the same way, so the menu and the grid agree about what is in
+        // this library — the mistake documented in LibraryGridView.swift.
+        studios = ((try? await repository.studioTallies(
+            types: LibraryRepository.topLevelTypes, libraryId: libraryId
+        )) ?? []).map(\.name).sorted()
+        countries = ((try? await repository.countryTallies(
+            types: LibraryRepository.topLevelTypes, libraryId: libraryId
+        )) ?? []).map(\.name)
+            .sorted { LibraryRepository.countryName($0).localizedCompare(LibraryRepository.countryName($1)) == .orderedAscending }
+        // Seasons for anime libraries, where a show is known by when it aired:
+        // one named so, or one looked up on AniList (Settings › Anime Franchises).
+        let name = ((try? await repository.libraries()) ?? []).first { $0.id == libraryId }?.name ?? ""
+        var anime = LibraryKinds.isAnime(name)
+        if !anime, let client = app?.client {
+            anime = (try? await client.aniListStatus())?.libraries?.contains { $0.id == libraryId && $0.on } ?? false
+        }
+        seasons = anime
+            ? ((try? await repository.animeSeasons(libraryId: libraryId, types: LibraryRepository.topLevelTypes)) ?? [])
+            : []
     }
 }

@@ -59,6 +59,7 @@ import app.lumiere.android.api.TICKS_PER_SECOND
 import app.lumiere.android.api.extras
 import app.lumiere.android.api.itemJson
 import app.lumiere.android.api.similar
+import app.lumiere.android.api.watchOrder
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -100,6 +101,7 @@ fun DetailScreen(state: AppState, id: String, refreshKey: Int) {
                         next = runCatching { server.nextUp(session.userId).firstOrNull { it.seriesId == id } }.getOrNull()
                     }
                     found.isFolder -> children = state.childrenOrSaved(id)
+                        .let { c -> if (found.type == "BoxSet") app.lumiere.android.api.inWatchOrder(c, server.watchOrder(id)) else c }
                 }
             }
             .onFailure { error = it.message }
@@ -118,7 +120,7 @@ fun DetailScreen(state: AppState, id: String, refreshKey: Int) {
 
     val current = item
     val ground = tint?.let { lerp(Color.Black, it, 0.38f) } ?: Palette.canvas
-    Box(Modifier.fillMaxSize().background(Palette.canvas)) {
+    Box(Modifier.fillMaxSize().background(Palette.ground)) {
         if (current == null) {
             if (error != null) Text(error!!, Modifier.align(Alignment.Center).padding(24.dp), color = Palette.textSecondary)
             else CircularProgressIndicator(Modifier.align(Alignment.Center), color = Palette.textSecondary)

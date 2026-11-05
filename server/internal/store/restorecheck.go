@@ -23,8 +23,8 @@ const (
 
 // RehearseRestore opens the newest backup in a scratch folder. It returns
 // the problem, or "" when the copy opened and answered.
-func (s *Store) RehearseRestore(dataDir string) string {
-	newest := newestBackup(filepath.Join(dataDir, "backups"))
+func (s *Store) RehearseRestore(dir string) string {
+	newest := newestBackup(dir)
 	if newest == "" {
 		return ""
 	}
@@ -48,12 +48,12 @@ func (s *Store) RehearseRestore(dataDir string) string {
 }
 
 // RehearseWeekly runs RehearseRestore when a week has passed since the last.
-func (s *Store) RehearseWeekly(dataDir string) (ran bool, problem string) {
+func (s *Store) RehearseWeekly(dir string) (ran bool, problem string) {
 	last, _ := s.Meta(metaRestoreCheck)
 	if when, err := time.Parse(time.RFC3339, last); err == nil && time.Since(when) < 7*24*time.Hour {
 		return false, ""
 	}
-	problem = s.RehearseRestore(dataDir)
+	problem = s.RehearseRestore(dir)
 	s.SetMeta(metaRestoreCheck, time.Now().UTC().Format(time.RFC3339))
 	s.SetMeta(metaRestoreFailed, problem)
 	return true, problem

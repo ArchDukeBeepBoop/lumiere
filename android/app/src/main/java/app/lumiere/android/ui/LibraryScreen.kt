@@ -108,7 +108,7 @@ fun LibraryScreen(state: AppState, view: Item) {
         loadMore(generation)
     }
 
-    Column(Modifier.fillMaxSize().background(Palette.canvas)) {
+    Column(Modifier.fillMaxSize().background(Palette.ground)) {
         val scope = androidx.compose.runtime.rememberCoroutineScope()
         // A random title from here, playing at once.
         val shuffle: () -> Unit = { scope.launch {
@@ -160,7 +160,7 @@ fun LibraryScreen(state: AppState, view: Item) {
         LazyVerticalGrid(
             modifier = Modifier.weight(1f),
             columns = if (form.isTv) GridCells.Adaptive(form.posterWidth.dp) else GridCells.Fixed(phoneColumns()),
-            contentPadding = if (form.isTv) PaddingValues(form.gutter.dp) else PaddingValues(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 96.dp),
+            contentPadding = if (form.isTv) PaddingValues(start = form.gutter.dp, end = form.gutter.dp, top = form.gutter.dp, bottom = form.gutter.dp + TvSpace.foot) else PaddingValues(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 96.dp),
             horizontalArrangement = Arrangement.spacedBy(if (form.isTv) 14.dp else 10.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {

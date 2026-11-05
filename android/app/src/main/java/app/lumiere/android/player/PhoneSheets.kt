@@ -50,7 +50,7 @@ private fun Sheet(title: String, onDone: () -> Unit, content: @Composable () -> 
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.5f))
         .clickable(remember { MutableInteractionSource() }, null, onClick = onDone), contentAlignment = Alignment.BottomCenter) {
         Column(Modifier.widthIn(max = 560.dp).fillMaxWidth().heightIn(max = 520.dp)
-            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)).background(Color(0xF21C1C1E))
+            .clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)).background(Color(0xF221253F))
             .clickable(remember { MutableInteractionSource() }, null) {}.navigationBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(start = 18.dp, end = 10.dp, top = 12.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(title, style = IosType.headline, color = Color.White, modifier = Modifier.weight(1f))

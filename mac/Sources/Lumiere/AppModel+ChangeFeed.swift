@@ -63,7 +63,7 @@ extension AppModel {
                 await runSync()
             }
         }
-        startAutoSync(); startChangeWatch(); startChangeFeed(); startDriftCheck()
+        startAutoSync(); startChangeWatch(); startChangeFeed(); startDriftCheck(); sendFranchiseNaming()
     }
 
     /// Starts the feed. Safe to call more than once — the old loop is replaced.

@@ -36,6 +36,13 @@ final class ServerProcess {
         }
     }
     private(set) var startedAt: Date?
+    /// The server refused to start because its library is gone while a backup
+    /// or its witness says there was one. The menu offers Restore and Start
+    /// Fresh rather than a restart, which would only be refused again.
+    private(set) var libraryMissing = false
+    /// Whether the process is this app's own. An adopted server — one started
+    /// from a terminal — is reported when it stops answering, never signalled.
+    var ownsProcess: Bool { process != nil }
     /// The last few log lines, for the "why did it stop" case.
     private(set) var recentLog: [String] = []
 
@@ -54,7 +61,10 @@ final class ServerProcess {
 
     let address = URL(string: "http://127.0.0.1:8098")!
 
-    func start() {
+    /// The exit status the server uses for a missing library.
+    static let exitLibraryMissing: Int32 = 3
+
+    func start(fresh: Bool = false) {
         guard state != .running, state != .starting else { return }
         guard let binary = ServerProcess.binaryURL else {
             state = .failed("The server binary is missing from this app.")
@@ -63,9 +73,18 @@ final class ServerProcess {
 
         let task = Process()
         task.executableURL = binary
-        // No arguments: the server's own defaults are the values for this
-        // machine, which is the whole reason it takes flags rather than a file.
-        task.arguments = []
+        // The server's own defaults are the values for this machine; only what
+        // the person chose in Settings is passed, and Start Fresh when asked.
+        var arguments: [String] = []
+        if let mirror = BackupRestorer.mirrorFolder {
+            arguments += ["-backup-mirror", mirror.path]
+        }
+        if let pictures = UserDefaults.standard.string(forKey: PictureFolder.key), !pictures.isEmpty {
+            arguments += ["-cache", pictures]
+        }
+        if fresh { arguments.append("-start-fresh") }
+        task.arguments = arguments
+        libraryMissing = false
 
         let pipe = Pipe()
         task.standardOutput = pipe
@@ -104,12 +123,6 @@ final class ServerProcess {
         state = .stopped
     }
 
-    /// Poll until the server answers, so "running" means *serving* rather than
-    /// *spawned*. The two are several hundred milliseconds apart while SQLite
-    /// opens a 300 MB database, and a green dot that arrives before the server
-    /// can answer is worse than no dot.
-    /// Stops the server and waits for it to be gone, so its database file
-    /// is closed before anything replaces it.
     /// Stop, wait for the old process to let go of the port and the database,
     /// then start. Waiting is the point: a start issued straight after a stop
     /// races the old server for 8098 and loses with "address already in use".
@@ -118,6 +131,8 @@ final class ServerProcess {
         start()
     }
 
+    /// Stops the server and waits for it to be gone, so its database file
+    /// is closed before anything replaces it.
     func stopAndWait() async {
         let running = process
         stop()
@@ -126,6 +141,10 @@ final class ServerProcess {
         }
     }
 
+    /// Poll until the server answers, so "running" means *serving* rather than
+    /// *spawned*. The two are several hundred milliseconds apart while SQLite
+    /// opens a 300 MB database, and a green dot that arrives before the server
+    /// can answer is worse than no dot.
     private func watchUntilListening() {
         probe?.cancel()
         probe = Task { [weak self] in
@@ -152,6 +171,36 @@ final class ServerProcess {
         return http.statusCode == 200
     }
 
+    /// Liveness: does the process answer HTTP at all, within five seconds?
+    ///
+    /// `/health/live` touches no lock and no database, so a busy library
+    /// cannot make it slow. Any HTTP answer counts, a 404 from a server too
+    /// old to have the route included: liveness is "the process answers",
+    /// and only no answer at all is a miss.
+    func isLive() async -> Bool {
+        var request = URLRequest(url: address.appending(path: "health/live"))
+        request.timeoutInterval = 5
+        guard let (_, response) = try? await URLSession.shared.data(for: request) else { return false }
+        return response is HTTPURLResponse
+    }
+
+    /// Writes why this app acted into the server's own log, so a restart is
+    /// never a gap with no explanation in the one place anyone will look.
+    func note(_ reason: String) {
+        let stamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: true))
+        let line = "time=\(stamp) level=WARN msg=\"LumiereControl: \(reason)\"\n"
+        guard let handle = try? FileHandle(forWritingTo: LibraryMonitor.logFile) else { return }
+        defer { try? handle.close() }
+        _ = try? handle.seekToEnd()
+        try? handle.write(contentsOf: Data(line.utf8))
+    }
+
+    /// Gives up on a server that will not stay up, with the reason shown.
+    func giveUp(_ reason: String) {
+        stop()
+        state = .failed(reason)
+    }
+
     /// Adopt a server that is already running — one started from a terminal, or
     /// left behind by a previous run of this app. Without this the menu would
     /// offer to start a second one and report a port clash as a failure.
@@ -174,6 +223,7 @@ final class ServerProcess {
             state = .stopped
             return
         }
+        libraryMissing = status == Self.exitLibraryMissing
         state = .failed(reasonFromLog() ?? "The server stopped (status \(status)).")
     }
 

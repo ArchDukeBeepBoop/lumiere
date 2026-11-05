@@ -63,7 +63,13 @@ type BaseItem struct {
 	Genres  []string    `json:"Genres"`
 	Tags    []string    `json:"Tags,omitempty"`
 	Studios []NamedItem `json:"Studios,omitempty"`
-	People  []Person    `json:"People,omitempty"`
+	// ProductionLocations carries ISO 3166-1 codes ("JP"), not Jellyfin's
+	// English names: the apps name each country in the viewer's language.
+	ProductionLocations []string `json:"ProductionLocations,omitempty"`
+	// RomajiTitle is Lumiere's own: the title in romaji, from AniList, for
+	// the apps' per-library title order.
+	RomajiTitle string   `json:"RomajiTitle,omitempty"`
+	People      []Person `json:"People,omitempty"`
 
 	// ImageTags' value is a cache key, not a filename: the client caches on it
 	// forever and only refetches when it changes (§7.1).

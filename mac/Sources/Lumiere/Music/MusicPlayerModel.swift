@@ -45,6 +45,9 @@ final class MusicPlayerModel {
     /// rather than a back-reference, because this model is built before the
     /// AppModel that owns it and must not retain it.
     var onPlaybackStateChange: (() -> Void)?
+    /// A track heard to its end, for the app to count as played. A closure
+    /// for the same reason as the one above.
+    var onTrackFinished: ((LibraryEntry) -> Void)?
     var position: Double = 0
     var duration: Double = 0
     /// The window-filling player. A third size rather than a second: the mini bar

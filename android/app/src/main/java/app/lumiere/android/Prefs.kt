@@ -33,7 +33,7 @@ class Prefs(context: Context) {
         set(v) { _subtitleLift.floatValue = v; store.edit().putFloat("subtitleLift", v).apply() }
 
     private val _wallpaperColours = flag("wallpaperColours", false)
-    /** On a phone from Android 12: the accent from the wallpaper rather than the Mac's gold. */
+    /** On a phone from Android 12: the accent from the wallpaper rather than the prism's periwinkle. */
     var wallpaperColours: Boolean get() = _wallpaperColours.value
         set(v) { _wallpaperColours.value = v; put("wallpaperColours", v) }
 
@@ -207,6 +207,11 @@ class Prefs(context: Context) {
     var libraryColumns: Int get() = _cols.value
         set(v) { _cols.value = v; putInt("libraryColumns", v) }
 
+    private val _immersive = flag("immersivePreview", false)
+    /** TV Home as the immersive browse screen, on the sample catalog, for review before it meets the library. */
+    var immersivePreview: Boolean get() = _immersive.value
+        set(v) { _immersive.value = v; put("immersivePreview", v) }
+
     private val _homeRows = intPref("homeRows", 0)
     /** Rows on TV Home: 0 for all, otherwise the most shown. */
     var homeRows: Int get() = _homeRows.value
@@ -242,7 +247,7 @@ class Prefs(context: Context) {
     var subtitleLanguage: String get() = _subLang.value
         set(v) { _subLang.value = v; store.edit().putString("subtitleLanguage", v).apply() }
 
-    private val _keepNext = flag("keepNextReady", false)
+    private val _keepNext = flag("keepNextReady", true)
     /** The next two episodes of what is playing kept on the device, within the download space. */
     var keepNextReady: Boolean get() = _keepNext.value
         set(v) { _keepNext.value = v; put("keepNextReady", v) }
@@ -269,6 +274,11 @@ class Prefs(context: Context) {
     var screensaverMinutes: Int get() = _saver.value
         set(v) { _saver.value = v; putInt("screensaverMinutes", v) }
 
+    private val _plays = flag("countsMusicPlays", true)
+    /** A song heard to its end counts as played on the Mac, which ranks Top 10 Artists. */
+    var countsMusicPlays: Boolean get() = _plays.value
+        set(v) { _plays.value = v; put("countsMusicPlays", v) }
+
     private val _dim = flag("dimsAtNight", true)
     /** Menus darker from 10 pm to 6 am, so a projected menu does not light the room. */
     var dimsAtNight: Boolean get() = _dim.value
@@ -292,10 +302,21 @@ class Prefs(context: Context) {
     var tvTourShown: Boolean get() = _tour.value
         set(v) { _tour.value = v; put("tvTourShown", v) }
 
-    private val _calm = flag("reduceMotion", Device.lowMemory)
+    // On by default in the headset too: motion under the eye is a comfort matter there (Horizon OS guidance).
+    private val _calm = flag("reduceMotion", Device.lowMemory || Flavor.quest)
     /** tvOS's Reduce Motion: no tilt, sweep or drift, quick fades. On by default where memory is short. */
     var reduceMotion: Boolean get() = _calm.value
         set(v) { _calm.value = v; put("reduceMotion", v) }
+
+    private val _artBackdrop = flag("questArtBackdrop", false)
+    /** On a Quest: Home behind the titles' pictures, as on the TV; off, colour (the headset's default). */
+    var questArtBackdrop: Boolean get() = _artBackdrop.value
+        set(v) { _artBackdrop.value = v; put("questArtBackdrop", v) }
+
+    private val _filmLight = flag("questFilmLight", true)
+    /** On a Quest: a place's light takes on the colour of the film's backdrop. */
+    var questFilmLight: Boolean get() = _filmLight.value
+        set(v) { _filmLight.value = v; put("questFilmLight", v) }
 
     private val _phoneMerged = flag("phoneUpNextMerged", true)
     /** On a phone: Continue Watching, Up Next additions and Next Up as one Up Next row, as Apple's app on an iPhone. */
@@ -449,7 +470,7 @@ class Prefs(context: Context) {
             "focusSound" to "Sound on focus", "libraryColumns" to "Library columns", "episodesOpenPage" to "Episodes open their page",
             "hidesSpoilers" to "Hide spoilers", "phoneRemote" to "Phone as a remote", "keepAwake" to "Keep the screen on", "remoteTouchpad" to "Swipe pad on the phone's remote", "nightAuto" to "Night mode by itself",
             "keepNextReady" to "Keep the next episode ready", "skipCountdown" to "Countdown on Skip", "screensaverMinutes" to "Screensaver after (minutes)",
-            "dimsAtNight" to "Dim at night", "reduceMotion" to "Reduce motion", "tvUpNextMerged" to "One Up Next row", "phoneUpNextMerged" to "One Up Next row on the phone",
+            "countsMusicPlays" to "Count songs played", "dimsAtNight" to "Dim at night", "reduceMotion" to "Reduce motion", "tvUpNextMerged" to "One Up Next row", "phoneUpNextMerged" to "One Up Next row on the phone",
             "bannerPreviews" to "Moving previews", "tvTopBar" to "Top bar on TV", "textScale" to "Text size", "showsClock" to "Clock",
             "filmsWarm" to "Warm picture for films", "compactHome" to "Compact Home", "pictureTone" to "Picture tone",
             "lampBright" to "Bright lamp", "stillWatchingAfter" to "Ask \u201CStill watching?\u201D after",

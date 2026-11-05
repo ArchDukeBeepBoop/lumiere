@@ -18,6 +18,27 @@ public extension LibraryRepository {
 
     /// A collection's personal order, keyed by item. Empty until you arrange one.
     func collectionRanks(collectionId: String) async throws -> [String: Int] {
+        // The server's arrangement is the shared one (LibraryRepository+WatchOrder): read it into
+        // the local copy, or — the first time, or after a change the server never heard of — send ours.
+        let local = try await localRanks(collectionId: collectionId)
+        let pending = WatchOrderPending.all().contains(collectionId)
+        if let shared = try? await client.watchOrder(collectionId: collectionId) {
+            if !pending && !shared.isEmpty {
+                try await writeLocalOrder(collectionId: collectionId, itemIds: shared)
+                return try await localRanks(collectionId: collectionId)
+            }
+            if (pending || shared.isEmpty) && !local.isEmpty {
+                let ours = local.sorted { $0.value < $1.value }.map(\.key)
+                if (try? await client.setWatchOrder(collectionId: collectionId, itemIds: ours)) != nil {
+                    WatchOrderPending.clear(collectionId)
+                }
+            }
+        }
+        return local
+    }
+
+    /// The Mac's own copy of a collection's order.
+    private func localRanks(collectionId: String) async throws -> [String: Int] {
         let rows: [CollectionRankRecord] = try await database.writer.read { db in
             try CollectionRankRecord
                 .filter(Column("collectionId") == collectionId)
@@ -33,6 +54,13 @@ public extension LibraryRepository {
     /// into whatever the database happens to return. A personal order that begins
     /// as a shuffle is one nobody will finish arranging.
     func setCollectionOrder(collectionId: String, itemIds: [String]) async throws {
+        try await writeLocalOrder(collectionId: collectionId, itemIds: itemIds)
+        // Shared with every other app; unreachable (offline, an older server) it's sent at the next read.
+        do { try await client.setWatchOrder(collectionId: collectionId, itemIds: itemIds); WatchOrderPending.clear(collectionId) }
+        catch { WatchOrderPending.mark(collectionId) }
+    }
+
+    private func writeLocalOrder(collectionId: String, itemIds: [String]) async throws {
         let now = Date()
         try await database.writer.write { db in
             try CollectionRankRecord
@@ -73,5 +101,7 @@ public extension LibraryRepository {
                 .filter(Column("collectionId") == collectionId)
                 .deleteAll(db)
         }
+        do { try await client.setWatchOrder(collectionId: collectionId, itemIds: []); WatchOrderPending.clear(collectionId) }
+        catch { WatchOrderPending.mark(collectionId) }
     }
 }

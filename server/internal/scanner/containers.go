@@ -28,11 +28,19 @@ func ensureSeries(tx *sql.Tx, libraryID string, layout Layout) (string, error) {
 		if err != sql.ErrNoRows {
 			return "", err
 		}
+		// A folder folded into another show (store.MergeSplitShows) files there.
+		if tx.QueryRow(`SELECT item_id FROM item_value WHERE kind = 'folder:alias' AND value = ?`,
+			layout.SeriesPath).Scan(&id) == nil {
+			return id, nil
+		}
 	}
 
+	// By name only where the years agree: "Rurouni Kenshin (2023)" is the
+	// remake, not more of the 1996 show, though both strip to one name.
 	err := tx.QueryRow(
-		`SELECT id FROM item WHERE library_id = ? AND type = 'Series' AND name = ?`,
-		libraryID, layout.Series,
+		`SELECT id FROM item WHERE library_id = ? AND type = 'Series' AND name = ?
+		   AND (? = 0 OR production_year IS NULL OR production_year = ?)`,
+		libraryID, layout.Series, layout.Year, layout.Year,
 	).Scan(&id)
 	if err == nil {
 		return id, nil
@@ -42,6 +50,10 @@ func ensureSeries(tx *sql.Tx, libraryID string, layout Layout) (string, error) {
 	}
 
 	id = ItemID("series:" + libraryID + ":" + layout.Series)
+	if layout.Year > 0 {
+		// The year in the id too, or the remake's row is the original's.
+		id = ItemID(fmt.Sprintf("series:%s:%s (%d)", libraryID, layout.Series, layout.Year))
+	}
 	var year any
 	if layout.Year > 0 {
 		year = layout.Year

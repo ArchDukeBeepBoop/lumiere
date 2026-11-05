@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -14,13 +15,13 @@ import (
 // and the answer to "where did episode twelve go" is usually "next door".
 func (s *Store) misfiledEpisodes() (HealthIssue, error) {
 	issue := HealthIssue{Kind: "MisfiledEpisodes", Samples: []HealthSample{}}
+	// Unsorted and without a per-row lookup: the folders are sorted here, and
+	// the dismissed ones read once. The report runs after every sync.
+	dismissed := s.dismissedKeys("MisfiledEpisodes")
 	rows, err := s.DB.Query(`
 		SELECT id, COALESCE(series_name, ''), path
 		FROM item
-		WHERE type = 'Episode' AND extra_type IS NULL AND path IS NOT NULL
-		  AND NOT EXISTS (SELECT 1 FROM health_dismissed d
-		                  WHERE d.kind = 'MisfiledEpisodes' AND d.key = item.id)
-		ORDER BY path`)
+		WHERE type = 'Episode' AND extra_type IS NULL AND path IS NOT NULL`)
 	if err != nil {
 		return issue, err
 	}
@@ -35,6 +36,9 @@ func (s *Store) misfiledEpisodes() (HealthIssue, error) {
 		var f file
 		if err := rows.Scan(&f.id, &f.series, &f.path); err != nil {
 			return issue, err
+		}
+		if dismissed[f.id] {
+			continue
 		}
 		if _, ok := FolderSeason(f.path); !ok {
 			continue
@@ -53,7 +57,9 @@ func (s *Store) misfiledEpisodes() (HealthIssue, error) {
 	if err := rows.Err(); err != nil {
 		return issue, err
 	}
+	sort.Strings(order)
 	for _, dir := range order {
+		sort.Slice(folders[dir], func(i, j int) bool { return folders[dir][i].path < folders[dir][j].path })
 		files := folders[dir]
 		seasons := make([]int, len(files))
 		for i, f := range files {

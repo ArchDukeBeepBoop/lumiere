@@ -30,8 +30,8 @@ public enum PaperTheme {
         0x5C5C63: 0x5B5146, // textSecondary
         0x86868C: 0x877B6B, // textMuted
         0xB0B0B8: 0xB5A993, // textDisabled
-        0x8A6E12: 0x8E3B2C, // accent: oxblood ink
-        0xE2D3A0: 0xE6CBBF, // accentMuted
+        0x4F53C9: 0x8E3B2C, // accent: oxblood ink
+        0xD6D8FF: 0xE6CBBF, // accentMuted
         0xC7C7CE: 0xC9BDA6, // badgeNeutralBorder
     ]
 
@@ -41,8 +41,8 @@ public enum PaperTheme {
     /// A light value in Theme.swift must be in `ink` or here; a test holds that.
     public static let keptAsIs: Set<UInt32> = [
         0xF07B22, 0xBE2F2C, 0x1C8560, 0x000000,
-        0x715A0F, 0xD8C68C, 0x1B6349, 0x9CD2BD, 0x1A5486, 0xA3C6E6,
-        0x8A3B63, 0x8A3B2E, 0x6B3B8A, 0x3F4A8A, 0x2E7A5C, 0x2E5E8A, 0x1F5F63,
+        0x4B3FA0, 0xC9C5F2, 0x1B6349, 0x9CD2BD, 0x1A5486, 0xA3C6E6,
+        0x8A6E12, 0x8A3B63, 0x8A3B2E, 0x6B3B8A, 0x3F4A8A, 0x2E7A5C, 0x2E5E8A, 0x1F5F63,
     ]
 
     public static func map(_ light: UInt32) -> UInt32 { ink[light] ?? light }

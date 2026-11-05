@@ -18,6 +18,9 @@ extension PlayerView {
     static let wakeSuppression: TimeInterval = 0.5
 
     func wakeChrome() {
+        // The pointer on any movement, even the tail of the gesture that
+        // dismissed the bar, which brings back only the pointer.
+        PlayerPointer.show()
         // The bar was just dismissed by leaving it; the tail of that same gesture
         // must not bring it straight back. See `suppressWakeUntil`.
         if Date() < suppressWakeUntil { return }
@@ -31,7 +34,6 @@ extension PlayerView {
 
         showsChrome = true
         showsGlance = false
-        NSCursor.unhide()
         idleTask?.cancel()
         idleTask = Task {
             try? await Task.sleep(for: idleTimeout)
@@ -47,10 +49,9 @@ extension PlayerView {
                   model != nil else { return }
             showsChrome = false
             showsGlance = true
-            // The pointer goes with the controls. `setHiddenUntilMouseMoves` brings
-            // it back by itself on the next movement, so nothing has to track the
-            // mouse to restore it — and the same movement wakes the chrome anyway.
-            NSCursor.setHiddenUntilMouseMoves(true)
+            // The pointer goes with the controls, and the next movement — which
+            // wakes the chrome — brings it back. See `PlayerPointer`.
+            PlayerPointer.hide()
             // Then the glance goes too. See `PlayerGlance`.
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled else { return }
@@ -87,7 +88,7 @@ extension PlayerView {
         idleTask?.cancel()
         suppressWakeUntil = Date().addingTimeInterval(Self.wakeSuppression)
         showsChrome = false
-        NSCursor.setHiddenUntilMouseMoves(true)
+        PlayerPointer.hide()
     }
 
     /// The HUD is polled only while visible: statistics cost a round of property

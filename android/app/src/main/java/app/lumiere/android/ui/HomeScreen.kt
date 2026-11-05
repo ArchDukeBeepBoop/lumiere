@@ -1,5 +1,6 @@
 package app.lumiere.android.ui
 
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -61,6 +62,13 @@ internal data class HomeRows(
  */
 @Composable
 fun HomeScreen(state: AppState, refreshKey: Int) {
+    // Review build of the immersive browse screen: sample catalog only (see tv/browse).
+    if (LocalFormFactor.current.isTv && state.settings.immersivePreview) {
+        app.lumiere.android.tv.browse.ImmersiveBrowse(app.lumiere.android.tv.browse.FakeCatalog) { item ->
+            app.lumiere.android.ui.Notice.show(item.title, "A sample title — nothing to play")
+        }
+        return
+    }
     val server = state.server ?: return
     val session = state.session ?: return
     val form = LocalFormFactor.current
@@ -87,7 +95,12 @@ fun HomeScreen(state: AppState, refreshKey: Int) {
         // The Mac pauses for a minute or two while it re-imports Jellyfin, so
         // a failure is retried quietly for a while before Home says it's offline.
         // What was watched with no connection reaches the Mac before Home asks it.
-        runCatching { state.ledger.flush(server) }
+        // Those that were waiting and have now arrived are confirmed in a word, briefly.
+        val waitingBefore = state.ledger.waiting
+        val flushed = runCatching { state.ledger.flush(server) }.getOrDefault(false)
+        if (waitingBefore > 0 && flushed) app.lumiere.android.ui.Notice.show("Synced",
+            "$waitingBefore watched ${if (waitingBefore == 1) "mark" else "marks"} reached the Mac",
+            androidx.compose.material.icons.Icons.Default.CloudDone, androidx.compose.ui.graphics.Color(0xFF34C759))
         var tries = 0
         while (true) {
         val result = runCatching {
@@ -135,7 +148,7 @@ fun HomeScreen(state: AppState, refreshKey: Int) {
         }
     }
 
-    Box(Modifier.fillMaxSize().background(Palette.canvas)) {
+    Box(Modifier.fillMaxSize().background(Palette.ground)) {
         val current = rows
         when {
             // On a TV, a quiet name on the dark while the first Home arrives, not grey blocks.

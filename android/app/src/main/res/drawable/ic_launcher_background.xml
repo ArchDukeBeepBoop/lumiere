@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The prism icon's midnight ground, as in PrismArt.swift on the Mac. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <gradient android:angle="315" android:startColor="#252449"
+        android:centerColor="#171B37" android:endColor="#10182D" />
+</shape>

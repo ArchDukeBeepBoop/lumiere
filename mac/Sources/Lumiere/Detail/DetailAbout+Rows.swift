@@ -11,6 +11,8 @@ extension DetailAbout {
     struct AboutRow {
         let label: String
         let value: String
+        /// Studios, each a link to its page. See `DetailAbout.studioLinks`.
+        var studios: [String] = []
     }
 
     /// Released, Rated, Runtime, Studio, then the file's own languages.
@@ -31,7 +33,7 @@ extension DetailAbout {
             rows.append(AboutRow(label: "Rated", value: rating))
         }
         if let runtime { rows.append(AboutRow(label: "Runtime", value: runtime)) }
-        if let studios { rows.append(AboutRow(label: "Studio", value: studios)) }
+        if let studios { rows.append(AboutRow(label: "Studio", value: studios, studios: studioNames)) }
         if let video { rows.append(AboutRow(label: "Video", value: video)) }
         if let audio { rows.append(AboutRow(label: "Audio", value: audio)) }
         if let subtitles { rows.append(AboutRow(label: "Subtitles", value: subtitles)) }
@@ -184,14 +186,17 @@ extension DetailAbout {
     }
 
     private var studios: String? {
+        studioNames.isEmpty ? nil : studioNames.joined(separator: ", ")
+    }
+
+    private var studioNames: [String] {
         // Three at most. Jellyfin lists every production company a scraper found,
         // which for a co-production runs to eight names nobody reads past.
         // The episode's, then the series'. An episode rarely carries studios of its
         // own, and "who made this show" is still the right answer when it does not.
         let source = displayed?.studios?.isEmpty == false
             ? displayed?.studios : model.detail?.studios
-        let names = (source ?? []).compactMap(\.name).prefix(3)
-        return names.isEmpty ? nil : names.joined(separator: ", ")
+        return Array((source ?? []).compactMap(\.name).prefix(3))
     }
 
     /// "4K · Dolby Vision · HEVC" — what the picture is, not how it is encoded.

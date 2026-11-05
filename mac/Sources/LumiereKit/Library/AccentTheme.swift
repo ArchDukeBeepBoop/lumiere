@@ -3,11 +3,12 @@ import Foundation
 /// The accent colour, chosen in Settings › Look — VLC's redesign asked for
 /// this in so many words: keep the identity, let people pick the colour.
 ///
-/// Gold is Lumiere's own and the default. Like `PaperTheme`, it is a map from
-/// the standard values to the chosen ones, applied where every colour is
-/// resolved, so no view knows the accent can change.
+/// Prism — the periwinkle of the icon's edge light — is Lumiere's own and the
+/// default; gold, the original, stays as a choice. Like `PaperTheme`, it is a
+/// map from the standard values to the chosen ones, applied where every colour
+/// is resolved, so no view knows the accent can change.
 public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
-    case gold, blue, purple, pink, red, orange, green, graphite
+    case prism, gold, blue, purple, pink, red, orange, green, graphite
 
     public static let storageKey = "accentChoice"
 
@@ -17,12 +18,14 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
 
     /// The current choice, read at resolve time.
     public static var current: AccentTheme {
-        AccentTheme(rawValue: UserDefaults.standard.string(forKey: storageKey) ?? "") ?? .gold
+        AccentTheme(rawValue: UserDefaults.standard.string(forKey: storageKey) ?? "") ?? .prism
     }
 
     /// Strong (on white), bright (on dark), muted light, muted dark.
     var values: (strong: UInt32, bright: UInt32, mutedLight: UInt32, mutedDark: UInt32) {
         switch self {
+        // Strong is 6.4:1 on white; bright is the icon's own #9296FF.
+        case .prism: return (0x4F53C9, 0x9296FF, 0xD6D8FF, 0x2F3268)
         case .gold: return (0x8A6E12, 0xC9A227, 0xE2D3A0, 0x5C4F28)
         case .blue: return (0x0A64C8, 0x3D9BFF, 0xBFD9F5, 0x1E3A5C)
         case .purple: return (0x7A3FB8, 0xB57CF0, 0xDCCAF2, 0x3E2A5A)
@@ -37,16 +40,16 @@ public enum AccentTheme: String, CaseIterable, Identifiable, Sendable {
     /// The swatch Settings draws.
     public var swatch: UInt32 { values.bright }
 
-    /// A gold value → the chosen accent's. Anything else passes through.
+    /// A prism value → the chosen accent's. Anything else passes through.
     public static func map(_ hex: UInt32) -> UInt32 {
         let choice = current
-        guard choice != .gold else { return hex }
-        let gold = AccentTheme.gold.values, mine = choice.values
+        guard choice != .prism else { return hex }
+        let base = AccentTheme.prism.values, mine = choice.values
         switch hex {
-        case gold.strong: return mine.strong
-        case gold.bright, 0xB58F26: return mine.bright
-        case gold.mutedLight: return mine.mutedLight
-        case gold.mutedDark: return mine.mutedDark
+        case base.strong: return mine.strong
+        case base.bright: return mine.bright
+        case base.mutedLight: return mine.mutedLight
+        case base.mutedDark: return mine.mutedDark
         default: return hex
         }
     }

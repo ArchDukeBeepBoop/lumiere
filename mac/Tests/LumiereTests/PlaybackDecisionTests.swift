@@ -44,6 +44,21 @@ func registerPlaybackDecisionTests(_ t: TestRunner) {
             t.expectEqual(decision.reason, .nativelySupported)
         }
 
+        t.test("with mpv preferred, the plain case plays in mpv, directly") {
+            let decision = decide(source(container: "mp4", video: h264(), audio: aac()), intel,
+                                  .init(prefersMPV: true))
+            t.expectEqual(decision.route, .directPlay)
+            t.expectEqual(decision.engine, .mpv)
+            t.expectEqual(decision.reason, .mpvPreferred)
+        }
+
+        t.test("with mpv preferred but not loaded, AVFoundation still plays what it can") {
+            let decision = decide(source(container: "mp4", video: h264(), audio: aac()), intel,
+                                  .init(mpvAvailable: false, prefersMPV: true))
+            t.expectEqual(decision.engine, .avPlayer)
+            t.expectEqual(decision.route, .directPlay)
+        }
+
         t.test("MOV and M4V are taken as readily as MP4") {
             for container in ["mov", "m4v", "MP4"] {
                 let decision = decide(source(container: container, video: h264(), audio: aac()))

@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package app.lumiere.android.music
 
 import app.lumiere.android.ui.LButton
@@ -6,6 +8,7 @@ import app.lumiere.android.ui.LChip
 import app.lumiere.android.ui.LIconButton
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -66,28 +69,30 @@ fun AlbumScreen(state: AppState, id: String) {
     val a = album
     // On a TV, Apple Music's album: cover, title and buttons held on the left, the tracks on the right.
     if (form.isTv) {
-        Row(Modifier.fillMaxSize().background(Palette.canvas).padding(horizontal = 56.dp, vertical = 36.dp),
+        Row(Modifier.fillMaxSize().background(Palette.ground).padding(horizontal = 56.dp, vertical = 36.dp),
             horizontalArrangement = Arrangement.spacedBy(44.dp)) {
-            Column(Modifier.width(300.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                AsyncImage(server.imageUrl(id, "Primary", a?.primaryTag, 600), null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(300.dp).clip(RoundedCornerShape(10.dp)).background(Palette.surface))
-                Text(a?.name ?: "", style = MaterialTheme.typography.headlineSmall, maxLines = 2)
+            Column(Modifier.width(260.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                AsyncImage(server.imageUrl(id, "Primary", a?.primaryTag, 520), null, contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(260.dp).clip(RoundedCornerShape(10.dp)).background(Palette.surface))
+                Text(a?.name ?: "", style = app.lumiere.android.ui.TvType.title, maxLines = 2)
                 Text(listOfNotNull(a?.albumArtist, a?.year?.toString(), "${tracks.size} songs").joinToString(" · "),
-                    style = MaterialTheme.typography.titleSmall, color = Palette.textSecondary)
+                    style = app.lumiere.android.ui.TvType.meta)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     LButton(onClick = { Music.play(context, server, tracks, 0, state.roomOpen) }) { Text("▶  Play") }
                     LButton(primary = false, onClick = { Music.play(context, server, tracks.shuffled(), 0, state.roomOpen) }) { Text("Shuffle") }
                 }
             }
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 48.dp)) {
-                itemsIndexed(tracks, key = { _, t -> t.id }) { i, track ->
-                    TrackRow(track, server, showArt = false) { Music.play(context, server, tracks, i, state.roomOpen) }
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides app.lumiere.android.ui.rememberCalmPageScroll()) {
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 48.dp)) {
+                    itemsIndexed(tracks, key = { _, t -> t.id }) { i, track ->
+                        TrackRow(track, server, showArt = false) { Music.play(context, server, tracks, i, state.roomOpen) }
+                    }
                 }
             }
         }
         return
     }
-    LazyColumn(Modifier.fillMaxSize().background(Palette.canvas), contentPadding = PaddingValues(bottom = 96.dp)) {
+    LazyColumn(Modifier.fillMaxSize().background(Palette.ground), contentPadding = PaddingValues(bottom = 96.dp)) {
         item {
             Row(Modifier.padding(form.gutter.dp), horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.Bottom) {
@@ -118,55 +123,66 @@ fun AlbumScreen(state: AppState, id: String) {
     }
 }
 
-/** An artist: their albums, then every track they are on. */
+/**
+ * An artist: their photo and name, Top Songs, their albums as a row, then every
+ * song they are on — guests' songs too, since [ids] folds every credit of theirs in.
+ */
 @Composable
-fun ArtistScreen(state: AppState, artist: Item, libraryId: String) {
-    if (!LocalFormFactor.current.isTv) { PhoneArtistScreen(state, artist, libraryId); return }
+fun ArtistScreen(state: AppState, artist: Item, libraryId: String, ids: List<String> = listOf(artist.id),
+                 imageId: String? = artist.id, imageTag: String? = artist.primaryTag) {
+    if (!LocalFormFactor.current.isTv) { PhoneArtistScreen(state, artist, libraryId, ids, imageId, imageTag); return }
     val server = state.server ?: return
     val userId = state.session?.userId ?: return
-    val form = LocalFormFactor.current
     val context = LocalContext.current
+    val who = ids.joinToString(",")
     var albums by remember { mutableStateOf<List<Item>>(emptyList()) }
     var tracks by remember { mutableStateOf<List<Item>>(emptyList()) }
     var top by remember { mutableStateOf<List<Item>>(emptyList()) }
-    LaunchedEffect(artist.id) {
-        top = runCatching { server.tracks(userId, null, 0, 10, listOf("PlayCount", "SortName"), true, artistId = artist.id) }.getOrDefault(emptyList())
-        albums = runCatching { server.albums(userId, libraryId, 0, 200, "ProductionYear", true, artist.id) }
-            .getOrDefault(emptyList())
-        tracks = runCatching {
-            server.tracks(userId, null, 0, 500, TrackOrder.Album.sortBy, artistId = artist.id)
-        }.getOrDefault(emptyList())
+    LaunchedEffect(who) {
+        top = runCatching { server.tracks(userId, null, 0, 10, listOf("PlayCount", "SortName"), true, artistId = who) }.getOrDefault(emptyList())
+        albums = runCatching { server.albums(userId, libraryId, 0, 200, "ProductionYear", true, who) }.getOrDefault(emptyList())
+        tracks = runCatching { server.tracks(userId, null, 0, 500, TrackOrder.Album.sortBy, artistId = who) }.getOrDefault(emptyList())
     }
-    LazyColumn(Modifier.fillMaxSize().background(Palette.canvas), contentPadding = PaddingValues(bottom = 96.dp)) {
+    val heading = app.lumiere.android.ui.TvType.row
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides app.lumiere.android.ui.rememberCalmPageScroll()) {
+    LazyColumn(Modifier.fillMaxSize().background(Palette.ground), contentPadding = PaddingValues(bottom = 96.dp)) {
         item {
-            Row(Modifier.padding(form.gutter.dp), verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                // Apple Music's artist: a round photo beside the name.
-                AsyncImage(server.imageUrl(artist.id, "Primary", artist.primaryTag, 400), null, contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(if (form.isTv) 140.dp else 88.dp).clip(RoundedCornerShape(50)).background(Palette.surface))
-                Text(artist.name, style = MaterialTheme.typography.headlineLarge, modifier = Modifier.weight(1f))
+            // The Person page's header: a round photo beside the name.
+            Row(Modifier.padding(start = 56.dp, end = 56.dp, top = 36.dp, bottom = 20.dp), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                Box(Modifier.size(120.dp).clip(RoundedCornerShape(50)).background(Palette.surface), contentAlignment = Alignment.Center) {
+                    Text(artist.name.split(' ').mapNotNull { it.firstOrNull()?.uppercaseChar() }.take(2).joinToString(""),
+                        style = app.lumiere.android.ui.TvType.title, color = Palette.textSecondary)
+                    imageId?.let { AsyncImage(server.imageUrl(it, "Primary", imageTag, 300), null, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize()) }
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(artist.name, style = app.lumiere.android.ui.TvType.title)
+                    Text(listOfNotNull(albums.size.takeIf { it > 0 }?.let { "$it albums" }, tracks.size.takeIf { it > 0 }?.let { "$it songs" })
+                        .joinToString(" · "), style = app.lumiere.android.ui.TvType.meta)
+                }
                 LButton(onClick = { Music.play(context, server, tracks.shuffled(), 0, state.roomOpen) }) { Text("Shuffle") }
             }
         }
         if (top.isNotEmpty()) {
-            item { Text("Top Songs", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = form.gutter.dp, bottom = 4.dp)) }
+            item { Text("Top Songs", style = heading, modifier = Modifier.padding(start = 56.dp, bottom = 4.dp)) }
             itemsIndexed(top, key = { _, t -> "top-" + t.id }) { i, track ->
                 TrackRow(track, server, showArt = true) { Music.play(context, server, top, i, state.roomOpen) }
             }
-            item { Text("Albums", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(start = form.gutter.dp, top = 16.dp, bottom = 4.dp)) }
         }
-        if (albums.isNotEmpty()) item {
-            LazyRow(contentPadding = PaddingValues(horizontal = form.gutter.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                items(albums, key = { it.id }) { al ->
-                    Column(Modifier.width(form.posterWidth.dp + 20.dp)) {
-                        SquareCard(al, server) { state.push(Screen.Album(al.id)) }
+        if (albums.isNotEmpty()) {
+            item { Text("Albums", style = heading, modifier = Modifier.padding(start = 56.dp, top = 20.dp, bottom = 4.dp)) }
+            item {
+                LazyRow(contentPadding = PaddingValues(horizontal = 56.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                    items(albums, key = { it.id }) { al ->
+                        Column(Modifier.width(140.dp)) { SquareCard(al, server) { state.push(Screen.Album(al.id)) } }
                     }
                 }
             }
         }
+        if (tracks.isNotEmpty()) item { Text("All Songs", style = heading, modifier = Modifier.padding(start = 56.dp, top = 20.dp, bottom = 4.dp)) }
         itemsIndexed(tracks, key = { _, t -> t.id }) { i, track ->
             TrackRow(track, server, showArt = true) { Music.play(context, server, tracks, i, state.roomOpen) }
         }
+    }
     }
 }

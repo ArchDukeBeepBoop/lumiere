@@ -33,8 +33,10 @@ extension DetailView {
                         // the title; "Season 2" would find nothing worth
                         // finding.
                         initialQuery: season.item.name,
-                        isSeries: true,
-                        seasonNumber: season.item.indexNumber ?? 1,
+                        // A season, or since collections and related shelves
+                        // offer it, any show or film on the page.
+                        isSeries: season.item.itemType != .movie && season.item.itemType != .video,
+                        seasonNumber: season.item.itemType == .season ? (season.item.indexNumber ?? 1) : nil,
                         client: client,
                         onDone: { changed in
                             identifySeason = nil
@@ -128,10 +130,12 @@ extension DetailView {
                 set: { if !$0 { collectionArtworkId = nil } }
             )) {
                 if let id = collectionArtworkId, let client = app?.client {
-                    ArtworkPickerSheet(itemId: id, client: client) { changed in
+                    ArtworkPickerSheet(itemId: id, client: client, onDone: { changed in
                         collectionArtworkId = nil
                         if changed { Task { await model?.load() } }
-                    }
+                    }, titles: model.flatMap { $0.isCollection && id == $0.itemId
+                        ? TitleArtworkStrip.Source(titles: $0.collectionItems, serverURL: serverURL, pipeline: pipeline)
+                        : nil })
                 }
             }
             .sheet(isPresented: Binding(

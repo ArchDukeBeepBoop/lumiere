@@ -159,6 +159,12 @@ func Run(db *store.Store, roots []Root, log *slog.Logger) {
 	}
 
 	AdoptOrphanFiles(db, roots, log)
+	// New folders of videos get a picture now, not at the next daily pass.
+	if n, err := db.InheritContainerArt(); err != nil {
+		log.Warn("scan: folder pictures failed", "error", err)
+	} else if n > 0 {
+		log.Info("scan: folders pictured by their first video", "count", n)
+	}
 
 	// The three the first scan got wrong, before the rules existed. Cheap and
 	// idempotent — see Repair.

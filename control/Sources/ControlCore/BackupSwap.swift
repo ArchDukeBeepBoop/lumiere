@@ -16,6 +16,10 @@ public enum BackupSwap {
     public static func swap(in backup: URL, dataDir: URL) throws {
         let fm = FileManager.default
         guard fm.isReadableFile(atPath: backup.path) else { throw Failure.backupMissing }
+        // Gone entirely is the case this exists for: a disk cleaner that
+        // takes the whole data folder, not only the database inside it.
+        try fm.createDirectory(at: dataDir, withIntermediateDirectories: true,
+                               attributes: [.posixPermissions: 0o700])
         let live = dataDir.appendingPathComponent("library.db")
         let stamp = Date().formatted(.iso8601.year().month().day().time(includingFractionalSeconds: false))
             .replacingOccurrences(of: ":", with: "")

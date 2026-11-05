@@ -16,7 +16,7 @@ struct RootView: View {
     /// Standard or Paper. See `PaperTheme`.
     @AppStorage(PaperTheme.storageKey) private var theme = "standard"
     /// Rebuilds on a change too, for the same reason. See `AccentTheme`.
-    @AppStorage(AccentTheme.storageKey) private var accent = AccentTheme.gold.rawValue
+    @AppStorage(AccentTheme.storageKey) private var accent = AccentTheme.prism.rawValue
 
     var body: some View {
         Group {

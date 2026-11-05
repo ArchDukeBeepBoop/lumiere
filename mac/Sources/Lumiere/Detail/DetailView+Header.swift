@@ -20,8 +20,18 @@ extension DetailView {
                 onFinish: app?.client == nil ? nil : { isFinishingCollection = true },
                 onDelete: app?.client == nil ? nil : { isConfirmingCollectionDelete = true },
                 onIdentify: app?.client == nil ? nil : { identifyingCollection = true },
+                onChooseArtwork: app?.client == nil ? nil : { collectionArtworkId = entry.id },
                 onScan: app?.client == nil ? nil : { await scanCollection(model: model, entry: entry) },
-                onEdit: app?.client == nil ? nil : { editingId = entry.id }
+                onEdit: app?.client == nil ? nil : { editingId = entry.id },
+                onPlayFromStart: {
+                    Task {
+                        let order = await model.collectionPlayOrder()
+                        guard let first = order.first else { return }
+                        // The rest wait in the queue, which Next follows.
+                        PlayQueue.shared.load(Array(order.dropFirst()), playlist: entry.item.name)
+                        onPlay(first.id)
+                    }
+                }
             )
             .sheet(isPresented: $identifyingCollection) {
                 if let app, let client = app.client {

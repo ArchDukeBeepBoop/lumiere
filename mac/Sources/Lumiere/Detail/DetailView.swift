@@ -42,7 +42,8 @@ struct DetailView: View {
     @State var isRepairingEpisodes = false
     /// The episode whose thumbnail is about to be frozen. Asked rather than done.
     @State var freezeThumbnailId: String?
-    /// The season whose Identify sheet is open. See `seasonActions`.
+    /// The season — or a collection member, or a related title — whose
+    /// Identify sheet is open. See `seasonActions` and `relatedActions`.
     @State var identifySeason: LibraryEntry?
     /// A collection's Identify sheet. See `CollectionSeriesSheet`.
     @State var identifyingCollection = false
@@ -96,7 +97,8 @@ struct DetailView: View {
                             MissingFilmsRow(repository: model.repository, collectionId: model.itemId)
                         } else {
                             CollectionNudge(repository: model.repository, itemId: model.itemId)
-                            OtherCopiesLine(repository: model.repository, entry: entry)
+                            OtherCopiesLine(repository: model.repository, entry: entry,
+                                            pipeline: pipeline, serverURL: serverURL)
                             if model.isSeries {
                                 SeasonEpisodeList(
                                     model: model,

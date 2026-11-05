@@ -176,6 +176,17 @@ object Music {
                 report(if (playing) "Sessions/Playing" else "Sessions/Playing/Progress")
             }
             override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
+                // Moved on because the song ended: it was heard, so it counts as played,
+                // which is what ranks Top 10 Artists. The stop report below comes too late
+                // for that — the position is already the next song's.
+                val finished = current
+                val s = server
+                if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && finished != null && s != null &&
+                    context.getSharedPreferences("lumiere.prefs", android.content.Context.MODE_PRIVATE)
+                        .getBoolean("countsMusicPlays", true)) {
+                    // Quiet on failure: a missed count only nudges a ranking.
+                    CoroutineScope(Dispatchers.IO).launch { runCatching { s.setPlayed(finished.id, true) } }
+                }
                 report("Sessions/Playing/Stopped")
                 index = built.currentMediaItemIndex
                 app.lumiere.android.widget.NowPlayingWidget.update(context.applicationContext)

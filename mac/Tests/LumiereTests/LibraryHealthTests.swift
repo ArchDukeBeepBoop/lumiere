@@ -22,8 +22,9 @@ func registerLibraryHealthTests(_ t: TestRunner) {
             func info(_ json: String) throws -> PublicSystemInfo {
                 try JSONDecoder().decode(PublicSystemInfo.self, from: Data(json.utf8))
             }
-            t.expect(ServerCompatibility.warning(for: try info(#"{"Id":"a","LumiereApi":5}"#)) != nil)
-            t.expect(ServerCompatibility.warning(for: try info(#"{"Id":"a","LumiereApi":6}"#)) == nil)
+            let level = ServerCompatibility.requiredLevel
+            t.expect(ServerCompatibility.warning(for: try info(#"{"Id":"a","LumiereApi":\#(level - 1)}"#)) != nil)
+            t.expect(ServerCompatibility.warning(for: try info(#"{"Id":"a","LumiereApi":\#(level)}"#)) == nil)
             t.expect(ServerCompatibility.warning(for: try info(#"{"Id":"a","Version":"10.9"}"#)) == nil)
         }
 

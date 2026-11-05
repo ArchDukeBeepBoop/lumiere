@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"lumiere-server/internal/media"
 	"net/http"
 	"time"
 
@@ -58,11 +59,21 @@ func (h CollectionSuggestHandler) KeepFresh() {
 	go func() {
 		time.Sleep(3 * time.Minute)
 		for {
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+			// Long enough for a rebuilt library's whole keyword backlog — see
+			// ThemeCollections — and still bounded.
+			ctx, cancel := context.WithTimeout(context.Background(), 40*time.Minute)
+			if pictured, err := h.Store.InheritContainerArt(); err == nil && pictured > 0 {
+				h.Log.Info("folders pictured by their first video", "count", pictured)
+			}
+			h.Store.MergeSplitShows(h.Log)
+			// Artwork a newer picture replaced, cleared. See media.SweepOrphanArt.
+			media.SweepOrphanArt(h.Store.DB, h.imageDir(), h.Log)
 			n := h.FillFromSeries(ctx, true)
 			made, adopted := h.AutoCollections(ctx)
-			themed, _ := h.ThemeCollections(ctx)
+			themed, _ := h.ThemeCollections(ctx, 4000)
 			made += themed
+			franchised, _ := h.AniListFranchises(ctx, 4000)
+			made += franchised
 			cancel()
 			h.Log.Info("collections: overnight refresh", "filled", n, "made", made, "adopted", adopted)
 			time.Sleep(24 * time.Hour)

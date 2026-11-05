@@ -243,6 +243,7 @@ func (s *Scanner) insert(libraryID, root string, file Found, result *Result) err
 	if err != nil {
 		return err
 	}
+	writeChapters(tx, id, probe.Chapters)
 	// Nothing written means the file already has a row — by id, or by path
 	// under another id — and one file is one item. Not an addition.
 	if n, _ := res.RowsAffected(); n == 0 {

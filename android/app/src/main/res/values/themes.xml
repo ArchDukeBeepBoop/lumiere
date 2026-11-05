@@ -5,13 +5,13 @@
         <item name="android:statusBarColor">@color/canvas</item>
         <item name="android:navigationBarColor">@color/canvas</item>
     </style>
-    <color name="canvas">#0D0F12</color>
-    <color name="accent">#C9A227</color>
+    <color name="canvas">#13162A</color>
+    <color name="accent">#9296FF</color>
     <style name="WidgetRow">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:paddingTop">8dp</item>
-        <item name="android:textColor">#F2F4F7</item>
+        <item name="android:textColor">#F3F4FA</item>
         <item name="android:textSize">15sp</item>
         <item name="android:maxLines">1</item>
         <item name="android:ellipsize">end</item>

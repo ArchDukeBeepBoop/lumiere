@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -40,7 +41,13 @@ func (h CollectionSuggestHandler) dress(ctx context.Context, tmdb *metadata.TMDB
 	}
 }
 
-func (h CollectionSuggestHandler) imageDir() string { return h.DataDir + "/cache/images" }
+func (h CollectionSuggestHandler) imageDir() string {
+	if CacheRoot == "" {
+		// Not set where no server started — tests — so the data folder's own.
+		return filepath.Join(h.DataDir, "cache", "images")
+	}
+	return filepath.Join(CacheRoot, "images")
+}
 
 func (h CollectionSuggestHandler) tmdb(w http.ResponseWriter) *metadata.TMDB {
 	token := metadata.ReadToken(h.DataDir)

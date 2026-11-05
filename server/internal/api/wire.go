@@ -94,6 +94,8 @@ func ToWire(it store.Item, serverID string) jellyfin.BaseItem {
 	for _, s := range it.Studios {
 		b.Studios = append(b.Studios, jellyfin.NamedItem{Id: s.ID, Name: s.Name})
 	}
+	b.ProductionLocations = it.Countries
+	b.RomajiTitle = it.Romaji
 	// Emitted even when empty, because the capture shows all three on 100% of
 	// items (§12.4) and a client that reads `ImageTags["Primary"]` without a nil
 	// check should meet a map rather than nothing.

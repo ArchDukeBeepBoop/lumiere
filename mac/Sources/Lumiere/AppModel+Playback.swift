@@ -21,6 +21,12 @@ extension AppModel {
     /// `[weak self]` because the model is a stored property of this one.
     func adoptMusicPlayback() {
         music.onPlaybackStateChange = { [weak self] in self?.playbackStateChanged() }
+        music.onTrackFinished = { [weak self] track in
+            guard Preference.countsMusicPlays.value, let client = self?.client else { return }
+            // Deliberately quiet on failure: a play missed while offline only
+            // nudges a ranking, and a banner for it would outweigh the loss.
+            Task { try? await client.markPlayed(itemId: track.id, played: true) }
+        }
     }
 
     /// Whether anything is playing that a person is watching or listening to.

@@ -55,6 +55,14 @@ public extension Theme {
         /// is paid for by `HomeModel.shelfLength`, which shows fewer of them.
         public static let shelfPosterWidth: CGFloat = 200
 
+        /// A Top 10 poster, ranked as the TV draws it: larger than a shelf
+        /// poster, its rank in a tall numeral beside it.
+        public static let rankedPosterWidth: CGFloat = 230
+        /// The room a rank's numeral takes, before the poster overlaps it.
+        public static let rankNumeralWidth: CGFloat = 112
+        /// How far the poster overlaps its numeral, as the TV's row does.
+        public static let rankOverlap: CGFloat = 18
+
         /// A genre card. 16:9 and narrower than a continue card, so a genre row
         /// reads as navigation rather than as a second continue-watching shelf.
         public static let genreCardWidth: CGFloat = 300

@@ -52,8 +52,10 @@ struct LocalFoldersCard: View {
     @ViewBuilder
     private var content: some View {
         if folders.isEmpty {
-            SettingsNote("No folders added. Choose one and it appears in the sidebar "
-                       + "and on the home screen beside your server's libraries.")
+            SettingsNote("No folders added here. These are folders played without the "
+                       + "server — your server's own folders are under Your Setup › "
+                       + "Libraries. Choose one and it appears in the sidebar and on "
+                       + "On This Computer.")
         } else {
             ForEach(folders) { folder in
                 folderRow(folder)

@@ -125,16 +125,17 @@ func registerSubtitleMatcherTests(_ t: TestRunner) {
 @MainActor
 func registerAccentThemeTests(_ t: TestRunner) {
     t.suite("Accent colour") { t in
-        t.test("gold leaves every colour as it is") {
+        t.test("prism, the default, leaves every colour as it is") {
             UserDefaults.standard.removeObject(forKey: AccentTheme.storageKey)
-            t.expectEqual(AccentTheme.map(0xC9A227), 0xC9A227)
+            t.expectEqual(AccentTheme.current, .prism)
+            t.expectEqual(AccentTheme.map(0x9296FF), 0x9296FF)
             t.expectEqual(AccentTheme.map(0x123456), 0x123456)
         }
         t.test("another accent replaces only the accent family") {
             UserDefaults.standard.set(AccentTheme.blue.rawValue, forKey: AccentTheme.storageKey)
             defer { UserDefaults.standard.removeObject(forKey: AccentTheme.storageKey) }
-            t.expectEqual(AccentTheme.map(0xC9A227), 0x3D9BFF)
-            t.expectEqual(AccentTheme.map(0x8A6E12), 0x0A64C8)
+            t.expectEqual(AccentTheme.map(0x9296FF), 0x3D9BFF)
+            t.expectEqual(AccentTheme.map(0x4F53C9), 0x0A64C8)
             t.expectEqual(AccentTheme.map(0xF07B22), 0xF07B22)
         }
     }

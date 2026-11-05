@@ -33,12 +33,14 @@ extension LibraryGridView {
                 Text(emptyTitle)
                     .font(Theme.Font.sectionHeader)
                     .foregroundStyle(Theme.Palette.textPrimary)
-                if unwatchedOnly || genre != nil || studio != nil
+                if unwatchedOnly || genre != nil || studio != nil || country != nil || season != nil
                     || !searchTerm.isEmpty {
                     Button("Clear filters") {
                         unwatchedOnly = false
                         genre = nil
                         studio = nil
+                        country = nil
+                        season = nil
                         // Was omitted, so the one filter you can empty the grid
                         // with by accident was the one Clear would not clear.
                         shelfFilter = ""
@@ -68,7 +70,9 @@ extension LibraryGridView {
         let term = searchTerm
         var scope: [String] = []
         if let studio { scope.append("from \(studio)") }
+        if let country { scope.append("from \(LibraryRepository.countryName(country))") }
         if let genre { scope.append("in \(genre)") }
+        if let chosen = season.flatMap(AnimeSeason.init(id:)) { scope.append("from \(chosen.title)") }
 
         if !term.isEmpty {
             let where_ = scope.isEmpty ? "" : " " + scope.joined(separator: " ")

@@ -16,6 +16,7 @@ extension SettingsView {
             LibraryHealthCard(app: app)
             ServerScheduleCard(app: app)
             ThemeCollectionsCard(app: app)
+            AnimeFranchisesCard(app: app)
             RemovedItemsCard(app: app)
         }
 
@@ -65,6 +66,7 @@ extension SettingsView {
             TopShelvesCard(libraries: app.libraries, app: app)
             RecentlyAddedCard(app: app)
             ShelfRulesCard(app: app)
+            PinnedCollectionsCard()
         }
     }
 

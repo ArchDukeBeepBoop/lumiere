@@ -1,6 +1,7 @@
 package app.lumiere.android.player
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -76,20 +77,23 @@ fun TvPlaybackMenu(player: ExoPlayer, prefs: Prefs, onTracks: () -> Unit, onClos
         },
     )
     var open by remember { mutableStateOf<Setting?>(null) }
-    val first = remember(open) { FocusRequester() }
-    LaunchedEffect(open) { kotlinx.coroutines.delay(50); runCatching { first.requestFocus() } }
-    androidx.activity.compose.BackHandler { if (open != null) open = null else onClose() }
+    var stats by remember { mutableStateOf(false) }
+    val first = remember(open, stats) { FocusRequester() }
+    LaunchedEffect(open, stats) { kotlinx.coroutines.delay(50); runCatching { first.requestFocus() } }
+    androidx.activity.compose.BackHandler { if (open != null) open = null else if (stats) stats = false else onClose() }
     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)), contentAlignment = Alignment.CenterEnd) {
         Column(Modifier.holdsRemote().padding(end = 36.dp).width(400.dp).heightIn(max = 560.dp).frosted(22).padding(10.dp)) {
-            Text(open?.title ?: "Playback", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            Text(open?.title ?: if (stats) "Playback Info" else "Playback", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = Palette.textSecondary, modifier = Modifier.padding(start = 14.dp, top = 6.dp, bottom = 8.dp))
             val o = open
             LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                if (o == null) {
+                if (stats) {
+                    item { PlaybackInfo(player, Modifier.focusRequester(first)) }
+                } else if (o == null) {
                     item {
                         TvPill({ onClose(); onTracks() }, Modifier.fillMaxWidth().focusRequester(first), shape = RoundedCornerShape(12.dp)) {
                             Text("Audio & Subtitles", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                            Text("›", style = MaterialTheme.typography.titleMedium, color = pillTint(Palette.textMuted))
+                            app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.chevronRight, tint = pillTint(Palette.textMuted))
                         }
                     }
                     itemsIndexed(settings) { _, st ->
@@ -97,7 +101,14 @@ fun TvPlaybackMenu(player: ExoPlayer, prefs: Prefs, onTracks: () -> Unit, onClos
                             Text(st.title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                             Text(st.name(st.current()), style = MaterialTheme.typography.bodyMedium, color = pillTint(Palette.textSecondary))
                             Spacer(Modifier.width(8.dp))
-                            Text("›", style = MaterialTheme.typography.titleMedium, color = pillTint(Palette.textMuted))
+                            app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.chevronRight, tint = pillTint(Palette.textMuted))
+                        }
+                    }
+                    // For diagnostics, last as tvOS keeps it: what the projector is actually decoding.
+                    item {
+                        TvPill({ stats = true }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                            Text("Playback Info", style = MaterialTheme.typography.titleMedium, color = pillTint(Palette.textSecondary), modifier = Modifier.weight(1f))
+                            app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.chevronRight, tint = pillTint(Palette.textMuted))
                         }
                     }
                 } else {
@@ -106,12 +117,42 @@ fun TvPlaybackMenu(player: ExoPlayer, prefs: Prefs, onTracks: () -> Unit, onClos
                         TvPill({ o.set(v); open = null }, Modifier.fillMaxWidth().then(if (v == now) Modifier.focusRequester(first) else Modifier),
                             shape = RoundedCornerShape(12.dp)) {
                             // The tick sits before the current choice, as Apple's menus mark it.
-                            Box(Modifier.size(22.dp)) { if (v == now) Icon(Icons.Default.Check, null, Modifier.size(20.dp)) }
+                            Box(Modifier.size(22.dp)) { if (v == now) app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.check, size = 18.dp) }
                             Spacer(Modifier.width(8.dp))
                             Text(o.name(v), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** The stream as the projector decodes it, read once a second while shown. */
+@Composable
+internal fun PlaybackInfo(player: ExoPlayer, modifier: Modifier) {
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) { while (true) { kotlinx.coroutines.delay(1_000); tick++ } }
+    tick
+    val v = player.videoFormat
+    val a = player.audioFormat
+    val codec = { f: androidx.media3.common.Format? -> (f?.codecs ?: f?.sampleMimeType?.substringAfter('/'))?.uppercase() ?: "—" }
+    val rows = listOf(
+        "Resolution" to (v?.let { "${it.width} × ${it.height}" + (if (it.frameRate > 0) " · ${"%.3g".format(it.frameRate)} fps" else "") } ?: "—"),
+        "Video" to (codec(v) + (v?.bitrate?.takeIf { it > 0 }?.let { " · ${"%.1f".format(it / 1_000_000.0)} Mb/s" } ?: "")),
+        "HDR" to (v?.colorInfo?.let { when (it.colorTransfer) { androidx.media3.common.C.COLOR_TRANSFER_ST2084 -> "HDR10 / PQ"
+            androidx.media3.common.C.COLOR_TRANSFER_HLG -> "HLG"; else -> "SDR" } } ?: "SDR"),
+        "Audio" to (codec(a) + (a?.channelCount?.takeIf { it > 0 }?.let { " · $it ch" } ?: "")),
+        "Buffer" to "${((player.bufferedPosition - player.currentPosition).coerceAtLeast(0) / 1000)} s ahead",
+        "Dropped Frames" to "${player.videoDecoderCounters?.droppedBufferCount ?: 0}",
+    )
+    // Focusable so the remote has somewhere to rest; Back returns to the menu.
+    Column(modifier.fillMaxWidth().focusable().padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        rows.forEach { (k, value) ->
+            Row {
+                Text(k, style = app.lumiere.android.ui.TvType.meta, modifier = Modifier.weight(1f))
+                Text(value, style = app.lumiere.android.ui.TvType.body)
             }
         }
     }

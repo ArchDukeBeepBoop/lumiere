@@ -80,6 +80,10 @@ public struct ItemRecord: Codable, Sendable, Identifiable, Hashable,
     public var artists: String?
     /// Newline-joined studio names, for the library grid's studio filter.
     public var studios: String?
+    /// Newline-joined country codes, for the grid's country filter.
+    public var countries: String?
+    /// The title in romaji, from AniList via Lumiere Server. See `LibraryTitleOrder`.
+    public var romajiTitle: String?
 
     public var isFolder: Bool
     public var collectionType: String?
@@ -114,6 +118,8 @@ public struct ItemRecord: Codable, Sendable, Identifiable, Hashable,
         self.genres = item.genres?.isEmpty == false ? item.genres?.joined(separator: "\n") : nil
         let studioNames = (item.studios ?? []).compactMap(\.name).filter { !$0.isEmpty }
         self.studios = studioNames.isEmpty ? nil : studioNames.joined(separator: "\n")
+        self.countries = (item.productionLocations ?? []).filter { !$0.isEmpty }.joined(separator: "\n").nilIfEmpty
+        self.romajiTitle = item.romajiTitle?.nilIfEmpty
         self.primaryTag = item.imageTags?["Primary"]
         self.backdropTag = item.backdropImageTags?.first
         self.thumbTag = item.imageTags?["Thumb"]
@@ -274,7 +280,7 @@ public struct LibraryEntry: Sendable, Identifiable, Hashable, FetchableRecord, D
         self.userData = userData
     }
 
-    /// 0…1, or nil when nothing has been watched. Drives the gold progress bar.
+    /// 0…1, or nil when nothing has been watched. Drives the accent progress bar.
     public var progress: Double? {
         guard let userData, userData.isInProgress,
               let runtime = item.runtimeSeconds, runtime > 0 else { return nil }

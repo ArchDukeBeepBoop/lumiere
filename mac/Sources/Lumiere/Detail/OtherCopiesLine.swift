@@ -8,21 +8,18 @@ import LumiereKit
 struct OtherCopiesLine: View {
     let repository: LibraryRepository
     let entry: LibraryEntry
+    let pipeline: ImagePipeline
+    let serverURL: URL
     @State private var copies: [LibraryEntry] = []
-    /// The film after this one in its collection — "what now?" answered at
+    /// The title after this one in its collection — "what now?" answered at
     /// the foot of the header rather than by going to look for it.
-    @State private var next: (entry: LibraryEntry, collection: String)?
+    @State private var next: (entry: LibraryEntry, collection: String, collectionId: String?)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             if let next {
-                NavigationLink(value: DetailRoute(itemId: next.entry.id)) {
-                    (Text("Next in \(next.collection): ").foregroundStyle(Theme.Palette.textMuted)
-                        + Text(next.entry.item.name).foregroundStyle(Theme.Palette.accent))
-                        .font(Theme.Font.caption)
-                        .lineLimit(1)
-                }
-                .buttonStyle(.plain)
+                NextInCollectionCard(next: next.entry, collection: next.collection,
+                                     pipeline: pipeline, serverURL: serverURL)
             }
             ForEach(copies) { copy in
                 NavigationLink(value: DetailRoute(itemId: copy.id)) {

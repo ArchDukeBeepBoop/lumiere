@@ -1,6 +1,11 @@
 package app.lumiere.android.ui
 
+import androidx.compose.ui.graphics.drawscope.scale
+
+import androidx.compose.ui.graphics.drawscope.translate
+
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -76,25 +81,59 @@ fun Modifier.focusCard(onFocused: () -> Unit, onClick: () -> Unit, onMenu: (() -
         if (focused && tv && !app.lumiere.android.Motion.reduced && !app.lumiere.android.Device.lowMemory) { shine.snapTo(-0.4f); shine.animateTo(1.4f, androidx.compose.animation.core.tween(700)) }
     }
     val density = androidx.compose.ui.platform.LocalDensity.current
+    // On the Quest the card follows the pointer, as Meta's TV app's posters do: tipped toward
+    // where you point, lit where you point. It moves only with your hand, so Reduce Motion keeps it.
+    val quest = app.lumiere.android.Flavor.quest
+    var aim by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    val me = remember { androidx.compose.ui.focus.FocusRequester() }
+    val aimX by animateFloatAsState(aim.x, androidx.compose.animation.core.spring(stiffness = 260f), label = "aimX")
+    val aimY by animateFloatAsState(aim.y, androidx.compose.animation.core.spring(stiffness = 260f), label = "aimY")
     val base = this
+        .then(if (quest) Modifier.pointerInput(Unit) {
+            awaitPointerEventScope {
+                while (true) {
+                    val e = awaitPointerEvent()
+                    val p = e.changes.firstOrNull()?.position ?: continue
+                    // Pointing at a card chooses it, as the remote arriving would.
+                    if (e.type == androidx.compose.ui.input.pointer.PointerEventType.Enter) runCatching { me.requestFocus() }
+                    aim = if (e.type == androidx.compose.ui.input.pointer.PointerEventType.Exit) androidx.compose.ui.geometry.Offset.Zero
+                        else CardTilt.aim(p.x, p.y, size.width.toFloat(), size.height.toFloat())
+                }
+            }
+        } else Modifier)
         .zIndex(if (focused) 1f else 0f)
         .then(if (!tv) Modifier.scale(1f + 0.06f * lift) else Modifier.graphicsLayer {
             // Raised, and tipped a few degrees toward the way the remote moved.
-            val s = 1f + 0.1f * lift
+            // Further out on the Quest, where depth is the point: higher, and its shadow deeper and wider.
+            val s = 1f + (if (quest) 0.13f else 0.1f) * lift
             scaleX = s; scaleY = s
             // The tilt only where there is power to spare; the projector keeps the lift alone.
-            if (!app.lumiere.android.Motion.reduced && !app.lumiere.android.Device.lowMemory) {
+            if (quest) {
+                rotationY = aimX * CardTilt.DEGREES * lift
+                rotationX = -aimY * CardTilt.DEGREES * lift
+            } else if (!app.lumiere.android.Motion.reduced && !app.lumiere.android.Device.lowMemory) {
                 rotationY = FocusDirection.dx * 5f * lift
                 rotationX = -FocusDirection.dy * 4f * lift
             }
             cameraDistance = 14f * density.density
-            shadowElevation = with(density) { 22.dp.toPx() } * lift
+            shadowElevation = with(density) { (if (quest) 36.dp else 22.dp).toPx() } * lift
+            if (quest) { ambientShadowColor = Color.Black; spotShadowColor = Color.Black }
             shape = cardShape; clip = false
         })
         .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
         .clip(cardShape)
         .then(if (tv) Modifier.drawWithContent {
-            drawContent()
+            // On the Quest the picture sits a little deeper than the card's frame and slides
+            // against the tilt, so a lifted card reads as a window onto its scene.
+            if (quest && lift > 0.01f) {
+                val k = 1f + 0.06f * lift
+                translate(-aimX * size.width * 0.03f * lift, -aimY * size.height * 0.03f * lift) { scale(k) { this@drawWithContent.drawContent() } }
+            } else drawContent()
+            // The Quest's light, where the pointer is on the card.
+            if (quest && lift > 0.01f) drawRect(androidx.compose.ui.graphics.Brush.radialGradient(
+                listOf(Color.White.copy(alpha = 0.2f * lift), Color.Transparent),
+                center = androidx.compose.ui.geometry.Offset((aimX + 1) / 2 * size.width, (aimY + 1) / 2 * size.height),
+                radius = size.maxDimension * 0.7f))
             if (focused && shine.value in -0.4f..1.4f) {
                 val x = size.width * shine.value
                 drawRect(androidx.compose.ui.graphics.Brush.linearGradient(
@@ -108,7 +147,6 @@ fun Modifier.focusCard(onFocused: () -> Unit, onClick: () -> Unit, onMenu: (() -
     // never turns into a long click; the press is read here instead: a held
     // OK opens the menu, a short one clicks on release.
     var held by remember { mutableStateOf(false) }
-    val me = remember { androidx.compose.ui.focus.FocusRequester() }
     val menu = onMenu?.let { m -> { MenuReturn.to = me; m() } }
     return base.then(androidx.compose.ui.Modifier.focusRequester(me)).then(if (onMenu == null) Modifier.clickable(onClick = onClick) else Modifier
         .onPreviewKeyEvent { e ->
@@ -169,7 +207,8 @@ fun ItemCard(item: Item, server: Server, shape: CardShape, onFocus: (Item) -> Un
             if (RoomTheme.isOn && RoomTheme.blursCovers && android.os.Build.VERSION.SDK_INT < 31) {
                 Box(Modifier.matchParentSize().background(Palette.surface.copy(alpha = 0.92f)))
             }
-            badge?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = Color.White,
+            // On the Quest, 180°, 360° and 3D titles carry their tag, as Meta's TV app's do.
+            (badge ?: if (app.lumiere.android.Flavor.quest) ImmersiveTag.of(item.name) else null)?.let { Text(it, style = MaterialTheme.typography.labelMedium, color = Color.White,
                 modifier = Modifier.align(Alignment.TopStart).padding(6.dp).background(Color.Black.copy(alpha = 0.65f), RoundedCornerShape(4.dp))
                     .padding(horizontal = 6.dp, vertical = 2.dp)) }
             item.progress?.let { fraction ->
@@ -225,7 +264,7 @@ fun Shelf(title: String, items: List<Item>, server: Server, shape: CardShape, on
 }
 
 /**
- * Watched, at a glance, on every card: a gold tick on a finished film, episode
+ * Watched, at a glance, on every card: an accent tick on a finished film, episode
  * or show; on a show not finished, how many episodes are unwatched, as the
  * Apple TV app marks them.
  */
@@ -235,8 +274,8 @@ fun WatchedMark(item: Item, modifier: Modifier = Modifier) {
     // A show's ChildCount is its seasons, not its episodes, so the count stands alone.
     val started = item.isSeries && !item.played && left != null && left > 0
     when {
-        item.played -> Text("✓", color = Palette.onAccent, style = MaterialTheme.typography.labelMedium,
-            modifier = modifier.padding(6.dp).background(Palette.accent, RoundedCornerShape(50)).padding(horizontal = 6.dp))
+        item.played -> Mark(Symbols.check, modifier.padding(6.dp).background(Palette.accent, RoundedCornerShape(50)).padding(4.dp),
+            12.dp, tint = Palette.onAccent)
         started -> Text("$left", color = Color.White, style = MaterialTheme.typography.labelMedium,
             modifier = modifier.padding(6.dp).background(Color.Black.copy(alpha = 0.7f), RoundedCornerShape(50)).padding(horizontal = 7.dp))
     }

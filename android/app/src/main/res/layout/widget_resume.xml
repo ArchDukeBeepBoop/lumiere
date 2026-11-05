@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Continue Watching"
-        android:textColor="#C9A227"
+        android:textColor="#9296FF"
         android:textSize="13sp"
         android:textStyle="bold" />
     <TextView android:id="@+id/widget_row1" style="@style/WidgetRow" />

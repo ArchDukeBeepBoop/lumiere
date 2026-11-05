@@ -7,10 +7,8 @@ import (
 	"encoding/hex"
 	"io"
 	"log/slog"
-	"lumiere-server/internal/safefs"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"lumiere-server/internal/metadata"
@@ -201,6 +199,9 @@ func (h ArtworkHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if path != "" && strings.HasPrefix(path, h.ImageDir) {
 		_ = os.Remove(path)
 	}
+	// Kept removed: no automatic pass puts this kind back. See the
+	// image_keep_removed trigger.
+	h.Store.DB.Exec(`INSERT OR IGNORE INTO item_value (item_id, kind, value) VALUES (?, 'art:removed', ?)`, itemID, kind)
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -235,22 +236,6 @@ func (h ArtworkHandler) fetch(ctx context.Context, itemID, kind, raw string) err
 		return err
 	}
 	return h.store(itemID, kind, body, extensionFor(response.Header.Get("Content-Type")))
-}
-
-// store writes the bytes and points the item at them.
-func (h ArtworkHandler) store(itemID, kind string, body []byte, extension string) error {
-	dir := filepath.Join(h.ImageDir, "chosen")
-	if err := os.MkdirAll(dir, 0o700); err != nil {
-		return err
-	}
-	path := filepath.Join(dir, itemID+"-"+strings.ToLower(kind)+extension)
-	if err := safefs.WriteFile(dir, path, body, 0o600); err != nil {
-		return err
-	}
-	// A content hash for the tag, so the client's artwork cache — which keys on
-	// the tag and never revalidates — shows the new picture immediately rather
-	// than the one it already has under the same name.
-	return h.Store.SetImage(itemID, kind, path, contentTag(body), len(body))
 }
 
 // imageKind accepts the types this server stores, and nothing else: the kind

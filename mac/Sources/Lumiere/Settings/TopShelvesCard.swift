@@ -12,6 +12,7 @@ struct TopShelvesCard: View {
     /// through `@AppStorage`, because the key varies per row and per library and
     /// `@AppStorage` needs a fixed one.
     @State private var revision = 0
+    @AppStorage(Preference.ranksTopTen.name) private var ranked = Preference.ranksTopTen.defaultValue
 
     private var candidates: [LibraryRecord] {
         TopShelfSelection.candidates(in: libraries)
@@ -21,8 +22,12 @@ struct TopShelvesCard: View {
         SettingsCard(
             title: "Top 10 Rows",
             icon: "trophy",
-            subtitle: "Which libraries each row ranks"
+            subtitle: "How they look, and which libraries each ranks"
         ) {
+            SettingsRow(label: "Style",
+                        help: "As the TV draws them: larger posters, each beside its number in the countdown. Off, they are plain rows like the rest.") {
+                Toggle("Numbered, with larger posters", isOn: $ranked).toggleStyle(.switch)
+            }
             if candidates.isEmpty {
                 SettingsNote("No film or television libraries to rank yet.")
             } else {

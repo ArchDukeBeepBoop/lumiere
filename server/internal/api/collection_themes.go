@@ -19,15 +19,21 @@ const minThemeSize = 3
 // with the library. A theme turned off loses its collections. Titles with
 // no keywords yet are asked about first, a batch a day, unless their
 // library's lookups are off.
-func (h CollectionSuggestHandler) ThemeCollections(ctx context.Context) (made, changed int) {
+//
+// lookups caps the keyword requests: the whole backlog overnight, a few when
+// someone is waiting on a response.
+func (h CollectionSuggestHandler) ThemeCollections(ctx context.Context, lookups int) (made, changed int) {
 	rooms := h.Store.LibraryRooms(h.privateViews())
 	if token := metadata.ReadToken(h.DataDir); token != "" {
 		tmdb := metadata.NewTMDB(token)
 		skippedRaw, _ := h.Store.Meta(store.MetaLookupSkipped)
-		for _, t := range h.Store.UntaggedTitles(120) {
+		// The whole backlog, paced like the naming pass, within the run's
+		// time: 120 a day left a rebuilt library three weeks from its themes.
+		for _, t := range h.Store.UntaggedTitles(lookups) {
 			if ctx.Err() != nil {
 				break
 			}
+			time.Sleep(250 * time.Millisecond)
 			if strings.Contains(","+skippedRaw+",", ","+rooms.View[h.Store.ItemLibrary(t[0])]+",") {
 				h.Store.SetItemValue(t[0], "keywords:checked", "1")
 				continue
@@ -133,6 +139,6 @@ func (h CollectionSuggestHandler) SetThemes(w http.ResponseWriter, r *http.Reque
 func (h CollectionSuggestHandler) RunThemes(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
-	made, changed := h.ThemeCollections(ctx)
+	made, changed := h.ThemeCollections(ctx, 20)
 	writeJSON(w, http.StatusOK, map[string]int{"Made": made, "Changed": changed})
 }

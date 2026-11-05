@@ -16,5 +16,23 @@ extension LibraryDatabase {
                 t.primaryKey(["itemId", "kind"])
             }
         }
+
+        migrator.registerMigration("v28_item_countries") { db in
+            // Where a title comes from, as ISO codes, for the grid's country
+            // filter. Filled as the server's change feed carries each title
+            // its countries were written for — no full re-read needed.
+            try db.alter(table: "item") { t in
+                t.add(column: "countries", .text)
+            }
+        }
+
+        migrator.registerMigration("v29_item_romaji") { db in
+            // The romaji title, for the per-library title order. See
+            // `LibraryTitleOrder`. Filled as the change feed carries titles
+            // the server matched on AniList.
+            try db.alter(table: "item") { t in
+                t.add(column: "romajiTitle", .text)
+            }
+        }
     }
 }

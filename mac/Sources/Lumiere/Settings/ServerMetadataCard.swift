@@ -52,9 +52,20 @@ struct ServerMetadataCard: View {
 
     @ViewBuilder
     private var accessory: some View {
-        if let status, status.HasKey, !status.Running, status.Pending > 0 {
-            Button("Name \(status.Pending)") { Task { await run() } }
-                .font(Theme.Font.caption)
+        if let status, status.HasKey, !status.Running, status.Pending > 0 || (status.Unmatched ?? 0) > 0 {
+            HStack(spacing: Theme.Space.sm) {
+                if status.Pending > 0 {
+                    Button("Name \(status.Pending)") { Task { await run() } }
+                }
+                // Every unmatched title, including ones that came with a poster
+                // and a synopsis but no TMDB id — no collection, cast or theme
+                // can find those. Fills blanks only.
+                if let unmatched = status.Unmatched, unmatched > 0 {
+                    Button("Identify All \(unmatched)") { Task { await run(all: true) } }
+                        .labelledHelp("Look up every film and show not yet matched. Nothing already written is changed.")
+                }
+            }
+            .font(Theme.Font.caption)
         } else if let status, !status.HasKey {
             Button(isSending ? "Sending…" : "Send Key to Server") {
                 Task { await sendKey() }
@@ -113,11 +124,11 @@ struct ServerMetadataCard: View {
         }
     }
 
-    private func run() async {
+    private func run(all: Bool = false) async {
         guard let client = app.client else { return }
         message = nil
         do {
-            try await client.runServerMetadata()
+            if all { try await client.identifyAllOnServer() } else { try await client.runServerMetadata() }
         } catch {
             message = error.localizedDescription
         }

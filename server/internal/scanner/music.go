@@ -143,6 +143,7 @@ func (s *Scanner) ScanMusic(libraryID, root string) (MusicResult, error) {
 	if result.Removed+result.Moved > 0 {
 		dropEmptyAlbums(s.Store.DB, libraryID)
 	}
+	s.fillMusicGenres(libraryID)
 	return result, nil
 }
 
@@ -168,6 +169,9 @@ func (s *Scanner) insertTrack(libraryID string, f Found) error {
 		nullInt(int64(tags.Track)), nullInt(int64(tags.Disc)), nullInt(int64(tags.Year)),
 		nullInt(tags.Ticks), nullString(tags.Container), f.Path, f.Size, nullInt(tags.Bitrate),
 		addedAt(f))
+	if err == nil {
+		writeGenres(s.Store.DB, ItemID(f.Path), albumID, tags.Genres)
+	}
 	return err
 }
 

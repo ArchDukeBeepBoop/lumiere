@@ -101,7 +101,9 @@ extension PlayerView {
                                     }
                                 },
                                 onNextEpisode: { playNextEpisode(model) },
-                                isPlaying: model.isPlaying
+                                isPlaying: model.isPlaying,
+                                watchesCredits: model.watchesCreditsOf == model.itemId,
+                                onWatchCredits: { model.watchesCreditsOf = model.itemId }
                             )
                         }
                     }

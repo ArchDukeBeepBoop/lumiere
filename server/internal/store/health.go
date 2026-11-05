@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -117,26 +118,10 @@ func (s *Store) Health() ([]HealthIssue, error) {
 
 func (s *Store) healthIssue(kind, where string) (HealthIssue, error) {
 	issue := HealthIssue{Kind: kind, Samples: []HealthSample{}}
-	if err := s.DB.QueryRow(`SELECT count(*) FROM item WHERE ` + where).Scan(&issue.Count); err != nil {
-		return issue, err
-	}
+	// One pass: the matches are few, and counting them in a second query ran
+	// every check's subqueries twice.
 	rows, err := s.DB.Query(`
-		SELECT id, name, COALESCE(path, '') FROM item WHERE `+where+`
-		ORDER BY date_created DESC LIMIT ?`, healthSamples)
-	if err != nil {
-		return issue, err
-	}
-	return issue, scanSamples(rows, &issue)
-}
-
-// unnamedEpisodes are episodes still wearing their filename — the naming
-// pass found no listing for them. Judged in Go by the same rule MergeTwins
-// uses, since "looks like a filename" is not something SQL can say.
-func (s *Store) unnamedEpisodes() (HealthIssue, error) {
-	issue := HealthIssue{Kind: "UnnamedEpisodes", Samples: []HealthSample{}}
-	rows, err := s.DB.Query(`
-		SELECT id, name, COALESCE(path, '') FROM item
-		WHERE type = 'Episode' AND extra_type IS NULL
+		SELECT id, name, COALESCE(path, '') FROM item WHERE ` + where + `
 		ORDER BY date_created DESC`)
 	if err != nil {
 		return issue, err
@@ -147,13 +132,47 @@ func (s *Store) unnamedEpisodes() (HealthIssue, error) {
 		if err := rows.Scan(&sample.ID, &sample.Name, &sample.Path); err != nil {
 			return issue, err
 		}
-		if !looksUnnamed(sample.Name) {
-			continue
-		}
 		issue.Count++
 		if len(issue.Samples) < healthSamples {
 			issue.Samples = append(issue.Samples, sample)
 		}
+	}
+	return issue, rows.Err()
+}
+
+// unnamedEpisodes are episodes still wearing their filename — the naming
+// pass found no listing for them. Judged in Go by the same rule MergeTwins
+// uses, since "looks like a filename" is not something SQL can say.
+func (s *Store) unnamedEpisodes() (HealthIssue, error) {
+	issue := HealthIssue{Kind: "UnnamedEpisodes", Samples: []HealthSample{}}
+	// Names only, unsorted: forty thousand episodes sorted by date with their
+	// paths, to keep a few hundred, was a large part of a report that runs
+	// after every sync. The matches are sorted here, and only the samples
+	// fetch a path.
+	rows, err := s.DB.Query(`SELECT id, name, COALESCE(date_created, '') FROM item
+		WHERE type = 'Episode' AND extra_type IS NULL`)
+	if err != nil {
+		return issue, err
+	}
+	type match struct{ id, name, created string }
+	var found []match
+	for rows.Next() {
+		var m match
+		if err := rows.Scan(&m.id, &m.name, &m.created); err != nil {
+			rows.Close()
+			return issue, err
+		}
+		if looksUnnamed(m.name) {
+			found = append(found, m)
+		}
+	}
+	rows.Close()
+	sort.Slice(found, func(i, j int) bool { return found[i].created > found[j].created })
+	issue.Count = len(found)
+	for _, m := range found[:min(len(found), healthSamples)] {
+		sample := HealthSample{ID: m.id, Name: m.name}
+		s.DB.QueryRow(`SELECT COALESCE(path, '') FROM item WHERE id = ?`, m.id).Scan(&sample.Path)
+		issue.Samples = append(issue.Samples, sample)
 	}
 	return issue, rows.Err()
 }

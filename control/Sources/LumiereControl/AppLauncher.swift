@@ -28,12 +28,19 @@ final class AppLauncher {
         isRunning = !runningInstances().isEmpty
     }
 
+    /// The async form, never the completion handler. That handler is not
+    /// `@Sendable`, so written here it inherits the main actor — and Launch
+    /// Services calls it on its own queue, where Swift's isolation check traps
+    /// (SIGILL, no message). Every press of the Lumiere tile crashed this app,
+    /// and the server, whose output runs through this app, died with it: the
+    /// "server stops when Lumiere starts" of 2026-10-25.
     func launch() {
         guard let url = installedURL() else { return }
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
-        NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, _ in
-            Task { @MainActor in self.refresh() }
+        Task {
+            _ = try? await NSWorkspace.shared.openApplication(at: url, configuration: configuration)
+            refresh()
         }
     }
 

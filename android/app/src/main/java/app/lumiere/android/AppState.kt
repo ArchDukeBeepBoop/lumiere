@@ -32,7 +32,9 @@ sealed interface Screen {
     data object Downloads : Screen
     data class Music(val view: Item) : Screen
     data class Album(val id: String) : Screen
-    data class Artist(val artist: Item, val libraryId: String) : Screen
+    /** [ids]: every artist entry shown as this one (guests folded in); [imageId]/[imageTag]: whose picture. */
+    data class Artist(val artist: Item, val libraryId: String, val ids: List<String> = listOf(artist.id),
+                      val imageId: String? = artist.id, val imageTag: String? = artist.primaryTag) : Screen
     data object NowPlaying : Screen
     data class Edit(val id: String) : Screen
     data object Favourites : Screen
@@ -41,6 +43,8 @@ sealed interface Screen {
     data class Playlist(val id: String, val name: String) : Screen
     data class Person(val id: String, val name: String) : Screen
     data class Genre(val name: String) : Screen
+    /** One music genre's albums, from its card on the Music page. */
+    data class MusicGenre(val name: String, val libraryId: String) : Screen
     data object DiagnosticsView : Screen
     data object TvLibrary : Screen
     /** The first-run guide. See `SetupScreen`. */
@@ -100,6 +104,8 @@ class AppState(context: Context) {
     var tvMenuOpen by mutableStateOf(false)
     /** Home's spotlight has the remote: the menu bar shows over it, as on tvOS. */
     var tvAtTop by mutableStateOf(false)
+    /** "Up Next · 3 of 9": Home's row and how far down, for the sidebar. */
+    var homePosition by mutableStateOf<String?>(null)
     /** Set at start: this is the TV layout, whose blur setting is its own. */
     var isTv = false
     /** A newer build found by the daily check; the menu bar offers it. */
@@ -190,9 +196,16 @@ class AppState(context: Context) {
 
     /** Episodes started by themselves in a row; any episode chosen by hand resets it. */
     var autoStreak = 0
+    /** When the current run of episodes playing by themselves began. */
+    var autoSince: Long? = null
+
+    /** Where a film plays instead of here, if anywhere (the Quest's theater, from its lobby window); true when taken. */
+    var playElsewhere: ((Screen.Player) -> Boolean)? = null
 
     fun push(screen: Screen) {
+        if (screen is Screen.Player && playElsewhere?.invoke(screen) == true) return
         if (screen is Screen.Player) autoStreak = if (screen.auto) autoStreak + 1 else 0
+        if (screen is Screen.Player) autoSince = if (screen.auto) autoSince ?: System.currentTimeMillis() else null
         stack += screen
         // Never from the room: nothing private is kept outside it.
         if (screen is Screen.Detail && !roomOpen) settings.rememberOpened(screen.id)

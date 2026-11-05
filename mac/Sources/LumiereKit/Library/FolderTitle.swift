@@ -26,6 +26,10 @@ public enum FolderTitle {
         style: TitleStyle,
         folderLibraryIds: Set<String>
     ) -> String {
+        // The library's own title order, chosen in Settings, wins.
+        if let named = LibraryTitleOrder.order(for: entry.item.libraryId).primary(for: entry.item) {
+            return named
+        }
         guard let libraryId = entry.item.libraryId,
               folderLibraryIds.contains(libraryId)
         else { return TitleFormatter.title(for: entry.item, style: style) }

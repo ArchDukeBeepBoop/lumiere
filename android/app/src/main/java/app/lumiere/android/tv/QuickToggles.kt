@@ -1,5 +1,8 @@
 package app.lumiere.android.tv
 
+import app.lumiere.android.ui.pointable
+import app.lumiere.android.ui.hoverFocuses
+
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -133,7 +136,7 @@ private class Tile(val label: String, val icon: androidx.compose.ui.graphics.vec
 @Composable
 private fun TileButton(t: Tile, modifier: Modifier) {
     Column(Modifier.width(92.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        androidx.tv.material3.Surface(onClick = t.onClick, modifier = modifier.size(74.dp),
+        androidx.tv.material3.Surface(onClick = t.onClick, modifier = modifier.size(74.dp).then(Modifier.pointable(onClick = t.onClick)),
             shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(22.dp)),
             scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
             colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(

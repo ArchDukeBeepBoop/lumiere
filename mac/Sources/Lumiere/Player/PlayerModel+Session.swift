@@ -99,7 +99,8 @@ extension PlayerModel {
                 options: .init(
                     mpvAvailable: mpvAvailable,
                     selectedSubtitleIndex: tracks.subtitleIndex,
-                    maxBitrate: cap
+                    maxBitrate: cap,
+                    prefersMPV: Preference.prefersMPV.value
                 )
             )
             self.decision = decision
@@ -131,36 +132,8 @@ extension PlayerModel {
             if engineKind != decision.engine {
                 Diagnostics.log("[playback] \(itemId) switched to mpv for linked segments")
             }
-            let engine: any PlayerEngine
-            switch engineKind {
-            case .avPlayer:
-                let av = AVPlayerEngine()
-                avEngine = av
-                engine = av
-            case .mpv:
-                let mpv = MPVEngine()
-                mpvEngine = mpv
-                engine = mpv
-            }
-            self.engine = engine
-            attachCallbacks(to: engine)
-
-            // Bounded, like every other network call in this method. An unbounded
-            // load against an unreachable server left the player on a bare spinner
-            // forever — and until the Close button was drawn in that state too,
-            // there was no way out of it.
-            switch await Timeout.run(seconds: 30, operation: { () -> LoadOutcome? in
-                do {
-                    try await engine.load(request)
-                    return .ok
-                } catch PlayerEngineError.engineUnavailable(let detail) {
-                    return .unavailable(detail)
-                } catch {
-                    return .failed(
-                        (error as? JellyfinError)?.errorDescription ?? error.localizedDescription
-                    )
-                }
-            }) {
+            switch await startEngine(engineKind, request: request, decision: decision,
+                                     mpvAvailable: mpvAvailable) {
             case .ok:
                 break
             case .unavailable(let detail):
@@ -179,6 +152,9 @@ extension PlayerModel {
                 state = .failed("The file didn't start playing.")
                 return
             }
+
+            // Whichever engine opened it — mpv, when AVFoundation could not.
+            guard let engine = self.engine else { return }
 
             // Loop does not carry across files. Turning it on for one thing and
             // discovering the next one repeating is a player that will not stop,

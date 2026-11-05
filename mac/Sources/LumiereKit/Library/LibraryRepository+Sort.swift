@@ -64,8 +64,13 @@ public extension LibraryRepository {
     /// Applies the sort. Most are one column; `watched` is a share, computed
     /// from the member count and the unwatched count the server sends.
     static func order(
-        _ request: QueryInterfaceRequest<ItemRecord>, by sort: Sort, descending: Bool
+        _ request: QueryInterfaceRequest<ItemRecord>, by sort: Sort, descending: Bool,
+        titleOrder: LibraryTitleOrder = .standard
     ) -> QueryInterfaceRequest<ItemRecord> {
+        if sort == .title {
+            // By the name the library's tiles show. See `LibraryTitleOrder.titleSortSQL`.
+            return request.order(sql: titleOrder.titleSortSQL + (descending ? " DESC" : " ASC") + ", item.sortName")
+        }
         guard sort == .watched else {
             let column = Column(sort.column)
             return request.order(descending ? column.desc : column.asc)

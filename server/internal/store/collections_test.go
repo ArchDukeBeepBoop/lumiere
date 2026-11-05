@@ -63,10 +63,10 @@ func TestTheNextFilmInItsCollection(t *testing.T) {
 		('c', 'BoxSet', 'Alien Collection', 1, NULL), ('a1', 'Movie', 'Alien', 0, '1979-05-25'),
 		('a2', 'Movie', 'Aliens', 0, '1986-07-18')`)
 	s.AddLinks("c", []string{"a2", "a1"})
-	if next, name := s.NextInCollection("a1"); next != "a2" || name != "Alien Collection" {
+	if next, name, _ := s.NextInCollection("a1"); next != "a2" || name != "Alien Collection" {
 		t.Fatalf("got %q %q", next, name)
 	}
-	if next, _ := s.NextInCollection("a2"); next != "" {
+	if next, _, _ := s.NextInCollection("a2"); next != "" {
 		t.Fatalf("the last film has no next, got %q", next)
 	}
 }

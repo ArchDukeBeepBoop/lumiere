@@ -47,17 +47,26 @@ private struct EntryActionSheets: ViewModifier {
                         if changed { Task { await context.refreshRow(entry.item.id) } }
                     }
                 } else if let app = context.app, let client = app.client {
+                    // An episode — what Continue Watching holds — is identified
+                    // through its show: the sheet searched films for the
+                    // episode's file name and applied the answer to the episode,
+                    // which the server does not identify.
+                    let showId = entry.item.itemType == .episode ? entry.item.seriesId : nil
+                    let targetId = showId ?? entry.item.id
                     IdentifySheet(
-                        itemId: entry.item.id,
+                        itemId: targetId,
                         // Seeded from the folder on disk, not from the scraped name.
                         // The scraped name is the one string known to be wrong when
-                        // Identify is the sheet you just opened.
-                        initialQuery: PathTitleGuess.query(
-                            path: entry.item.path,
-                            isFolder: entry.item.isFolder,
-                            fallback: entry.item.name
-                        ),
-                        isSeries: entry.item.itemType == .series,
+                        // Identify is the sheet you just opened. A show's from its
+                        // name, the episode's folder being a season's.
+                        initialQuery: showId != nil
+                            ? (entry.item.seriesName ?? entry.item.name)
+                            : PathTitleGuess.query(
+                                path: entry.item.path,
+                                isFolder: entry.item.isFolder,
+                                fallback: entry.item.name
+                            ),
+                        isSeries: showId != nil || entry.item.itemType == .series,
                         client: client,
                         onDone: { changed in
                             state.identifyEntry = nil
@@ -67,7 +76,7 @@ private struct EntryActionSheets: ViewModifier {
                             // title and thinking nothing happened.
                             Task {
                                 await app.refreshMetadata(
-                                    itemId: entry.item.id, replaceEverything: false
+                                    itemId: targetId, replaceEverything: false
                                 )
                                 await context.refreshRow(entry.item.id)
                             }

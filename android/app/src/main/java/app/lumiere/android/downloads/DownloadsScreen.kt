@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package app.lumiere.android.downloads
 
 import androidx.compose.foundation.layout.size
@@ -48,9 +50,12 @@ fun DownloadsScreen(state: AppState) {
     var tick by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { while (true) { delay(1000); tick++ } }
     val shown = downloads.all.filter { !state.hides(it.item.libraryId) }
-    Column(Modifier.fillMaxSize().background(Palette.canvas)) {
-        if (form.isTv) Text("Downloads", style = MaterialTheme.typography.headlineLarge, modifier = Modifier.padding(form.gutter.dp))
-        else app.lumiere.android.ui.IosLargeTitle("Downloads")
+    // A list of lines: it moves only as far as needed, never by a whole page each press.
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides app.lumiere.android.ui.rememberCalmPageScroll()) {
+    Column(Modifier.fillMaxSize().background(Palette.ground)) {
+        // Inside the TV's Library its band already names the page.
+        if (!app.lumiere.android.ui.LocalInTvLibrary.current) Text("Downloads", style = app.lumiere.android.ui.TvType.title,
+            modifier = Modifier.padding(start = form.gutter.dp, top = 28.dp, bottom = 14.dp))
         if (downloads.all.isNotEmpty()) {
             tick.let { }
             val used = downloads.usedBytes() / 1e9
@@ -106,4 +111,5 @@ fun DownloadsScreen(state: AppState) {
             }
         }
     }
+}
 }

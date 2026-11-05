@@ -39,6 +39,9 @@ var DefaultThemes = []Theme{
 	{Slug: "space", Name: "Lost in Space", Keywords: []string{"space travel", "spaceship", "outer space", "space opera"}},
 	{Slug: "superheroes", Name: "Superheroes", Keywords: []string{"superhero"}},
 	{Slug: "martial-arts", Name: "Martial Arts", Keywords: []string{"martial arts", "kung fu"}},
+	{Slug: "mcu", Name: "Marvel Cinematic Universe", Keywords: []string{"marvel cinematic universe (mcu)"}},
+	{Slug: "dc", Name: "DC Universe", Keywords: []string{"dc extended universe (dceu)", "dc universe (dcu)", "dc animated movie universe", "dc comics"}},
+	{Slug: "shared-universes", Name: "Cinematic Universes", Keywords: []string{"shared universe", "cinematic universe", "monsterverse", "the conjuring universe", "dark universe", "wizarding world"}},
 	{Slug: "haunted", Name: "Haunted", Keywords: []string{"haunted house", "ghost", "haunting"}},
 }
 

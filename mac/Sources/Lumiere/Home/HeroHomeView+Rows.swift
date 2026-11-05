@@ -127,6 +127,16 @@ extension HeroHomeView {
         case .topAnime:
             topShelf("Top 10 Anime", kind: .anime, entries: model.topAnime)
 
+        case .continueFranchise:
+            if let banner = ContinueFranchise.shared.banner {
+                ContinueFranchiseBanner(banner: banner, serverURL: serverURL, pipeline: pipeline)
+            }
+
+        case .pinnedCollections:
+            ForEach(PinnedCollectionRows.shared.rows) { row in
+                posterShelf(row.name, entries: row.entries, action: nil)
+            }
+
         case .latest(let libraryId):
             if let shelf = model.libraryShelves.first(where: { $0.library.id == libraryId }) {
                 posterShelf(

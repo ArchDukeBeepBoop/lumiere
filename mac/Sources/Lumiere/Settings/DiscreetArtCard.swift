@@ -40,7 +40,9 @@ struct DiscreetArtCard: View {
 
             SettingsNote("A ticked library's wide cards use the show's backdrop, "
                        + "else its poster, and draw a plain card when it has "
-                       + "neither. An unticked one shows the episode's own still "
+                       + "neither. A video that belongs to no show keeps its own "
+                       + "picture, since there is no show's art to use instead. "
+                       + "An unticked one shows the episode's own still "
                        + "where the server has one, which is the better picture "
                        + "for everything that is not this.")
         }

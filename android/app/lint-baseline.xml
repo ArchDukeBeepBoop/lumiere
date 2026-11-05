@@ -1,0 +1,1527 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<issues format="6" by="lint 9.2.1" type="baseline" client="gradle" dependencies="false" name="AGP (9.2.1)" variant="all" version="9.2.1">
+
+    <issue
+        id="MissingLeanbackLauncher"
+        message="Expecting an activity to have `android.intent.category.LEANBACK_LAUNCHER` intent filter"
+        errorLine1="&lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
+        errorLine2=" ~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="2"
+            column="2"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            .putInt(&quot;failedStarts&quot;, if (unfinished) p.getInt(&quot;failedStarts&quot;, 0) + 1 else 0).commit()"
+        errorLine2="                                                                                            ~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="39"
+            column="93"/>
+    </issue>
+
+    <issue
+        id="ApplySharedPref"
+        message="Consider using `apply()` instead; `commit` writes its data to persistent storage immediately, whereas `apply` will handle it in the background"
+        errorLine1="            prefs(activity).edit().putInt(&quot;failedStarts&quot;, 0).putBoolean(&quot;starting&quot;, false).commit()"
+        errorLine2="                                                                                           ~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="79"
+            column="92"/>
+    </issue>
+
+    <issue
+        id="NewApi"
+        message="Call requires API level 29 (current min is 28): `android.hardware.biometrics.BiometricPrompt.Builder#setDeviceCredentialAllowed`"
+        errorLine1="                @Suppress(&quot;DEPRECATION&quot;) setDeviceCredentialAllowed(true)"
+        errorLine2="                                         ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Room.kt"
+            line="32"
+            column="42"/>
+    </issue>
+
+    <issue
+        id="OldTargetApi"
+        message="Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the `android.os.Build.VERSION_CODES` javadoc for details."
+        errorLine1="        targetSdk = 36"
+        errorLine2="        ~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="14"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 26)"
+        errorLine1="    android:targetCellWidth=&quot;4&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/widget_now_playing_info.xml"
+            line="5"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 26)"
+        errorLine1="    android:targetCellHeight=&quot;1&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/widget_now_playing_info.xml"
+            line="6"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `targetCellWidth` is only used in API level 31 and higher (current min is 26)"
+        errorLine1="    android:targetCellWidth=&quot;4&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/widget_resume_info.xml"
+            line="5"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedAttribute"
+        message="Attribute `targetCellHeight` is only used in API level 31 and higher (current min is 26)"
+        errorLine1="    android:targetCellHeight=&quot;2&quot;"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/xml/widget_resume_info.xml"
+            line="6"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="LeanbackUsesWifi"
+        message="Requiring Wifi permissions limits app availability on TVs that support only Ethernet"
+        errorLine1="    &lt;uses-permission android:name=&quot;android.permission.CHANGE_WIFI_MULTICAST_STATE&quot; />"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="6"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="PictureInPictureIssue"
+        message="An activity in this app supports picture-in-picture and the targetSdkVersion is 31 or above; it is therefore strongly recommended to call both `setAutoEnterEnabled(true)` and `setSourceRectHint(...)`"
+        errorLine1="    &lt;application"
+        errorLine2="     ~~~~~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="17"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="QueryPermissionsNeeded"
+        message="Consider adding a `&lt;queries>` declaration to your manifest when calling this method; see https://g.co/dev/packagevisibility for details"
+        errorLine1="    val canSpeak = remember { speech.resolveActivity(context.packageManager) != null }"
+        errorLine2="                                     ~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/ui/SearchScreen.kt"
+            line="120"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="SelectedPhotoAccess"
+        message="Your app is currently not handling Selected Photos Access introduced in Android 14+"
+        errorLine1="    &lt;uses-permission android:name=&quot;android.permission.READ_MEDIA_VIDEO&quot; />"
+        errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/quest/AndroidManifest.xml"
+            line="6"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="AndroidGradlePluginVersion"
+        message="A newer version of Gradle than 9.5.0 is available: 9.8.2"
+        errorLine1="distributionUrl=https\://services.gradle.org/distributions/gradle-9.5.0-bin.zip"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="$HOME/Downloads/App Design/LumiereAndroid/gradle/wrapper/gradle-wrapper.properties"
+            line="3"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of `compileSdk` than 36 is available: 37"
+        errorLine1="    compileSdk = 36"
+        errorLine2="    ~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="9"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.activity:activity-compose than 1.9.2 is available: 1.13.0"
+        errorLine1="    implementation(&quot;androidx.activity:activity-compose:1.9.2&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="87"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.core:core-ktx than 1.13.1 is available: 1.19.1"
+        errorLine1="    implementation(&quot;androidx.core:core-ktx:1.13.1&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="88"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-runtime-compose than 2.8.6 is available: 2.11.0"
+        errorLine1="    implementation(&quot;androidx.lifecycle:lifecycle-runtime-compose:2.8.6&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="92"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.lifecycle:lifecycle-viewmodel-compose than 2.8.6 is available: 2.11.0"
+        errorLine1="    implementation(&quot;androidx.lifecycle:lifecycle-viewmodel-compose:2.8.6&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="93"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-exoplayer than 1.8.0 is available: 1.11.1"
+        errorLine1="    implementation(&quot;androidx.media3:media3-exoplayer:$media3&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="98"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-ui than 1.8.0 is available: 1.11.1"
+        errorLine1="    implementation(&quot;androidx.media3:media3-ui:$media3&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="99"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-datasource-okhttp than 1.8.0 is available: 1.11.1"
+        errorLine1="    implementation(&quot;androidx.media3:media3-datasource-okhttp:$media3&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="100"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.media3:media3-session than 1.8.0 is available: 1.11.1"
+        errorLine1="    implementation(&quot;androidx.media3:media3-session:$media3&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="101"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.tv:tv-material than 1.0.0 is available: 1.1.0"
+        errorLine1="    implementation(&quot;androidx.tv:tv-material:1.0.0&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="103"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="GradleDependency"
+        message="A newer version of androidx.profileinstaller:profileinstaller than 1.3.1 is available: 1.4.1"
+        errorLine1="    implementation(&quot;androidx.profileinstaller:profileinstaller:1.3.1&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="105"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.jetbrains.kotlinx:kotlinx-coroutines-android than 1.8.1 is available: 1.11.0"
+        errorLine1="    implementation(&quot;org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="94"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of com.squareup.okhttp3:okhttp than 4.12.0 is available: 5.5.1"
+        errorLine1="    implementation(&quot;com.squareup.okhttp3:okhttp:4.12.0&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="95"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of io.github.peerless2012:ass-media than 0.3.0-rc03 is available: 0.5.1"
+        errorLine1="    implementation(&quot;io.github.peerless2012:ass-media:0.3.0-rc03&quot;)"
+        errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="104"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="NewerVersionAvailable"
+        message="A newer version of org.json:json than 20240303 is available: 20260814"
+        errorLine1="    testImplementation(&quot;org.json:json:20240303&quot;)"
+        errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="build.gradle.kts"
+            line="108"
+            column="24"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`LumiereAndroid`)"
+        errorLine1="    override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {"
+        errorLine2="                 ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/MainActivity.kt"
+            line="174"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`LumiereAndroid`)"
+        errorLine1="        if (!::state.isInitialized) return super.dispatchKeyEvent(event)"
+        errorLine2="                                                 ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/MainActivity.kt"
+            line="175"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`LumiereAndroid`)"
+        errorLine1="        if (!::state.isInitialized) return super.dispatchKeyEvent(event)"
+        errorLine2="                                                                  ~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/MainActivity.kt"
+            line="175"
+            column="67"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`LumiereAndroid`)"
+        errorLine1="        return super.dispatchKeyEvent(event)"
+        errorLine2="                     ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/MainActivity.kt"
+            line="262"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="RestrictedApi"
+        message="ComponentActivity.dispatchKeyEvent can only be called from within the same library group prefix (referenced groupId=`androidx.core` with prefix androidx from groupId=`LumiereAndroid`)"
+        errorLine1="        return super.dispatchKeyEvent(event)"
+        errorLine2="                                      ~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/MainActivity.kt"
+            line="262"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            this.player = player; keepScreenOn = !audio; setShowNextButton(many || audio); setShowPreviousButton(many || audio)"
+        errorLine2="                                                         ~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalScreens.kt"
+            line="95"
+            column="58"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            this.player = player; keepScreenOn = !audio; setShowNextButton(many || audio); setShowPreviousButton(many || audio)"
+        errorLine2="                                                                                           ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalScreens.kt"
+            line="95"
+            column="92"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            if (audio) { controllerShowTimeoutMs = 0; controllerHideOnTouch = false; showController() }"
+        errorLine2="                         ~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalScreens.kt"
+            line="97"
+            column="26"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            if (audio) { controllerShowTimeoutMs = 0; controllerHideOnTouch = false; showController() }"
+        errorLine2="                                                      ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalScreens.kt"
+            line="97"
+            column="55"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            if (audio) { controllerShowTimeoutMs = 0; controllerHideOnTouch = false; showController() }"
+        errorLine2="                                                                                     ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalScreens.kt"
+            line="97"
+            column="86"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    val v = player.videoFormat"
+        errorLine2="                   ~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvPlaybackMenu.kt"
+            line="137"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    val a = player.audioFormat"
+        errorLine2="                   ~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvPlaybackMenu.kt"
+            line="138"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        &quot;Video&quot; to (codec(v) + (v?.bitrate?.takeIf { it > 0 }?.let { &quot; · ${&quot;%.1f&quot;.format(it / 1_000_000.0)} Mb/s&quot; } ?: &quot;&quot;)),"
+        errorLine2="                                   ~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvPlaybackMenu.kt"
+            line="142"
+            column="36"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        &quot;HDR&quot; to (v?.colorInfo?.let { when (it.colorTransfer) { androidx.media3.common.C.COLOR_TRANSFER_ST2084 -> &quot;HDR10 / PQ&quot;"
+        errorLine2="                     ~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvPlaybackMenu.kt"
+            line="143"
+            column="22"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        &quot;HDR&quot; to (v?.colorInfo?.let { when (it.colorTransfer) { androidx.media3.common.C.COLOR_TRANSFER_ST2084 -> &quot;HDR10 / PQ&quot;"
+        errorLine2="                                               ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvPlaybackMenu.kt"
+            line="143"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        &quot;HDR&quot; to (v?.colorInfo?.let { when (it.colorTransfer) { androidx.media3.common.C.COLOR_TRANSFER_ST2084 -> &quot;HDR10 / PQ&quot;"
+        errorLine2="                                                                                         ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvPlaybackMenu.kt"
+            line="143"
+            column="90"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="            androidx.media3.common.C.COLOR_TRANSFER_HLG -> &quot;HLG&quot;; else -> &quot;SDR&quot; } } ?: &quot;SDR&quot;),"
+        errorLine2="                                     ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvPlaybackMenu.kt"
+            line="144"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        &quot;Dropped Frames&quot; to &quot;${player.videoDecoderCounters?.droppedBufferCount ?: 0}&quot;,"
+        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvPlaybackMenu.kt"
+            line="147"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        &quot;Dropped Frames&quot; to &quot;${player.videoDecoderCounters?.droppedBufferCount ?: 0}&quot;,"
+        errorLine2="                                                            ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvPlaybackMenu.kt"
+            line="147"
+            column="61"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    val v = player.videoFormat"
+        errorLine2="                   ~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvTabs.kt"
+            line="123"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    when (v?.colorInfo?.colorTransfer) {"
+        errorLine2="             ~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvTabs.kt"
+            line="125"
+            column="14"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    when (v?.colorInfo?.colorTransfer) {"
+        errorLine2="                        ~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvTabs.kt"
+            line="125"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        androidx.media3.common.C.COLOR_TRANSFER_ST2084 -> add(&quot;HDR10&quot;); androidx.media3.common.C.COLOR_TRANSFER_HLG -> add(&quot;HLG&quot;)"
+        errorLine2="                                 ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvTabs.kt"
+            line="126"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="        androidx.media3.common.C.COLOR_TRANSFER_ST2084 -> add(&quot;HDR10&quot;); androidx.media3.common.C.COLOR_TRANSFER_HLG -> add(&quot;HLG&quot;)"
+        errorLine2="                                                                                                 ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvTabs.kt"
+            line="126"
+            column="98"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    when (player.audioFormat?.channelCount) { 6 -> add(&quot;5.1&quot;); 8 -> add(&quot;7.1&quot;) }"
+        errorLine2="                 ~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvTabs.kt"
+            line="128"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="private fun titled(player: Player, item: Item): Player = object : ForwardingPlayer(player) {"
+        errorLine2="                                                         ^">
+        <location
+            file="src/main/java/app/lumiere/android/player/VideoSession.kt"
+            line="47"
+            column="58"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="private fun titled(player: Player, item: Item): Player = object : ForwardingPlayer(player) {"
+        errorLine2="                                                                  ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/VideoSession.kt"
+            line="47"
+            column="67"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="private fun titled(player: Player, item: Item): Player = object : ForwardingPlayer(player) {"
+        errorLine2="                                                                  ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/VideoSession.kt"
+            line="47"
+            column="67"/>
+    </issue>
+
+    <issue
+        id="UnsafeOptInUsageError"
+        message="This declaration is opt-in and its usage should be marked with `@androidx.media3.common.util.UnstableApi` or `@OptIn(markerClass = androidx.media3.common.util.UnstableApi.class)`"
+        errorLine1="    override fun getMediaMetadata(): MediaMetadata = MediaMetadata.Builder()"
+        errorLine2="                 ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/VideoSession.kt"
+            line="48"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="SwitchIntDef"
+        message="Switch statement on an `int` with known associated constant missing case `C.COLOR_TRANSFER_GAMMA_2_2`, `C.COLOR_TRANSFER_LINEAR`, `C.COLOR_TRANSFER_SDR`, `C.COLOR_TRANSFER_SRGB`, `Format.NO_VALUE`"
+        errorLine1="    when (v?.colorInfo?.colorTransfer) {"
+        errorLine2="    ~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/TvTabs.kt"
+            line="125"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="DiscouragedApi"
+        message="Fixed screen orientations will be ignored in most cases, starting from Android 16. Android is moving toward a model where apps are expected to adapt to various orientations, display sizes, and aspect ratios."
+        errorLine1="        &lt;activity android:name=&quot;.MainActivity&quot; android:exported=&quot;true&quot; android:screenOrientation=&quot;landscape&quot; />"
+        errorLine2="                                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/quest/AndroidManifest.xml"
+            line="10"
+            column="72"/>
+    </issue>
+
+    <issue
+        id="ExportedService"
+        message="Exported service does not require permission"
+        errorLine1="        &lt;service"
+        errorLine2="         ~~~~~~~">
+        <location
+            file="src/main/AndroidManifest.xml"
+            line="49"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="InsecureBaseConfiguration"
+        message="Insecure Base Configuration"
+        errorLine1="    &lt;base-config cleartextTrafficPermitted=&quot;true&quot; />"
+        errorLine2="                                            ~~~~">
+        <location
+            file="src/main/res/xml/network_security.xml"
+            line="5"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="Unnecessary; `SDK_INT` is never &lt; 26"
+        errorLine1="        if (Build.VERSION.SDK_INT &lt; 26) return"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/PictureInPicture.kt"
+            line="22"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="ObsoleteSdkInt"
+        message="This folder configuration (`v26`) is unnecessary; `minSdkVersion` is 26. Merge all the resources in this folder into `mipmap-anydpi`.">
+        <location
+            file="src/main/res/mipmap-anydpi-v26"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        message="Do not place Android context classes in static fields (static reference to `Device` which has field `app` pointing to `Context`); this is a memory leak"
+        errorLine1="/**"
+        errorLine2="^">
+        <location
+            file="src/main/java/app/lumiere/android/Device.kt"
+            line="6"
+            column="1"/>
+    </issue>
+
+    <issue
+        id="StaticFieldLeak"
+        message="Do not place Android context classes in static fields; this is a memory leak"
+        errorLine1="    private var app: Context? = null"
+        errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Device.kt"
+            line="18"
+            column="5"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.color.accent` appears to be unused"
+        errorLine1="    &lt;color name=&quot;accent&quot;>#9296FF&lt;/color>"
+        errorLine2="           ~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/values/themes.xml"
+            line="9"
+            column="12"/>
+    </issue>
+
+    <issue
+        id="UsableSpace"
+        message="Consider also using `StorageManager#getAllocatableBytes` and `allocateBytes` which will consider clearable cached data"
+        errorLine1="                val free = context.filesDir.usableSpace / 1_000_000_000.0"
+        errorLine2="                                            ~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/tv/TvSettings.kt"
+            line="191"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="UsableSpace"
+        message="Consider also using `StorageManager#getAllocatableBytes` and `allocateBytes` which will consider clearable cached data"
+        errorLine1="                    &quot;Storage: %.1f GB free&quot;.format(context.filesDir.usableSpace / 1e9),"
+        errorLine2="                                                                    ~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/tv/TvSettings.kt"
+            line="215"
+            column="69"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-hdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-mdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-xhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-xxhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconLauncherShape"
+        message="Launcher icon used as round icon did not have a circular shape">
+        <location
+            file="src/main/res/mipmap-xxxhdpi/ic_launcher.png"/>
+    </issue>
+
+    <issue
+        id="IconMissingDensityFolder"
+        message="Missing density variation folders in `src/main/res`: drawable-hdpi, drawable-mdpi, drawable-xxhdpi">
+        <location
+            file="src/main/res"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _macPrivate = v; prefs.edit().putStringSet(&quot;macPrivate&quot;, v).apply() }"
+        errorLine2="                                  ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/AppState.kt"
+            line="89"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().putString(&quot;deviceId&quot;, it).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/AppState.kt"
+            line="181"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs.edit().putString(&quot;cacheOwner&quot;, &quot;${session.serverUrl}|${session.userId}&quot;).apply()"
+        errorLine2="            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/AppState.kt"
+            line="233"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs.edit().remove(&quot;macPrivate&quot;).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/AppState.kt"
+            line="247"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                p.edit().putString(&quot;lastCrash&quot;, &quot;app ${BuildConfig.VERSION_NAME}: &quot; + error.stackTraceToString().take(6000)).commit()"
+        errorLine2="                ~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="33"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        p.edit().putBoolean(&quot;starting&quot;, true)"
+        errorLine2="        ~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="38"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun started(context: Context) = prefs(context).edit().putBoolean(&quot;starting&quot;, false).putInt(&quot;failedStarts&quot;, 0).apply()"
+        errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="43"
+            column="37"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs(context).edit().remove(&quot;lastCrash&quot;).apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="49"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Int.toDrawable` instead?"
+        errorLine1="        activity.window.setBackgroundDrawable(ColorDrawable(Color.rgb(28, 28, 30)))"
+        errorLine2="                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="54"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="            prefs(activity).edit().putInt(&quot;failedStarts&quot;, 0).putBoolean(&quot;starting&quot;, false).commit()"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="79"
+            column="13"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        val request = DownloadManager.Request(Uri.parse(server.streamUrl(item.id, item.mediaSourceId)))"
+        errorLine2="                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/downloads/Downloads.kt"
+            line="71"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.get` instead?"
+        errorLine1="            val p = bmp.getPixel(x, y); r += (p shr 16) and 255; g += (p shr 8) and 255; b += p and 255; n++"
+        errorLine2="                    ~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/ui/Frosted.kt"
+            line="69"
+            column="21"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SQLiteDatabase.transaction` instead?"
+        errorLine1="        db.beginTransaction()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/cache/LibraryCache.kt"
+            line="44"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SQLiteDatabase.transaction` instead?"
+        errorLine1="        db.beginTransaction()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/cache/LibraryCache.kt"
+            line="78"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            MediaItem.Builder().setMediaId(e.uri).setUri(Uri.parse(e.uri))"
+        errorLine2="                                                         ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalAudio.kt"
+            line="84"
+            column="58"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs(context).edit().putString(&quot;recent&quot;, list.joinToString(&quot;\n&quot;) { &quot;${it.uri}\t${it.name.replace(&apos;\t&apos;, &apos; &apos;)}\t${if (it.video) &quot;v&quot; else &quot;a&quot;}&quot; }).apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalFiles.kt"
+            line="34"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun forget(context: Context) { recent.value = emptyList(); prefs(context).edit().remove(&quot;recent&quot;).apply() }"
+        errorLine2="                                                               ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalFiles.kt"
+            line="38"
+            column="64"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.get` instead?"
+        errorLine1="        val s = Bitmap.createScaledBitmap(b, 1, 1, true); Color(s.getPixel(0, 0)) } }"
+        errorLine2="                                                                ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalNowPlaying.kt"
+            line="93"
+            column="65"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Bitmap.scale` instead?"
+        errorLine1="        val s = Bitmap.createScaledBitmap(b, 1, 1, true); Color(s.getPixel(0, 0)) } }"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalNowPlaying.kt"
+            line="93"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="    val audio = remember(uri) { context.contentResolver.getType(Uri.parse(uri))?.startsWith(&quot;audio&quot;) == true }"
+        errorLine2="                                                                ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalScreens.kt"
+            line="68"
+            column="65"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                setMediaItems(queue.map { e -> MediaItem.Builder().setUri(Uri.parse(e.uri))"
+        errorLine2="                                                                          ~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/LocalScreens.kt"
+            line="81"
+            column="75"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        getSharedPreferences(&quot;lumiere&quot;, MODE_PRIVATE).edit()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/MainActivity.kt"
+            line="148"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `Int.toDrawable` instead?"
+        errorLine1="        bootWindow?.window?.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.BLACK))"
+        errorLine2="                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/MainActivity.kt"
+            line="373"
+            column="51"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="        runCatching { context.contentResolver.loadThumbnail(Uri.parse(uri), Size(size, size), null) }.getOrNull()?.also { thumbs.put(uri, it) }"
+        errorLine2="                                                            ~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/local/MediaLibrary.kt"
+            line="66"
+            column="61"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                .setArtworkUri(android.net.Uri.parse("
+        errorLine2="                               ^">
+        <location
+            file="src/main/java/app/lumiere/android/music/Music.kt"
+            line="150"
+            column="32"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                android.net.Uri.parse(server.subtitleUrl(item.id, item.mediaSourceId, stream.index, stream.codec))"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/Playback.kt"
+            line="85"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="            .setUri(local?.let { android.net.Uri.fromFile(it) } ?: android.net.Uri.parse(server.streamUrl(item.id, item.mediaSourceId)))"
+        errorLine2="                                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/player/Playback.kt"
+            line="97"
+            column="68"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    private fun put(key: String, value: Boolean) = store.edit().putBoolean(key, value).apply()"
+        errorLine2="                                                   ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="19"
+            column="52"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _subtitleLift.floatValue = v; store.edit().putFloat(&quot;subtitleLift&quot;, v).apply() }"
+        errorLine2="                                               ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="33"
+            column="48"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _stillWatching.value = v; store.edit().putInt(&quot;stillWatchingAfter&quot;, v).apply() }"
+        errorLine2="                                           ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="53"
+            column="44"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _private.value = v; store.edit().putStringSet(&quot;privateLibraries&quot;, v).apply() }"
+        errorLine2="                                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="67"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _lockMinutes.value = v; store.edit().putInt(&quot;roomLockMinutes&quot;, v).apply() }"
+        errorLine2="                                         ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="87"
+            column="42"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _downloadCap.intValue = v; store.edit().putInt(&quot;downloadCapGb&quot;, v).apply() }"
+        errorLine2="                                            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="106"
+            column="45"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        store.edit().putString(&quot;recentSearches&quot;, list.joinToString(&quot;\n&quot;)).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="119"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        store.edit().putString(&quot;recentlyOpened&quot;, list.joinToString(&quot;\n&quot;)).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="129"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        store.edit().remove(&quot;recentlyOpened&quot;).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="136"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        store.edit().putString(&quot;tracks.$seriesId&quot;, &quot;${audio ?: a ?: &quot;&quot;}|${text ?: t ?: &quot;&quot;}&quot;).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="148"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    private fun putInt(key: String, v: Int) = store.edit().putInt(key, v).apply()"
+        errorLine2="                                              ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="152"
+            column="47"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    private fun saveIds(key: String, v: List&lt;String>) = store.edit().putString(key, v.joinToString(&quot;,&quot;)).apply()"
+        errorLine2="                                                        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="185"
+            column="57"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        if (!store.getBoolean(&quot;libraryColumnsSix&quot;, false)) { it.value = 6; store.edit().putInt(&quot;libraryColumns&quot;, 6).putBoolean(&quot;libraryColumnsSix&quot;, true).apply() }"
+        errorLine2="                                                                           ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="204"
+            column="76"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _subLang.value = v; store.edit().putString(&quot;subtitleLanguage&quot;, v).apply() }"
+        errorLine2="                                     ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="248"
+            column="38"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun setSeasonsNewestFirst(seriesId: String, on: Boolean) = store.edit().putBoolean(&quot;newestFirst.$seriesId&quot;, on).apply()"
+        errorLine2="                                                               ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="257"
+            column="64"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun rememberFill(seriesId: String, fill: Boolean) = store.edit().putBoolean(&quot;fill.$seriesId&quot;, fill).apply()"
+        errorLine2="                                                        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="261"
+            column="57"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun rememberSubtitleSize(seriesId: String, size: Int) = store.edit().putInt(&quot;subSize.$seriesId&quot;, size).apply()"
+        errorLine2="                                                            ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="265"
+            column="61"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _pin.value = v; store.edit().putString(&quot;devicePin&quot;, v).apply() }"
+        errorLine2="                                 ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="290"
+            column="34"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _rowOrder.value = v; store.edit().putString(&quot;tvRowOrder&quot;, v.joinToString(&quot;,&quot;)).apply() }"
+        errorLine2="                                      ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="295"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _rowsHidden.value = v; store.edit().putStringSet(&quot;tvRowsHidden&quot;, v).apply() }"
+        errorLine2="                                        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="299"
+            column="41"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        if (!store.getBoolean(&quot;compactHomeOffOnce&quot;, false)) { it.value = false; store.edit().putBoolean(&quot;compactHome&quot;, false).putBoolean(&quot;compactHomeOffOnce&quot;, true).apply() }"
+        errorLine2="                                                                                ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="347"
+            column="81"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { _profiles.value = v; store.edit().putString(&quot;profiles&quot;, v).apply() }"
+        errorLine2="                                      ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="366"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        set(v) { store.edit().putString(&quot;wakeAddress&quot;, v).apply() }"
+        errorLine2="                 ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="370"
+            column="18"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        store.edit().remove(key).apply()"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="394"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        val edit = store.edit()"
+        errorLine2="                   ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/Prefs.kt"
+            line="418"
+            column="20"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                prefs(context).edit().remove(&quot;token:${to.name}&quot;).apply()"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/remote/RemoteClient.kt"
+            line="150"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        prefs(context).edit().remove(&quot;token:$name&quot;).apply { if (lastTv(context) == name) remove(&quot;last&quot;) }.apply()"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/remote/RemoteClient.kt"
+            line="181"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="    fun forgetAll(context: Context) = prefs(context).edit().clear().apply()"
+        errorLine2="                                      ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/remote/RemoteHost.kt"
+            line="98"
+            column="39"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="                prefs(context).edit().putString(device, token).putString(&quot;$device.name&quot;, o.optString(&quot;name&quot;)).apply()"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/remote/RemoteHost.kt"
+            line="164"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `SharedPreferences.edit` instead?"
+        errorLine1="        store.edit().putString(id, JSONObject().put(&quot;t&quot;, e.ticks).put(&quot;at&quot;, e.at).put(&quot;q&quot;, e.pending)"
+        errorLine2="        ~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/cache/WatchLedger.kt"
+            line="34"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UseKtx"
+        message="Use the KTX extension function `String.toUri` instead?"
+        errorLine1="                    .setIntentUri(Uri.parse(open.toUri(Intent.URI_INTENT_SCHEME)))"
+        errorLine2="                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/tv/WatchNext.kt"
+            line="49"
+            column="35"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            if (server == null) { status.text = &quot;Not signed in on this device.&quot;; return@button }"
+        errorLine2="                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="65"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            status.text = &quot;Fetching the update…&quot;"
+        errorLine2="                           ~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="66"
+            column="28"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="            if (server == null) { status.text = &quot;Not signed in on this device.&quot;; return@button }"
+        errorLine2="                                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="72"
+            column="50"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                text = &quot;Lumiere didn&apos;t start properly&quot;; setTextColor(Color.WHITE); textSize = 26f; gravity = Gravity.CENTER"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="86"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="SetTextI18n"
+        message="String literal in `setText` can not be translated. Use Android resources instead."
+        errorLine1="                text = &quot;Install the latest version from the Mac, or send what went wrong.&quot;"
+        errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/java/app/lumiere/android/CrashGuard.kt"
+            line="89"
+            column="25"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Play or pause&quot;, should use `@string` resource"
+        errorLine1="        android:contentDescription=&quot;Play or pause&quot; />"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/widget_now_playing.xml"
+            line="39"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Next&quot;, should use `@string` resource"
+        errorLine1="        android:contentDescription=&quot;Next&quot; />"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/widget_now_playing.xml"
+            line="47"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Continue Watching&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;Continue Watching&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="src/main/res/layout/widget_resume.xml"
+            line="12"
+            column="9"/>
+    </issue>
+
+</issues>

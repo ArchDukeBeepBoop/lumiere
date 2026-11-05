@@ -137,7 +137,7 @@ fun UpNextCard(next: Item, server: Server, counting: Boolean, onPlay: () -> Unit
                     if (counting) androidx.compose.material3.CircularProgressIndicator(progress = { left / 10f },
                         modifier = Modifier.size(18.dp), strokeWidth = 2.dp,
                         color = androidx.compose.material3.LocalContentColor.current, trackColor = androidx.compose.ui.graphics.Color.Transparent)
-                    else Text("▶")
+                    else app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.play)
                     Text("  Play Now")
                 }
                 LButton(primary = false, onClick = onDismiss) { Text("Watch Credits") }

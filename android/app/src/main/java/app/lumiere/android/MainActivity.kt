@@ -39,8 +39,18 @@ import app.lumiere.android.ui.detectFormFactor
 import coil.ImageLoader
 import coil.compose.LocalImageLoader
 
-class MainActivity : ComponentActivity() {
+open class MainActivity : ComponentActivity() {
     private lateinit var state: AppState
+
+    /** The film's host inside the Quest's theater (TheaterWindow), rather than the window in the lobby. */
+    protected open val inRoom: Boolean get() = false
+
+    /** Plays [p] here, from Home, once signed in: the theater's window starting the film it was opened for. */
+    protected fun play(p: Screen.Player) {
+        if (!::state.isInitialized || state.session == null) return
+        state.tab(Screen.Home)
+        state.push(p)
+    }
     private var longBack = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,6 +61,14 @@ class MainActivity : ComponentActivity() {
         Device.detect(this)
         app.lumiere.android.api.SnapshotCache.dir = cacheDir.resolve("home")
         state = AppState(this)
+        if (Flavor.quest && inRoom) hostInTheRoom(state) { dispatchKeyEvent(it) }
+        // In the Quest's lobby a film plays in the theater round you, which hands back to this window after.
+        if (Flavor.quest && !inRoom) state.playElsewhere = { p ->
+            runCatching {
+                startActivity(android.content.Intent().setClassName(this, "app.lumiere.android.spatial.LumiereSpace")
+                    .putExtra("play", p.id).putExtra("start", p.startSeconds ?: -1.0))
+            }.onFailure { android.util.Log.w("Lumiere", "theater", it) }.isSuccess
+        }
         state.downloads = app.lumiere.android.downloads.Downloads(this)
         state.cache = app.lumiere.android.cache.LibraryCache(this)
         state.cacheSync = app.lumiere.android.cache.CacheSync(state.cache)
@@ -72,12 +90,14 @@ class MainActivity : ComponentActivity() {
                 val real = androidx.compose.ui.platform.LocalDensity.current
                 val tvPreview = Flavor.tv && intent?.getBooleanExtra("tv", false) == true
                 // Larger text, for a screen read from across a room (Settings).
-                val textScale = 1f + 0.15f * state.settings.textScale
+                // The headset reads text at arm's length: Meta asks for 14 sp at the least, and the TV layout's
+                // smallest styles are 10–13.5, so the Quest's window takes them a fifth larger (QUEST_PLAN step 2).
+                val textScale = (1f + 0.15f * state.settings.textScale) * (if (Flavor.quest) QUEST_TEXT else 1f)
                 val density = if (tvPreview) androidx.compose.ui.unit.Density(
                     resources.displayMetrics.heightPixels.coerceAtMost(resources.displayMetrics.widthPixels) / 540f,
                     real.fontScale * textScale) else androidx.compose.ui.unit.Density(real.density, real.fontScale * textScale)
                 CompositionLocalProvider(LocalFormFactor provides form, androidx.compose.ui.platform.LocalDensity provides density) {
-                    App(state) { finish() }
+                    App(state) { OpenApp.quit?.invoke() ?: finish() }
                 }
                 // No screenshots, screen recording or app-switcher snapshot
                 // while the room is open.
@@ -103,7 +123,8 @@ class MainActivity : ComponentActivity() {
                     app.lumiere.android.Motion.reduced = state.settings.reduceMotion || (app.lumiere.android.Device.lowMemory && app.lumiere.android.music.Music.isPlaying)
                 }
                 androidx.compose.runtime.LaunchedEffect(state.roomOpen, state.settings.roomBlocksCapture) {
-                    if (state.roomOpen && state.settings.roomBlocksCapture) {
+                    // Never on the Quest: a secure window draws black inside the headset's room.
+                    if (state.roomOpen && state.settings.roomBlocksCapture && !Flavor.quest) {
                         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
                     } else {
                         window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
@@ -267,6 +288,11 @@ class MainActivity : ComponentActivity() {
         return super.dispatchTouchEvent(ev)
     }
 
+    override fun onDestroy() {
+        if (::state.isInitialized) leaveTheRoom(state)
+        super.onDestroy()
+    }
+
     override fun onNewIntent(intent: android.content.Intent) {
         super.onNewIntent(intent)
         if (!::state.isInitialized) return
@@ -427,7 +453,7 @@ private fun App(state: AppState, onExit: () -> Unit) {
     BackHandler {
         when {
             state.pop() -> Unit
-            tvForm && !state.tvMenuOpen -> state.tvMenuOpen = true
+            tvForm && !Flavor.quest && !state.tvMenuOpen -> state.tvMenuOpen = true
             else -> state.confirmExit = true
         }
     }
@@ -435,7 +461,9 @@ private fun App(state: AppState, onExit: () -> Unit) {
     @Suppress("DEPRECATION")
     CompositionLocalProvider(LocalImageLoader provides images) {
       androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
-      val calm = if (LocalFormFactor.current.isTv) app.lumiere.android.ui.CalmScroll else androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current
+      // On a TV every page scrolls on the focus line (see TvScroll), so rows land in line.
+      val calm = if (LocalFormFactor.current.isTv) app.lumiere.android.ui.rememberTvScroll()
+          else androidx.compose.foundation.gestures.LocalBringIntoViewSpec.current
       CompositionLocalProvider(app.lumiere.android.ui.LocalCardMenu provides
           if (LocalFormFactor.current.isTv) ({ item: app.lumiere.android.api.Item -> state.actionsFor = item })
           else ({ item: app.lumiere.android.api.Item -> app.lumiere.android.ui.PhoneMenu.item = item }),
@@ -460,7 +488,7 @@ private fun App(state: AppState, onExit: () -> Unit) {
                 is Screen.LocalFile -> androidx.compose.runtime.key(screen.uri) { app.lumiere.android.local.LocalPlayerScreen(state, screen.uri, screen.name) }
                 is Screen.Music -> app.lumiere.android.music.MusicScreen(state, screen.view)
                 is Screen.Album -> app.lumiere.android.music.AlbumScreen(state, screen.id)
-                is Screen.Artist -> app.lumiere.android.music.ArtistScreen(state, screen.artist, screen.libraryId)
+                is Screen.Artist -> app.lumiere.android.music.ArtistScreen(state, screen.artist, screen.libraryId, screen.ids, screen.imageId, screen.imageTag)
                 Screen.NowPlaying -> if (LocalFormFactor.current.isTv) app.lumiere.android.tv.TvNowPlayingScreen(state)
                     else app.lumiere.android.music.NowPlayingScreen(state)
                 is Screen.Edit -> app.lumiere.android.ui.EditScreen(state, screen.id)
@@ -471,6 +499,8 @@ private fun App(state: AppState, onExit: () -> Unit) {
                 is Screen.Person -> if (tvForm) app.lumiere.android.tv.TvPersonScreen(state, screen.id, screen.name) else app.lumiere.android.ui.PersonScreen(state, screen.id, screen.name)
                 is Screen.Genre -> if (tvForm) app.lumiere.android.tv.GenreScreen(state, screen.name)
                     else app.lumiere.android.ui.PhoneGenreScreen(state, screen.name)
+                is Screen.MusicGenre -> if (tvForm) app.lumiere.android.music.MusicGenreScreen(state, screen.name, screen.libraryId)
+                    else app.lumiere.android.music.PhoneMusicGenreScreen(state, screen.name, screen.libraryId)
                 Screen.DiagnosticsView -> app.lumiere.android.tv.DiagnosticsScreen(state)
                 Screen.TvLibrary -> app.lumiere.android.tv.TvLibraryScreen(state)
                 Screen.Setup -> app.lumiere.android.ui.SetupScreen(state)
@@ -553,3 +583,6 @@ private fun remoteKey(activity: android.app.Activity, state: AppState, key: Stri
         }
     }
 }
+
+/** How much larger text is in the Quest's window than on the TV, so its smallest is Meta's 14 sp. */
+internal const val QUEST_TEXT = 1.2f

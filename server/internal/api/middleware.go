@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"lumiere-server/internal/store"
@@ -24,6 +25,8 @@ func SessionFrom(ctx context.Context) (store.Session, bool) {
 // Auth validates credentials on the way in.
 type Auth struct {
 	Store *store.Store
+	// Log names a lookup that failed. Nil is quiet (tests).
+	Log *slog.Logger
 }
 
 // RequireAuth rejects anything without a valid token.
@@ -46,6 +49,9 @@ func (a Auth) RequireAuth(next http.Handler) http.Handler {
 				// A database failure is not a bad token, but the client can only
 				// act on one of those. 500 keeps it from discarding a good token
 				// because the disk was busy.
+				if a.Log != nil {
+					a.Log.Error("auth lookup failed", "path", r.URL.Path, "error", err)
+				}
 				writeJSON(w, http.StatusInternalServerError, errorBody{"auth lookup failed"})
 				return
 			}

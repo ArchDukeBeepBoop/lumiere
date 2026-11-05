@@ -58,6 +58,11 @@ func (s *Store) hydrateValues(byID map[string]*Item, in string, args []any) erro
 			it.Genres = append(it.Genres, value)
 		case "tag":
 			it.Tags = append(it.Tags, value)
+		case "title:romaji":
+			it.Romaji = value
+		case "country":
+			// ISO codes; the apps name them in the viewer's own language.
+			it.Countries = append(it.Countries, value)
 		case "studio":
 			// Studios are {Id, Name} on the wire and this server has no studio
 			// items to point at, so the name doubles as the id. Lumiere shows the

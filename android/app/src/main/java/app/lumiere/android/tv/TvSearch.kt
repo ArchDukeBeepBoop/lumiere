@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package app.lumiere.android.tv
 
 import androidx.compose.ui.draw.alpha
@@ -95,7 +97,7 @@ fun TvSearchScreen(state: AppState) {
             else state.settings.rememberSearch(term.trim())
         }
     }
-    Column(Modifier.fillMaxSize().background(Palette.canvas).padding(horizontal = 56.dp, vertical = 28.dp),
+    Column(Modifier.fillMaxSize().background(Palette.ground).padding(horizontal = 56.dp, vertical = 28.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(if (term.isEmpty()) "Search" else term, fontSize = 30.sp, fontWeight = FontWeight.SemiBold,
             color = if (term.isEmpty()) Palette.textMuted else Palette.textPrimary, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -122,7 +124,7 @@ fun TvSearchScreen(state: AppState) {
                 people.take(4).forEach { p -> LButton(primary = false, onClick = { open(state, p, context) }) { Text(p.name) } }
             }
             if (term.isBlank() && opened.isNotEmpty()) {
-                Text("Recently Viewed", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary,
+                Text("Recently Viewed", style = app.lumiere.android.ui.TvType.row,
                     modifier = Modifier.padding(bottom = 10.dp))
             }
             if (term.trim().length >= 2 && results.isEmpty() && people.isEmpty()) Text("Nothing by that name.", style = MaterialTheme.typography.bodyMedium)
@@ -134,21 +136,27 @@ fun TvSearchScreen(state: AppState) {
                 "Episodes" to shown.filter { it.isEpisode },
                 "More" to shown.filter { it.type != "Movie" && !it.isSeries && !it.isEpisode },
             ).filter { it.second.isNotEmpty() }
-            androidx.compose.foundation.lazy.LazyColumn(contentPadding = PaddingValues(bottom = 40.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            // Home's scrolling: each row of results settles at the top of the results, never jumping.
+            val resultList = androidx.compose.foundation.lazy.rememberLazyListState()
+            var focusedRow by remember { mutableStateOf<Int?>(null) }
+            val hasTop = shown.isNotEmpty() && term.isNotBlank()
+            app.lumiere.android.ui.SteeredList(resultList, focusedRow, landing = 0.02f)
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides app.lumiere.android.ui.rememberSteeredPageScroll()) {
+            androidx.compose.foundation.lazy.LazyColumn(state = resultList, contentPadding = PaddingValues(bottom = 240.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 // Apple's Top Result: the best match, large, before the rows.
                 shown.firstOrNull()?.takeIf { term.isNotBlank() }?.let { top ->
                     item(key = "top") {
-                        Column {
-                            Text("Top Result", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary,
+                        Column(Modifier.onFocusChanged { if (it.hasFocus) focusedRow = 0 }) {
+                            Text("Top Result", style = app.lumiere.android.ui.TvType.row,
                                 modifier = Modifier.padding(bottom = 8.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(20.dp),
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dp),
                                 modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp)) {
-                                Box(Modifier.width(360.dp).aspectRatio(16f / 9f).focusCard({}, { open(state, top, context) }) { state.actionsFor = top }
+                                Box(Modifier.width(300.dp).aspectRatio(16f / 9f).focusCard({}, { open(state, top, context) }) { state.actionsFor = top }
                                     .background(Palette.surface)) {
-                                    AsyncImage(imageFor(top, server, CardShape.Wide, 720), top.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                                    AsyncImage(imageFor(top, server, CardShape.Wide, 1000), top.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                                 }
                                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text(top.seriesName ?: top.name, fontSize = 24.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary, maxLines = 2)
+                                    Text(top.seriesName ?: top.name, style = app.lumiere.android.ui.TvType.title, maxLines = 2)
                                     Text(listOfNotNull(when { top.isSeries -> "TV Show"; top.isEpisode -> "Episode"; top.type == "Movie" -> "Film"; else -> null },
                                         top.year?.toString(), top.episodeLabel).joinToString(" · "), style = MaterialTheme.typography.labelLarge, color = Palette.textSecondary)
                                 }
@@ -156,19 +164,19 @@ fun TvSearchScreen(state: AppState) {
                         }
                     }
                 }
-                groups.forEach { (name, list) ->
+                groups.forEachIndexed { g, (name, list) ->
                     item(key = "g-$name") {
-                        Column {
-                            if (name.isNotEmpty()) Text(name, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary,
+                        Column(Modifier.onFocusChanged { if (it.hasFocus) focusedRow = g + (if (hasTop) 1 else 0) }) {
+                            if (name.isNotEmpty()) Text(name, style = app.lumiere.android.ui.TvType.row,
                                 modifier = Modifier.padding(bottom = 8.dp))
-                            LazyRow(Modifier.focusRestorer(), horizontalArrangement = Arrangement.spacedBy(32.dp),
+                            LazyRow(Modifier.focusRestorer(), horizontalArrangement = Arrangement.spacedBy(24.dp),
                                 contentPadding = PaddingValues(vertical = 10.dp, horizontal = 4.dp)) {
                                 items(list.size) { i -> val r = list[i]
                                     var chosen by remember { mutableStateOf(false) }
-                                    Column(Modifier.width(if (r.isEpisode) 240.dp else 140.dp).onFocusChanged { chosen = it.hasFocus }) {
+                                    Column(Modifier.width(if (r.isEpisode) 200.dp else 124.dp).onFocusChanged { chosen = it.hasFocus }) {
                                         Box(Modifier.fillMaxWidth().aspectRatio(if (r.isEpisode) 16f / 9f else 2f / 3f)
                                             .focusCard({}, { open(state, r, context) }) { state.actionsFor = r }.background(Palette.surface)) {
-                                            AsyncImage(imageFor(r, server, if (r.isEpisode) CardShape.Wide else CardShape.Poster, 280), r.name,
+                                            AsyncImage(imageFor(r, server, if (r.isEpisode) CardShape.Wide else CardShape.Poster, if (r.isEpisode) 640 else 400), r.name,
                                                 contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                                         }
                                         Spacer(Modifier.height(6.dp))
@@ -181,6 +189,7 @@ fun TvSearchScreen(state: AppState) {
                         }
                     }
                 }
+            }
             }
         }
     }

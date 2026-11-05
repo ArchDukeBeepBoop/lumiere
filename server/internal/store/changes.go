@@ -45,6 +45,21 @@ var changeTriggers = []string{
 	   INSERT INTO change_log (item_id) VALUES (NEW.item_id); END`,
 	`CREATE TRIGGER IF NOT EXISTS change_image_delete AFTER DELETE ON image BEGIN
 	   INSERT INTO change_log (item_id) VALUES (OLD.item_id); END`,
+	// A picture someone removed stays removed. Every automatic pass — the
+	// metadata pass, AniList's art, frames, borrowed folder pictures — fills
+	// what is missing, and a removed backdrop is missing to all of them, so
+	// it came back by the next morning. Choosing a picture clears the mark.
+	// See ArtworkHandler.Delete.
+	`CREATE TRIGGER IF NOT EXISTS image_keep_removed BEFORE INSERT ON image
+	   WHEN EXISTS (SELECT 1 FROM item_value v WHERE v.item_id = NEW.item_id
+	                AND v.kind = 'art:removed' AND v.value = NEW.kind)
+	   BEGIN SELECT RAISE(IGNORE); END`,
+	// And a picture chosen by hand is not replaced by one: a pass that
+	// writes over it (the AniList art, a metadata refresh) is ignored. Only
+	// another choice — a file in "chosen" — or a removal changes it.
+	`CREATE TRIGGER IF NOT EXISTS image_keep_chosen BEFORE UPDATE ON image
+	   WHEN OLD.path LIKE '%/chosen/%' AND NEW.path NOT LIKE '%/chosen/%'
+	   BEGIN SELECT RAISE(IGNORE); END`,
 }
 
 // ensureChangeLog creates the log and its triggers; idempotent.

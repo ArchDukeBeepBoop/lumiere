@@ -8,10 +8,10 @@ data class LyricLine(val text: String, val start: Double?)
 /** Music, lyrics, favourites and editing — the Mac app's routes, the same shapes. */
 
 suspend fun Server.albums(userId: String, libraryId: String, start: Int, limit: Int, sortBy: String = "SortName",
-                          descending: Boolean = false, artistId: String? = null) = parseItems(
+                          descending: Boolean = false, artistId: String? = null, genre: String? = null) = parseItems(
     get("Items", mapOf(
         "userId" to userId, "ParentId" to if (artistId == null) libraryId else null, "Recursive" to "true",
-        "IncludeItemTypes" to "MusicAlbum", "SortBy" to sortBy, "ArtistIds" to artistId,
+        "IncludeItemTypes" to "MusicAlbum", "SortBy" to sortBy, "ArtistIds" to artistId, "Genres" to genre,
         "SortOrder" to if (descending) "Descending" else "Ascending",
         "StartIndex" to "$start", "Limit" to "$limit",
     ))
@@ -22,6 +22,20 @@ suspend fun Server.artists(userId: String, libraryId: String, start: Int, limit:
         "userId" to userId, "ParentId" to libraryId, "StartIndex" to "$start", "Limit" to "$limit",
         "SortBy" to "SortName",
     ))
+)
+
+/**
+ * A music library's artists, most played first and then by how much of each it holds —
+ * the Mac's Top 10 Artists. Empty from a server without the route. An artist with no
+ * photo carries their newest album's id in [Item.albumId].
+ */
+suspend fun Server.topArtists(libraryId: String, limit: Int = 10): List<Item> = runCatching {
+    parseItems(get("Lumiere/Music/TopArtists", mapOf("ParentId" to libraryId, "Limit" to "$limit")))
+}.getOrDefault(emptyList())
+
+/** A music library's genres; each carries one of its albums in [Item.albumId], for its card. */
+suspend fun Server.musicGenres(userId: String, libraryId: String): List<Item> = parseItems(
+    get("MusicGenres", mapOf("userId" to userId, "ParentId" to libraryId, "Limit" to "500"))
 )
 
 /** Tracks in a library, an album or by an artist, in the order asked for. */

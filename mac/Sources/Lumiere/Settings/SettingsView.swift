@@ -25,6 +25,7 @@ struct SettingsView: View {
     // Same keys and defaults as RootView, which is what actually draws it.
     @AppStorage("glassBackground") var isGlass = true
     @AppStorage("glassOpacity") var glassOpacity = 0.62
+    @AppStorage(Preference.prefersMPV.name) var prefersMPV = Preference.prefersMPV.defaultValue
     @AppStorage("titleStyle") var titleStyle: TitleStyle = .metadataTitle
     @AppStorage("unifiedEpisodeArt") var unifiedEpisodeArt = false
     /// Stored as the raw value so the picker binds without a Codable AppStorage
@@ -136,6 +137,7 @@ struct SettingsView: View {
                     generalForm
                     titleCards
                     DetailsCard()
+                    TitleOrderCard(libraries: app.libraries, onChange: { app.sendFranchiseNaming() })
                 case .home: homeSettings
                 case .playback:
                     playbackForm

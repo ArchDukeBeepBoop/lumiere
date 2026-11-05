@@ -1,5 +1,8 @@
 package app.lumiere.android.tv
 
+import app.lumiere.android.ui.ignoreHeldOk
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.Person
@@ -7,6 +10,7 @@ import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.ViewInAr
 import androidx.compose.material.icons.filled.Subtitles
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
@@ -61,16 +65,16 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
 /** One setting: a switch, a choice from a list, an action, or something drawn by hand. */
-private sealed class Opt(val title: String, val note: String) {
+internal sealed class Opt(val title: String, val note: String) {
     class Toggle(title: String, note: String, val get: () -> Boolean, val set: (Boolean) -> Unit) : Opt(title, note)
     class Pick(title: String, note: String, val labels: List<String>, val get: () -> Int,
                val preview: Preview? = null, val set: (Int) -> Unit) : Opt(title, note)
     class Action(title: String, note: String, val run: () -> Unit) : Opt(title, note)
     class Custom(title: String, note: String, val draw: @Composable () -> Unit) : Opt(title, note)
 }
-private enum class Preview { Subtitles, Tone }
+internal enum class Preview { Subtitles, Tone }
 
-private class Category(val name: String, val options: List<Opt>)
+internal class Category(val name: String, val options: List<Opt>)
 
 /**
  * Settings as tvOS lays them out: categories down the left, the chosen one's
@@ -88,7 +92,7 @@ fun TvSettingsScreen(state: AppState) {
     var settingPin by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { state.server?.let { update = Updater.check(it) } }
 
-    val categories = listOf(
+    val allCategories = listOf(
         Category("Your Setup", listOf(
             Opt.Action("Open the Setup Guide", "Libraries, rooms, posters and a few first choices, step by step.") { state.push(app.lumiere.android.Screen.Setup) },
             Opt.Custom("Libraries & Folders", "Every library on the server and the folders it reads.") { app.lumiere.android.ui.LibrariesEditor(state) },
@@ -111,9 +115,11 @@ fun TvSettingsScreen(state: AppState) {
                 { p.subtitleSize }, Preview.Subtitles) { p.subtitleSize = it },
             Opt.Pick("Plain subtitle look", "Outline and shadow need no box.", listOf("Outline", "Shadow", "Dark box"),
                 { p.subtitleStyle }, Preview.Subtitles) { p.subtitleStyle = it },
-            Opt.Pick("Dialogue boost", "Louder for small projector speakers.", listOf("Off", "+3 dB", "+6 dB", "+9 dB"),
+            Opt.Pick("Dialogue boost", "Voices louder over the music and effects.", listOf("Off", "+3 dB", "+6 dB", "+9 dB"),
                 { p.dialogueBoost / 3 }) { p.dialogueBoost = it * 3 },
             Opt.Toggle("Night sound", "Loud scenes quieter, quiet ones louder.", { p.nightSound }) { p.nightSound = it },
+            Opt.Toggle("Count songs I play", "A song heard to the end counts as played, which ranks Top 10 Artists.",
+                { p.countsMusicPlays }) { p.countsMusicPlays = it },
         )),
         Category("Picture & Text", listOf(
             Opt.Pick("Picture tone", "A light tint for projectors that run blue or yellow.", listOf("Neutral", "Warmer", "Cooler"),
@@ -151,11 +157,14 @@ fun TvSettingsScreen(state: AppState) {
                 { p.episodesOpenPage }) { p.episodesOpenPage = it },
             Opt.Toggle("Hide spoilers", "Episodes not yet watched show their number only — no name, no story.",
                 { p.hidesSpoilers }) { p.hidesSpoilers = it },
+            Opt.Toggle("Immersive Home (sample data)", "The new Google TV–style Home, filled with sample titles drawn on this device, for review. Nothing from your library is shown.",
+                { p.immersivePreview }) { p.immersivePreview = it },
             Opt.Pick("Rows on Home", "All your rows, or a shorter Home for this projector's memory.", listOf("All", "6", "9", "12"),
                 { listOf(0, 6, 9, 12).indexOf(p.homeRows).coerceAtLeast(0) }) { p.homeRows = listOf(0, 6, 9, 12)[it]; p.compactHome = false },
-            Opt.Custom("Rows", "OK picks a row up; up and down move it; OK puts it down. Menu switches it on or off.") { HomeOrder(p) },
+            Opt.Custom("Rows", if (app.lumiere.android.Flavor.quest) "Arrows move a row; the dot switches it on or off." else "OK picks a row up; up and down move it; OK puts it down. Menu switches it on or off.") { if (app.lumiere.android.Flavor.quest) QuestHomeOrder(p) else HomeOrder(p) },
             Opt.Action("Show the remote tour again", "The three cards from the first open.") { p.tvTourShown = false; state.tab(Screen.Home) },
         )),
+    ) + (if (!app.lumiere.android.Flavor.quest) emptyList() else listOf(questHeadset(context, p))) + listOf(
         Category("Private Room", listOf(
             Opt.Toggle("Same private libraries as the Mac", "Set in Lumiere's Settings on the Mac, under Privacy.",
                 { p.privateFollowsMac }) { p.privateFollowsMac = it },
@@ -176,7 +185,7 @@ fun TvSettingsScreen(state: AppState) {
                 val s = state.server ?: return@Action
                 if (update != null) scope.launch { note = "Fetching the update…"; note = Updater.install(context, s) ?: "Confirm the install on screen." }
             },
-            Opt.Pick("Space downloads may use", "A download that would go past it is refused, with a word why. The projector has 16 GB in all.",
+            Opt.Pick("Space downloads may use", "A download that would go past it is refused, with a word why. %.0f GB on this device in all.".format(context.filesDir.totalSpace / 1e9),
                 listOf("No limit", "2 GB", "4 GB", "8 GB", "12 GB"),
                 { listOf(0, 2, 4, 8, 12).indexOf(p.downloadCapGb).coerceAtLeast(0) }) { p.downloadCapGb = listOf(0, 2, 4, 8, 12)[it] },
             Opt.Toggle("Keep next episodes ready", "The next two episodes of what is playing are saved here, within the space above, so a sleeping Mac doesn't stop the evening.",
@@ -230,19 +239,24 @@ fun TvSettingsScreen(state: AppState) {
         )),
     )
 
+    // The headset keeps only what a headset uses, Headset first (QuestSettings).
+    val categories = if (app.lumiere.android.Flavor.quest) questArrange(allCategories) else allCategories
     var category by remember { mutableStateOf(0) }
     var picking by remember { mutableStateOf<Opt.Pick?>(null) }
     var search by remember { mutableStateOf("") }
     val firstCategory = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { firstCategory.requestFocus() } }
 
-    Box(Modifier.fillMaxSize().background(Palette.canvas)) {
-        Row(Modifier.fillMaxSize().padding(40.dp), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-            Column(Modifier.width(280.dp).fillMaxHeight().verticalScroll(androidx.compose.foundation.rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Box(Modifier.fillMaxSize().background(Palette.ground)) {
+        Row(Modifier.fillMaxSize().padding(start = 40.dp, end = 40.dp, top = 40.dp, bottom = 40.dp), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+            // The sections in the sidebar's own capsule, as the menu draws it.
+            Column(Modifier.width(280.dp).fillMaxHeight().clip(RoundedCornerShape(28.dp))
+                .background(Palette.surface.copy(alpha = if (app.lumiere.android.Flavor.quest) 0.55f else 0.82f)).padding(12.dp)
+                .verticalScroll(androidx.compose.foundation.rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 // tvOS Settings: the chosen section's symbol, large, above its list.
-                androidx.compose.animation.Crossfade(categories.getOrNull(category)?.name, label = "glyph") { name ->
-                    SettingsGlyph(name ?: "", 72.dp)
+                if (!app.lumiere.android.Flavor.quest) androidx.compose.animation.Crossfade(categories.getOrNull(category)?.name, label = "glyph") { name ->
+                    SettingsGlyph(name ?: "", 64.dp, Color.White)
                 }
                 Text("Settings", style = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.Bold, color = Palette.textPrimary),
                     modifier = Modifier.padding(top = 10.dp, bottom = 8.dp))
@@ -270,7 +284,8 @@ fun TvSettingsScreen(state: AppState) {
                         }
                     })
             }
-            Column(Modifier.fillMaxSize()) {
+            // The chosen section's settings on a matching frosted panel.
+            Column(Modifier.fillMaxSize().clip(RoundedCornerShape(28.dp)).background(Palette.surface.copy(alpha = 0.45f)).padding(16.dp)) {
                 val shown = if (search.isBlank()) categories[category].options
                     else categories.flatMap { it.options }.filter { it.title.contains(search, true) || it.note.contains(search, true) }
                 val pick = picking
@@ -282,7 +297,7 @@ fun TvSettingsScreen(state: AppState) {
                         (shown.first { it is Opt.Pick && it.preview != null } as Opt.Pick).preview?.let { PreviewPane(state, it) }
                     }
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(shown, key = { it.title }) { o -> OptionRow(o) { if (o is Opt.Pick) picking = o } }
+                        items(shown, key = { it.title }) { o -> if (app.lumiere.android.Flavor.quest && o !is Opt.Custom) QuestOptionRow(o) { if (o is Opt.Pick) picking = o } else OptionRow(o) { if (o is Opt.Pick) picking = o } }
                     }
                 }
                 note?.let { Text(it, color = Palette.accent, modifier = Modifier.padding(top = 8.dp)) }
@@ -319,7 +334,7 @@ private fun OptionRow(o: Opt, open: () -> Unit) {
             when (o) {
                 is Opt.Toggle -> Text(if (o.get()) "On" else "Off", color = app.lumiere.android.ui.pillTint(if (o.get()) Palette.accent else Palette.textMuted))
                 is Opt.Pick -> Text(o.labels.getOrNull(o.get()) ?: "", color = app.lumiere.android.ui.pillTint(Palette.accent))
-                is Opt.Action -> Text("›", color = app.lumiere.android.ui.pillTint(Palette.textMuted))
+                is Opt.Action -> app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.chevronRight, tint = app.lumiere.android.ui.pillTint(Palette.textMuted))
                 is Opt.Custom -> Unit
             }
         }
@@ -337,14 +352,15 @@ private fun PickList(o: Opt.Pick, done: () -> Unit) {
     val focus = remember { FocusRequester() }
     androidx.activity.compose.BackHandler(onBack = done)
     LaunchedEffect(o) { runCatching { focus.requestFocus() } }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    // The OK release that opened the list must not choose in it.
+    Column(Modifier.ignoreHeldOk(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(o.title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 6.dp))
         o.labels.forEachIndexed { i, label ->
             val on = i == o.get()
             app.lumiere.android.ui.TvPill({ o.set(i); done() },
-                Modifier.fillMaxWidth().then(if (on) Modifier.focusRequester(focus) else Modifier)
-                    .onFocusChanged { if (it.isFocused) o.set(i) }, selected = on) {
-                Text((if (on) "✓   " else "     ") + label, style = MaterialTheme.typography.titleMedium)
+                // Chosen only with OK: passing over an option used to set it.
+                Modifier.fillMaxWidth().then(if (on) Modifier.focusRequester(focus) else Modifier), selected = on) {
+                Box(Modifier.size(22.dp)) { if (on) app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.check, size = 18.dp) }; Spacer(Modifier.width(8.dp)); Text(label, style = MaterialTheme.typography.titleMedium)
             }
         }
     }
@@ -404,9 +420,9 @@ private fun HomeOrder(p: Prefs) {
     }
 }
 
-/** iOS Settings' mark for a section: a white symbol on a rounded square of its own colour. */
+/** A section's symbol, monochrome as tvOS Settings draws it. */
 @Composable
-private fun SettingsGlyph(section: String, size: androidx.compose.ui.unit.Dp) {
+private fun SettingsGlyph(section: String, size: androidx.compose.ui.unit.Dp, tint: Color = androidx.compose.material3.LocalContentColor.current) {
     val (icon, colour) = when (section) {
         "Your Setup" -> androidx.compose.material.icons.Icons.Default.Settings to Color(0xFF8E8E93)
         "Playback" -> androidx.compose.material.icons.Icons.Default.PlayArrow to Color(0xFFFF9500)
@@ -416,9 +432,14 @@ private fun SettingsGlyph(section: String, size: androidx.compose.ui.unit.Dp) {
         "Private Room" -> androidx.compose.material.icons.Icons.Default.Lock to Color(0xFFAF52DE)
         "This Device" -> androidx.compose.material.icons.Icons.Default.Tv to Color(0xFF636366)
         "Account" -> androidx.compose.material.icons.Icons.Default.Person to Color(0xFFFF2D55)
+        "Headset" -> androidx.compose.material.icons.Icons.Default.ViewInAr to Color(0xFF5AC8FA)
+        "Text & Comfort" -> androidx.compose.material.icons.Icons.Default.Tune to Color(0xFF34C759)
+        "This Headset" -> androidx.compose.material.icons.Icons.Default.ViewInAr to Color(0xFF636366)
         else -> androidx.compose.material.icons.Icons.Default.Settings to Color(0xFF8E8E93)
     }
-    Box(Modifier.size(size).background(colour, RoundedCornerShape(size * 0.23f)), contentAlignment = Alignment.Center) {
-        androidx.compose.material3.Icon(icon, null, tint = Color.White, modifier = Modifier.size(size * 0.62f))
+    // Monochrome, as tvOS Settings draws its symbols: the glyph alone, in the text's own colour.
+    @Suppress("UNUSED_VARIABLE") val unused = colour
+    Box(Modifier.size(size), contentAlignment = Alignment.Center) {
+        androidx.compose.material3.Icon(icon, null, tint = tint, modifier = Modifier.size(size * 0.82f))
     }
 }

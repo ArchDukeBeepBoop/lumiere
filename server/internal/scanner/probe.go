@@ -17,6 +17,14 @@ type Probe struct {
 	AudioCodec      string
 	Width, Height   int
 	Bitrate         int64
+	// Chapters are the file's own, start and name. See chapters.go.
+	Chapters []ProbeChapter
+}
+
+// ProbeChapter is one chapter mark.
+type ProbeChapter struct {
+	StartSeconds float64
+	Name         string
 }
 
 // ffprobePaths are where the tool is looked for, in order.
@@ -66,7 +74,7 @@ func ProbeFile(tool, path string) (Probe, error) {
 
 	command := exec.CommandContext(ctx, tool,
 		"-v", "quiet", "-print_format", "json",
-		"-show_format", "-show_streams", path)
+		"-show_format", "-show_streams", "-show_chapters", path)
 	output, err := command.Output()
 	if err != nil {
 		return Probe{}, err
@@ -83,6 +91,10 @@ func parseProbe(output []byte) (Probe, error) {
 			Duration   string `json:"duration"`
 			BitRate    string `json:"bit_rate"`
 		} `json:"format"`
+		Chapters []struct {
+			StartTime string            `json:"start_time"`
+			Tags      map[string]string `json:"tags"`
+		} `json:"chapters"`
 		Streams []struct {
 			CodecType string `json:"codec_type"`
 			CodecName string `json:"codec_name"`
@@ -94,7 +106,11 @@ func parseProbe(output []byte) (Probe, error) {
 		return Probe{}, err
 	}
 
-	probe := Probe{Container: raw.Format.FormatName}
+	probe := Probe{Container: NormalizeContainer(raw.Format.FormatName)}
+	for _, c := range raw.Chapters {
+		start, _ := strconv.ParseFloat(c.StartTime, 64)
+		probe.Chapters = append(probe.Chapters, ProbeChapter{StartSeconds: start, Name: c.Tags["title"]})
+	}
 	probe.DurationSeconds, _ = strconv.ParseFloat(raw.Format.Duration, 64)
 	probe.Bitrate, _ = strconv.ParseInt(raw.Format.BitRate, 10, 64)
 

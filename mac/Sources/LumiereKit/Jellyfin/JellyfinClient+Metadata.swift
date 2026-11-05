@@ -1,6 +1,14 @@
 import Foundation
 
 /// One artwork option offered by the server's own metadata providers.
+public extension JellyfinClient {
+    /// Gives an item another item's picture — a collection one of its titles'
+    /// posters or backdrops — copied on the server and kept as chosen.
+    func copyImage(to itemId: String, from sourceId: String, type: String) async throws {
+        try await sendVoid(path: "Lumiere/Items/\(itemId)/Images/\(type)/From/\(sourceId)", method: "POST")
+    }
+}
+
 public struct RemoteImageOption: Decodable, Sendable, Identifiable, Hashable {
     public let providerName: String?
     public let url: String?

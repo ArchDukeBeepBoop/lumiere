@@ -124,7 +124,7 @@ fun SearchScreen(state: AppState) {
     }
 
     val list = androidx.compose.foundation.lazy.rememberLazyListState()
-    Box(Modifier.fillMaxSize().background(Palette.canvas)) {
+    Box(Modifier.fillMaxSize().background(Palette.ground)) {
     LazyColumn(Modifier.fillMaxSize(), state = list, contentPadding = PaddingValues(bottom = 40.dp)) {
         item { IosLargeTitle("Search") }
         item {

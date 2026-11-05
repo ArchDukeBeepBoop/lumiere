@@ -206,6 +206,24 @@ extension ClassicHomeView {
         case .topAnime:
             topShelf("Top 10 Anime", kind: .anime, entries: model.topAnime)
 
+        case .continueFranchise:
+            if let banner = ContinueFranchise.shared.banner {
+                ContinueFranchiseBanner(banner: banner, serverURL: serverURL, pipeline: pipeline)
+            }
+
+        case .pinnedCollections:
+            ForEach(PinnedCollectionRows.shared.rows) { row in
+                Shelf(title: row.name, itemCount: row.entries.count, itemWidth: Theme.Art.shelfPosterWidth) {
+                    ForEach(row.entries) { entry in
+                        NavigationLink(value: DetailRoute.forEntry(entry)) {
+                            PosterCard(entry: entry, serverURL: serverURL, pipeline: pipeline,
+                                       width: Theme.Art.shelfPosterWidth, metadata: shelfActions(for: entry))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+
         case .latest(let libraryId):
             // Nothing at all for a library whose shelf came back empty — the same
             // silence `libraryShelves` produced by not including it.

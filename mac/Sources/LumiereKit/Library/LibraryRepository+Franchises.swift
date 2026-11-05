@@ -55,30 +55,14 @@ public extension LibraryRepository {
         // collection that already exists. See `seriesSuggestions`.
         let inLibrary = Set(candidates.map(\.id))
         let series = await seriesSuggestions(within: inLibrary)
-        let taken = Set(series.flatMap(\.itemIds))
-        let metadataGroups = FranchiseGrouping.groups(
-            from: candidates.filter { !taken.contains($0.id) }
-        )
-
-        // Names as the second pass, and on these libraries usually the only one
-        // that finds anything: a library the scraper never matched has no tags, no
-        // credits and no synopses, but its folders still say Bakemonogatari and
-        // Nisemonogatari. Metadata groups win where both fire, since a tag is a
-        // statement and a shared stem is an inference.
-        let alreadyGrouped = taken.union(metadataGroups.flatMap(\.itemIds))
-        let byName = FilenameFranchise.groups(
-            from: candidates
-                .filter { !alreadyGrouped.contains($0.id) }
-                .map { .init(id: $0.id, name: $0.name, path: $0.path) }
-        )
-
-        Diagnostics.log(
-            "[collections] suggestions for \(libraryId): \(series.count) film series, "
-            + "\(metadataGroups.count) by metadata, \(byName.count) by name"
-        )
-        return series + metadataGroups + byName.map {
-            FranchiseGrouping.Group(name: $0.name, itemIds: $0.itemIds, reason: $0.reason)
-        }
+        // Film series only. The metadata and title-word passes that followed
+        // are retired: on a real library they proposed "Academy", "Adventure"
+        // and 129 more collections of titles that shared a word, and the
+        // anime franchises they were reaching for now come exactly from
+        // AniList on the server, with smart collections for everything a rule
+        // can say. See the server's api/collection_anilist.go.
+        Diagnostics.log("[collections] suggestions for \(libraryId): \(series.count) film series")
+        return series
     }
 
     /// Creates the accepted groups, skipping any name a collection already uses.

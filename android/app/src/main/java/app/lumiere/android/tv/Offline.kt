@@ -45,7 +45,7 @@ fun OfflineHome(state: AppState, reason: String, retry: () -> Unit) {
         while (true) { delay(10_000); retry() }
     }
     val saved = state.downloads.all.filter { !state.hides(it.item.libraryId) && state.downloads.playable(it.id) != null }
-    Column(Modifier.fillMaxSize().background(Palette.canvas).padding(56.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.fillMaxSize().background(Palette.ground).padding(56.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Can't reach the Mac", style = MaterialTheme.typography.headlineLarge)
         Text(note, style = MaterialTheme.typography.bodyMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {

@@ -65,6 +65,7 @@ import app.lumiere.android.api.artists
 import app.lumiere.android.api.playlists
 import app.lumiere.android.api.setFavorite
 import app.lumiere.android.api.tracks
+import app.lumiere.android.api.musicGenres
 import app.lumiere.android.ui.IosCaption
 import app.lumiere.android.ui.IosChip
 import app.lumiere.android.ui.IosCircle
@@ -80,12 +81,13 @@ import app.lumiere.android.ui.pressScale
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 
-private val kinds = listOf("Albums", "Artists", "Songs", "Playlists")
+private val kinds = listOf("Albums", "Artists", "Genres", "Songs", "Playlists")
 
 /**
  * A music library on a phone, as Apple Music's Library: a large title, iOS's
- * segmented control, albums two across with their covers large, artists as a
- * list of round photos, songs with Play and Shuffle, playlists as covers.
+ * segmented control, albums two across with their covers large under Top 10
+ * Artists, artists as a list of round photos, genres as artwork cards, songs
+ * with Play and Shuffle, playlists as covers.
  */
 @Composable
 fun PhoneMusicScreen(state: AppState, view: Item) {
@@ -98,6 +100,7 @@ fun PhoneMusicScreen(state: AppState, view: Item) {
     var exhausted by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var generation by remember { mutableStateOf(0) }
+    var groups by remember { mutableStateOf<Map<String, ArtistGroup>>(emptyMap()) }
 
     suspend fun more(gen: Int) {
         if (loading || exhausted) return
@@ -105,12 +108,15 @@ fun PhoneMusicScreen(state: AppState, view: Item) {
         val page = runCatching {
             when (kind) {
                 0 -> server.albums(userId, view.id, rows.size, 100)
-                1 -> server.artists(userId, view.id, rows.size, 100)
-                2 -> server.tracks(userId, view.id, rows.size, 100, order.sortBy, order.descending)
+                // Guests folded under the main artist, so "feat." credits don't fill the list.
+                1 -> if (rows.isEmpty()) ArtistGroups.group(server.artists(userId, view.id, 0, 5000))
+                    .also { g -> groups = g.associateBy { it.item.id } }.map { it.item } else emptyList()
+                2 -> if (rows.isEmpty()) server.musicGenres(userId, view.id) else emptyList()
+                3 -> server.tracks(userId, view.id, rows.size, 100, order.sortBy, order.descending)
                 else -> if (rows.isEmpty()) server.playlists(userId) else emptyList()
             }
         }.getOrDefault(emptyList())
-        if (gen == generation) { rows += page; exhausted = page.size < 100 }
+        if (gen == generation) { rows += page; exhausted = kind == 1 || kind == 2 || page.size < 100 }
         loading = false
     }
     LaunchedEffect(kind, order) { generation++; rows.clear(); exhausted = false; loading = false; more(generation) }
@@ -118,12 +124,13 @@ fun PhoneMusicScreen(state: AppState, view: Item) {
     val across = (phoneColumns() - 1).coerceAtLeast(2)
     LazyVerticalGrid(GridCells.Fixed(across), Modifier.fillMaxSize().background(Palette.canvas),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
-        horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(if (kind == 0 || kind == 3) 18.dp else 0.dp)) {
+        horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(if (kind == 0 || kind == 2 || kind == 4) 18.dp else 0.dp)) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             Text(view.name, style = IosType.largeTitle, color = Palette.textPrimary, modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
         }
         item(span = { GridItemSpan(maxLineSpan) }) { IosSegmented(kinds, kind, { kind = it }, Modifier.padding(vertical = 6.dp)) }
-        if (kind == 2) {
+        if (kind == 0) item(span = { GridItemSpan(maxLineSpan) }) { PhoneTopArtists(state, server, view.id) }
+        if (kind == 3) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 8.dp)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -136,12 +143,18 @@ fun PhoneMusicScreen(state: AppState, view: Item) {
                 }
             }
         }
-        itemsIndexed(rows, key = { _, it -> it.id }, span = { _, _ -> if (kind == 1 || kind == 2) GridItemSpan(maxLineSpan) else GridItemSpan(1) }) { i, item ->
+        itemsIndexed(rows, key = { _, it -> it.id }, span = { _, _ -> if (kind == 1 || kind == 3) GridItemSpan(maxLineSpan) else GridItemSpan(1) }) { i, item ->
             if (i >= rows.size - 30) LaunchedEffect(rows.size) { more(generation) }
             when (kind) {
                 0 -> Cover(item, server, item.albumArtist) { state.push(Screen.Album(item.id)) }
-                1 -> ArtistRow(item, server) { state.push(Screen.Artist(item, view.id)) }
-                2 -> SongRow(state, item, server, art = true) { Music.play(context, server, rows.toList(), i, state.roomOpen) }
+                1 -> {
+                    val g = groups[item.id]
+                    ArtistRow(item, server, g?.imageId, g?.imageTag) {
+                        state.push(if (g != null) Screen.Artist(g.item, view.id, g.ids, g.imageId, g.imageTag) else Screen.Artist(item, view.id))
+                    }
+                }
+                2 -> PhoneGenreCard(item, server) { state.push(Screen.MusicGenre(item.name, view.id)) }
+                3 -> SongRow(state, item, server, art = true) { Music.play(context, server, rows.toList(), i, state.roomOpen) }
                 else -> Cover(item, server, null) { state.push(Screen.Playlist(item.id, item.name)) }
             }
         }
@@ -150,7 +163,7 @@ fun PhoneMusicScreen(state: AppState, view: Item) {
 
 /** An album's or playlist's cover, large and rounded, its name and artist beneath. */
 @Composable
-private fun Cover(item: Item, server: Server, by: String?, onClick: () -> Unit) {
+internal fun Cover(item: Item, server: Server, by: String?, onClick: () -> Unit) {
     Column(Modifier.iosClick(onClick)) {
         AsyncImage(server.imageUrl(item.id, "Primary", item.primaryTag, 500), item.name, contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(8.dp)).background(Palette.surface))
@@ -162,12 +175,13 @@ private fun Cover(item: Item, server: Server, by: String?, onClick: () -> Unit) 
 }
 
 @Composable
-private fun ArtistRow(artist: Item, server: Server, onClick: () -> Unit) {
+private fun ArtistRow(artist: Item, server: Server, imageId: String? = artist.id, imageTag: String? = artist.primaryTag, onClick: () -> Unit) {
     Column(Modifier.fillMaxWidth().iosClick(onClick)) {
         Row(Modifier.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(50.dp).clip(CircleShape).background(Palette.surfaceRaised), contentAlignment = Alignment.Center) {
                 Text(artist.name.take(1), style = IosType.headline, color = Palette.textSecondary)
-                AsyncImage(server.imageUrl(artist.id, "Primary", artist.primaryTag, 160), null, contentScale = ContentScale.Crop,
+                // Their photo, else a member's, else their newest album's cover.
+                if (imageId != null) AsyncImage(server.imageUrl(imageId, "Primary", imageTag, 160), null, contentScale = ContentScale.Crop,
                     modifier = Modifier.matchParentSize())
             }
             Spacer(Modifier.width(12.dp))
@@ -271,22 +285,25 @@ fun PhoneAlbumScreen(state: AppState, id: String) {
  * the albums, newest first.
  */
 @Composable
-fun PhoneArtistScreen(state: AppState, artist: Item, libraryId: String) {
+fun PhoneArtistScreen(state: AppState, artist: Item, libraryId: String, ids: List<String> = listOf(artist.id),
+                      imageId: String? = artist.id, imageTag: String? = artist.primaryTag) {
+    // Every credit folded under this artist, asked for together: songs where they are a guest appear too.
+    val who = ids.joinToString(",")
     val server = state.server ?: return
     val userId = state.session?.userId ?: return
     val context = LocalContext.current
     var albums by remember { mutableStateOf<List<Item>>(emptyList()) }
     var top by remember { mutableStateOf<List<Item>>(emptyList()) }
     var all by remember { mutableStateOf<List<Item>>(emptyList()) }
-    LaunchedEffect(artist.id) {
-        top = runCatching { server.tracks(userId, null, 0, 10, listOf("PlayCount", "SortName"), true, artistId = artist.id) }.getOrDefault(emptyList())
-        albums = runCatching { server.albums(userId, libraryId, 0, 200, "ProductionYear", true, artist.id) }.getOrDefault(emptyList())
-        all = runCatching { server.tracks(userId, null, 0, 500, TrackOrder.Album.sortBy, artistId = artist.id) }.getOrDefault(emptyList())
+    LaunchedEffect(who) {
+        top = runCatching { server.tracks(userId, null, 0, 10, listOf("PlayCount", "SortName"), true, artistId = who) }.getOrDefault(emptyList())
+        albums = runCatching { server.albums(userId, libraryId, 0, 200, "ProductionYear", true, who) }.getOrDefault(emptyList())
+        all = runCatching { server.tracks(userId, null, 0, 500, TrackOrder.Album.sortBy, artistId = who) }.getOrDefault(emptyList())
     }
     LazyColumn(Modifier.fillMaxSize().background(Palette.canvas), contentPadding = PaddingValues(bottom = 120.dp)) {
         item {
             Box(Modifier.fillMaxWidth().height(app.lumiere.android.ui.heroHeight(1.15f))) {
-                AsyncImage(server.imageUrl(artist.id, "Primary", artist.primaryTag, 900), null, contentScale = ContentScale.Crop,
+                AsyncImage(imageId?.let { server.imageUrl(it, "Primary", imageTag, 900) }, null, contentScale = ContentScale.Crop,
                     modifier = Modifier.matchParentSize().background(Palette.surface))
                 Box(Modifier.matchParentSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.85f))))
                 Row(Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {

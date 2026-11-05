@@ -14,8 +14,6 @@ struct FavouritesView: View {
     /// the one place someone always wants it and the only grid that never had it.
     var app: AppModel?
 
-    /// The item whose artwork is being chosen or removed. Was missing here, which
-    /// is why the menu command did nothing on this screen.
     /// The collection a deletion has been asked for, held while it is confirmed.
     @State private var deleteCollectionTarget: LibraryEntry?
     /// The shared right-click menu. See `EntryActionState`.
@@ -168,6 +166,7 @@ struct FavouritesView: View {
     private var gridBody: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: Theme.Space.xl) {
+                FavouritePeopleRow(app: app, serverURL: serverURL, pipeline: pipeline)
                 ForEach(sections) { section in
                     // Only when there is more than one: a heading over the single
                     // group it describes is a label saying what you can already see.

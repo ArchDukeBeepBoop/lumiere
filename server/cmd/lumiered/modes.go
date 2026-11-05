@@ -18,7 +18,7 @@ func logging(log *slog.Logger, next http.Handler) http.Handler {
 		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
 		next.ServeHTTP(rec, r)
 		// LumiereControl's liveness poll, every five seconds, is not worth a line.
-		if r.URL.Path == "/System/Info/Public" && rec.status == http.StatusOK {
+		if (r.URL.Path == "/System/Info/Public" || r.URL.Path == "/health/live") && rec.status < 300 {
 			return
 		}
 		log.Info("request",

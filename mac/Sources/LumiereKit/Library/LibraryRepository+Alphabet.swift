@@ -31,6 +31,10 @@ public extension LibraryRepository {
         sort: Sort = .title,
         genre: String? = nil,
         studio: String? = nil,
+        /// An ISO country code. See `ItemRecord.countries`.
+        country: String? = nil,
+        /// An anime season's id, "2024-4". See `AnimeSeason`.
+        season: String? = nil,
         searchTerm: String? = nil,
         unwatchedOnly: Bool = false
     ) async throws -> [AlphabetAnchor] {
@@ -54,12 +58,14 @@ public extension LibraryRepository {
         // row is worse than no rail, because it looks like it worked.
         let privacy = libraryId == nil ? privacyFilter() : nil
 
+        // The grid's own title order, so a letter lands where the names say.
+        let titleSort = LibraryTitleOrder.order(for: libraryId).titleSortSQL
         let rows: [Row] = try await database.writer.read { [serverId] db in
             var request = ItemRecord
-                .select(Column("id"), Column("sortName"))
+                .select(Column("id"), SQL(sql: titleSort + " AS sortName"))
                 .filter(Column("serverId") == serverId)
                 .filter(Column("extraType") == nil)
-                .order(Column("sortName").asc)
+                .order(sql: titleSort + ", item.sortName")
 
             if let libraryId { request = request.filter(Column("libraryId") == libraryId) }
             if !types.isEmpty {
@@ -89,6 +95,14 @@ public extension LibraryRepository {
                 request = request.filter(
                     sql: Self.studioMatchSQL, arguments: [Self.studioPattern(studio)]
                 )
+            }
+            if let country {
+                request = request.filter(
+                    sql: Self.countryMatchSQL, arguments: [Self.studioPattern(country)]
+                )
+            }
+            if let season, let chosen = AnimeSeason(id: season) {
+                request = request.filter(sql: chosen.filterSQL, arguments: chosen.arguments)
             }
 
             return try Row.fetchAll(db, request)

@@ -39,7 +39,8 @@ private val pages = listOf(
 /** Three cards on a TV's first open: the remote's grammar, once. Settings › TV & Projector can show it again. */
 @Composable
 fun TvTour(state: AppState) {
-    if (state.settings.tvTourShown) return
+    // A remote's tour: the headset has none (hands and a controller point instead).
+    if (state.settings.tvTourShown || app.lumiere.android.Flavor.quest) return
     var page by remember { mutableIntStateOf(0) }
     val next = remember { FocusRequester() }
     LaunchedEffect(page) { runCatching { next.requestFocus() } }

@@ -35,6 +35,7 @@ extension PersonView {
                 }
             }
             Spacer(minLength: 0)
+            FavouritePersonButton(route: route, app: app)
         }
         .padding(.horizontal, Theme.Space.shelfInset)
     }

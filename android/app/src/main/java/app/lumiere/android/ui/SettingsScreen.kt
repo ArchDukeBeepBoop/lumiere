@@ -36,7 +36,7 @@ fun SettingsScreen(state: AppState) {
     val session = state.session
     val tv = LocalFormFactor.current.isTv
     val list = androidx.compose.foundation.lazy.rememberLazyListState()
-    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(Palette.canvas)) {
+    androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(Palette.ground)) {
     LazyColumn(
         Modifier.fillMaxSize(), state = list,
         contentPadding = PaddingValues(horizontal = form.gutter.dp, vertical = 16.dp),
@@ -104,6 +104,7 @@ fun SettingsScreen(state: AppState) {
         item { Choice("Plain subtitle look", listOf("Outline", "Shadow", "Dark box"), p.subtitleStyle) { p.subtitleStyle = it } }
         item { Choice("Dialogue boost", listOf("Off", "+3 dB", "+6 dB", "+9 dB"), p.dialogueBoost / 3) { p.dialogueBoost = it * 3 } }
         item { Toggle("Night sound", p.nightSound, "Loud scenes quieter and quiet ones louder.") { p.nightSound = it } }
+        item { Toggle("Count songs I play", p.countsMusicPlays, "A song heard to the end counts as played, which ranks Top 10 Artists.") { p.countsMusicPlays = it } }
 
         item { Section("Viewing") }
         item { Toggle("Skip Intro counts down and skips by itself", p.skipCountdown) { p.skipCountdown = it } }
@@ -236,7 +237,7 @@ private fun Toggle(label: String, on: Boolean, note: String? = null, set: (Boole
                 checkedTrackColor = androidx.compose.ui.graphics.Color(0xFF30D158),
                 checkedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
                 uncheckedThumbColor = androidx.compose.ui.graphics.Color.White,
-                uncheckedTrackColor = androidx.compose.ui.graphics.Color(0xFF39393D),
+                uncheckedTrackColor = androidx.compose.ui.graphics.Color(0xFF2D3150),
                 uncheckedBorderColor = androidx.compose.ui.graphics.Color.Transparent))
         }
         androidx.compose.material3.HorizontalDivider(thickness = 0.5.dp, color = Palette.border)

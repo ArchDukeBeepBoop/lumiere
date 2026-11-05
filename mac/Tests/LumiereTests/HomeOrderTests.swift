@@ -15,7 +15,7 @@ func registerHomeOrderTests(_ t: TestRunner) async {
             let order = HomeOrder.defaultOrder(libraryIds: libraries)
             t.expectEqual(order.first, .spotlight)
             t.expectEqual(order.last, .latest(libraryId: "lib-tv"))
-            t.expectEqual(order.count, 14 + libraries.count)
+            t.expectEqual(order.count, 16 + libraries.count)
         }
 
         t.test("an order an earlier version saved untouched follows the new default") {
@@ -41,7 +41,7 @@ func registerHomeOrderTests(_ t: TestRunner) async {
             let wanted: [HomeSection] = [
                 .latest(libraryId: "lib-anime"), .continueWatching, .spotlight,
                 .quickLinks, .libraries, .finishSeason, .genres, .nextUp,
-                .forgotten, .continueSeries, .becauseYouWatched, .recentlyAdded, .topFilms, .topSeries, .topAnime,
+                .forgotten, .continueSeries, .continueFranchise, .becauseYouWatched, .pinnedCollections, .recentlyAdded, .topFilms, .topSeries, .topAnime,
                 .latest(libraryId: "lib-movies"), .latest(libraryId: "lib-tv"),
             ]
             let resolved = HomeOrder.resolve(
@@ -56,7 +56,7 @@ func registerHomeOrderTests(_ t: TestRunner) async {
             )
             let resolved = HomeOrder.resolve(stored: stored, libraryIds: libraries)
             t.expect(!resolved.contains(.latest(libraryId: "lib-gone")))
-            t.expectEqual(resolved.count, 14 + libraries.count)
+            t.expectEqual(resolved.count, 16 + libraries.count)
         }
 
         t.test("a new library lands with the other Latest rows, not at the end") {
@@ -65,7 +65,7 @@ func registerHomeOrderTests(_ t: TestRunner) async {
             // must not land under the row they deliberately buried.
             var custom: [HomeSection] = [.continueWatching, .spotlight, .quickLinks,
                                          .libraries, .finishSeason, .genres, .nextUp,
-                                         .forgotten, .continueSeries, .becauseYouWatched, .recentlyAdded,
+                                         .forgotten, .continueSeries, .continueFranchise, .becauseYouWatched, .pinnedCollections, .recentlyAdded,
                                          .topSeries, .topAnime,
                                          .latest(libraryId: "lib-movies"),
                                          .latest(libraryId: "lib-tv"),
@@ -74,7 +74,7 @@ func registerHomeOrderTests(_ t: TestRunner) async {
                 stored: HomeOrder.encode(custom),
                 libraryIds: ["lib-movies", "lib-anime", "lib-tv"]
             )
-            custom.insert(.latest(libraryId: "lib-anime"), at: 14)
+            custom.insert(.latest(libraryId: "lib-anime"), at: 16)
             t.expectEqual(resolved, custom)
         }
 
@@ -101,7 +101,7 @@ func registerHomeOrderTests(_ t: TestRunner) async {
                 stored: "spotlight,nonsense,latest:,continueWatching",
                 libraryIds: libraries
             )
-            t.expectEqual(resolved.count, 14 + libraries.count)
+            t.expectEqual(resolved.count, 16 + libraries.count)
             t.expectEqual(resolved.first, .spotlight)
         }
 

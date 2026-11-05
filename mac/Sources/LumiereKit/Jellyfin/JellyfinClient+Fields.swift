@@ -77,6 +77,9 @@ extension JellyfinClient {
                      // NULL where the answer should be. Same cost as Genres — a
                      // short array of short strings.
                      + ",Studios"
+                     // Where it comes from, for the country filter. Codes, from
+                     // Lumiere Server; see `ItemRecord.countries`.
+                     + ",ProductionLocations"
                      // Only where a merged folder makes it necessary. See the case.
                      + (self == .listWithVersions ? ",MediaSources" : "")
             case .detail:

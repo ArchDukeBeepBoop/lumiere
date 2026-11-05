@@ -6,7 +6,6 @@ import AppKit
 struct LumiereApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @AppStorage("appearance") private var appearance: AppearanceSetting = .auto
-    @AppStorage(AppIconChoice.storageKey) private var appIcon = AppIconChoice.aperture.rawValue
 
     @State private var app = AppModel()
     /// Carries commands down to the player, and the state the playback menus read
@@ -45,19 +44,12 @@ struct LumiereApp: App {
                 // menus, panels and AppKit-hosted video chrome agree with it.
                 .onAppear {
                     appearance.apply()
-                    // The Dock forgets a runtime icon on quit, so the choice is
-                    // re-applied at every launch rather than written into the
-                    // bundle — writing there would break the signature.
-                    (AppIconChoice(rawValue: appIcon) ?? .aperture).apply()
                     // Installed here rather than in applicationDidFinishLaunching:
                     // SwiftUI builds the main menu after launch, so inserting any
                     // earlier means the menus are replaced out from under us.
                     appDelegate.installPlaybackMenus(bridge: bridge)
                 }
                 .onChange(of: appearance) { appearance.apply() }
-                .onChange(of: appIcon) {
-                    (AppIconChoice(rawValue: appIcon) ?? .aperture).apply()
-                }
         }
         .defaultSize(width: 1280, height: 800)
         .windowToolbarStyle(.unifiedCompact(showsTitle: false))

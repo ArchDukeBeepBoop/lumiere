@@ -37,6 +37,16 @@ extension AppModel {
     /// second full sync: two loops writing the same rows, both driving the progress
     /// panel, and both eligible to run the deletion sweep with different ideas of
     /// what they had seen.
+    /// Tells the server how each library's franchises are named, from the
+    /// Title Order setting: whenever the app connects and whenever the
+    /// setting changes. Deliberately quiet on failure: a server without the
+    /// route keeps naming franchises as it did, and the next launch asks again.
+    func sendFranchiseNaming() {
+        guard let client else { return }
+        let names = LibraryTitleOrder.franchiseNaming()
+        Task { try? await client.setFranchiseNames(names) }
+    }
+
     func startSync(full: Bool = false, userInitiated: Bool = false) {
         // Automatic passes wait for the film to end. See `deferSyncDuringPlayback`.
         if !userInitiated, deferSyncDuringPlayback(full: full) { return }

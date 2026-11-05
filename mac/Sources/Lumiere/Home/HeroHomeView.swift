@@ -61,9 +61,7 @@ struct HeroHomeView: View {
         model.capped(allSections, layout: .hero, showAll: showsAllShelves).heldBack
     }
 
-    /// The same actions Classic offers, including the dismissal that only makes
-    /// sense on a home shelf.
-/// A Top 10 row, with the control that changes it.
+    /// A Top 10 row, with the control that changes it.
     ///
     /// The subtitle names what the ranking is, because "Top 10" on its own invites
     /// the question and the answer is not obvious — see `HomeModel+Top10` for what
@@ -73,27 +71,12 @@ struct HeroHomeView: View {
         _ title: String, kind: LibraryKinds.Kind, entries: [LibraryEntry]
     ) -> some View {
         if !entries.isEmpty {
-            Shelf(
-                title: title,
-                subtitle: "By community rating",
+            TopTenShelf(
+                title: title, entries: entries, serverURL: serverURL, pipeline: pipeline,
                 // This row's kind, so a press moves this row and no other.
-                action: { Task { await model.refreshTop(kind) } },
-                actionTitle: "Refresh",
-                actionIcon: "arrow.triangle.2.circlepath",
-                itemCount: entries.count,
-                itemWidth: Theme.Art.shelfPosterWidth
-            ) {
-                ForEach(entries) { entry in
-                    NavigationLink(value: DetailRoute.forEntry(entry)) {
-                        PosterCard(
-                            entry: entry, serverURL: serverURL, pipeline: pipeline,
-                            width: Theme.Art.shelfPosterWidth,
-                            metadata: shelfActions(for: entry)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
+                onRefresh: { Task { await model.refreshTop(kind) } },
+                metadata: { shelfActions(for: $0) }
+            )
         }
     }
 

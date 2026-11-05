@@ -12,11 +12,15 @@ public struct ServerMetadataStatus: Decodable, Sendable, Equatable {
     /// Whether the server holds a provider key of its own. Without one there is
     /// nothing to run, which is a different message from "nothing to do".
     public let HasKey: Bool
+    /// Every film and show no provider has named — what Identify All would
+    /// ask about. Absent from older servers, so optional.
+    public let Unmatched: Int?
 
     public init(
         Running: Bool, Named: Int = 0, Missed: Int = 0, Pending: Int = 0,
-        Current: String? = nil, Error: String? = nil, HasKey: Bool = false
+        Current: String? = nil, Error: String? = nil, HasKey: Bool = false, Unmatched: Int? = nil
     ) {
+        self.Unmatched = Unmatched
         self.Running = Running
         self.Named = Named
         self.Missed = Missed
@@ -51,5 +55,12 @@ public extension JellyfinClient {
     /// Names the titles the server has scanned but cannot describe.
     func runServerMetadata() async throws {
         try await sendVoid(path: "Metadata/Run", method: "POST")
+    }
+
+    /// Identifies every film and show not yet matched, not only those missing
+    /// a synopsis or artwork, until none is left. Fills blanks only: nothing
+    /// already written, matched or identified by hand is changed.
+    func identifyAllOnServer() async throws {
+        try await sendVoid(path: "Metadata/Run", method: "POST", query: [URLQueryItem(name: "scope", value: "all")])
     }
 }

@@ -44,14 +44,13 @@ type Pending struct {
 // 1,900 of them were queued for a lookup that could only ever miss. A library
 // with no collection type is one Jellyfin could not identify either; that is
 // precisely what those two are.
-const PendingClause = `
+// UnmatchedClause is every film and show no provider has named yet, in the
+// libraries a lookup is for — PendingClause without its "missing text or
+// art" condition. The "identify everything" pass uses it: a title that
+// came with a poster and a synopsis but no TMDB id joins no collection,
+// theme or cast, and looks finished while it is not.
+const UnmatchedClause = `
 	type IN ('Series', 'Movie')
-	AND (
-		COALESCE(overview, '') = ''
-		OR NOT EXISTS (
-		  SELECT 1 FROM image g WHERE g.item_id = item.id AND g.kind = 'Primary'
-		)
-	)
 	AND NOT EXISTS (
 		SELECT 1 FROM item_value v
 		WHERE v.item_id = item.id AND v.kind LIKE 'provider:%'
@@ -68,15 +67,34 @@ const PendingClause = `
 		  AND instr(',' || m.value || ',', ',' || lf.view_id || ',') > 0
 	)`
 
+// PendingClause is UnmatchedClause narrowed to what is visibly missing
+// text or artwork.
+const PendingClause = UnmatchedClause + `	AND (
+		COALESCE(overview, '') = ''
+		OR NOT EXISTS (
+		  SELECT 1 FROM image g WHERE g.item_id = item.id AND g.kind = 'Primary'
+		)
+	)
+`
+
 // PendingItems lists what has no metadata yet.
 //
 // Series and films only. An episode's own title is a per-episode lookup and a
 // different piece of work; naming the show is what makes a library legible.
 func (e *Enricher) PendingItems(limit int) ([]Pending, error) {
+	return e.itemsWhere(PendingClause, limit)
+}
+
+// UnmatchedItems lists every film and show not yet named by a provider.
+func (e *Enricher) UnmatchedItems(limit int) ([]Pending, error) {
+	return e.itemsWhere(UnmatchedClause, limit)
+}
+
+func (e *Enricher) itemsWhere(clause string, limit int) ([]Pending, error) {
 	rows, err := e.Store.DB.Query(`
 		SELECT id, type, name, COALESCE(production_year, 0)
 		FROM item
-		WHERE `+PendingClause+`
+		WHERE `+clause+`
 		ORDER BY date_created DESC
 		LIMIT ?`, limit)
 	if err != nil {
@@ -206,6 +224,9 @@ func (e *Enricher) apply(item Pending, details Details) error {
 			ON CONFLICT DO NOTHING`, item.ID, studio); err != nil {
 			return err
 		}
+	}
+	if err := writeCountries(tx, item.ID, details.Countries); err != nil {
+		return err
 	}
 	if _, err := tx.Exec(`
 		INSERT INTO item_value (item_id, kind, value) VALUES (?, 'provider:Tmdb', ?)

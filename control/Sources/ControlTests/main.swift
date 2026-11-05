@@ -137,5 +137,54 @@ do {
            "a missing database is nil, not an empty library")
 }
 
+print("Watchdog")
+do {
+    var dog = Watchdog()
+    let t0 = Date(timeIntervalSince1970: 0)
+    expect(dog.probed(answered: false, now: t0) == .none, "one missed probe is not a dead server")
+    expect(dog.probed(answered: false, now: t0) == .none, "nor two")
+    expect(dog.probed(answered: true, now: t0) == .none, "an answer resets the count")
+    _ = dog.probed(answered: false, now: t0)
+    _ = dog.probed(answered: false, now: t0)
+    expect(dog.probed(answered: false, now: t0) == .restart(after: .seconds(1)),
+           "three in a row restart it, almost at once")
+    expect(dog.crashed(now: t0) == .restart(after: .seconds(2)), "a crash restarts it, a little later")
+    _ = dog.crashed(now: t0)
+    _ = dog.crashed(now: t0)
+    expect(dog.crashed(now: t0) == .restart(after: .seconds(16)), "the pause keeps growing")
+    expect(dog.crashed(now: t0) == .giveUp, "a sixth restart in ten minutes gives up")
+    expect(dog.crashed(now: t0.addingTimeInterval(601)) == .restart(after: .seconds(1)),
+           "after a quiet ten minutes it tries again")
+}
+
+print("Restore into an emptied data folder")
+do {
+    let dir = folder()
+    let backup = dir.appendingPathComponent("library-20261024.db")
+    write("yesterday", backup)
+    let gone = dir.appendingPathComponent("LumiereServer")   // the cleaner took the folder too
+    try BackupSwap.swap(in: backup, dataDir: gone)
+    expect(read(gone.appendingPathComponent("library.db")) == "yesterday",
+           "the folder is made again and the backup goes in")
+}
+
+print("Backup health")
+do {
+    let now = Date(timeIntervalSince1970: 1_000_000)
+    let hours = { (h: Double) in now.addingTimeInterval(-h * 3600) }
+    let fresh = BackupHealth.summarize(newest: hours(3), mirror: ("Media", hours(3), true), now: now)
+    expect(!fresh.warning && fresh.text.contains("second copy on Media"), "both places fresh: \(fresh.text)")
+    expect(BackupHealth.summarize(newest: hours(50), mirror: nil, now: now).warning,
+           "a newest copy over 48 hours old is a warning")
+    expect(BackupHealth.summarize(newest: nil, mirror: nil, now: now).text.hasPrefix("No backup yet"),
+           "no copy at all says so")
+    let away = BackupHealth.summarize(newest: hours(3), mirror: ("Drive", hours(20), false), now: now)
+    expect(!away.warning && away.text.contains("second copy on Drive"), "a disk away overnight is fine")
+    let long = BackupHealth.summarize(newest: hours(3), mirror: ("Drive", hours(72), false), now: now)
+    expect(long.warning && long.text.contains("Drive not attached"), "away for three days is a warning")
+    expect(BackupHealth.summarize(newest: hours(3), mirror: ("Drive", nil, true), now: now).warning,
+           "a second folder that never got a copy is a warning")
+}
+
 print(failures == 0 ? "All passed" : "\(failures) failed")
 exit(failures == 0 ? 0 : 1)

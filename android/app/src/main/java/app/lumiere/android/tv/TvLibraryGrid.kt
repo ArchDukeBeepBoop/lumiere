@@ -20,6 +20,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -73,12 +76,15 @@ internal class LibraryQuery {
 }
 
 /**
- * A library on a TV as the Apple TV app shows one: posters edge to edge, the
- * whole screen theirs, the chosen title's picture faint behind them. Pages of
- * sixty arrive as the remote nears the end.
+ * A library on a TV as the Apple TV app shows one: posters six across, steered
+ * as Home's rows are — each new line settles at the top of the grid, moving
+ * along a line never scrolls. The chosen title is told about in the band above
+ * ([onStrip]); the grid itself never changes size. Pages of sixty arrive as the
+ * remote nears the end.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-internal fun TvLibraryGrid(state: AppState, view: Item, q: LibraryQuery, onScrolled: (Boolean) -> Unit) {
+internal fun TvLibraryGrid(state: AppState, view: Item, q: LibraryQuery, entry: FocusRequester, onStrip: (Item?) -> Unit) {
     val server = state.server ?: return
     val userId = state.session?.userId ?: return
     val items = remember(view.id) { mutableStateListOf<Item>() }
@@ -86,12 +92,12 @@ internal fun TvLibraryGrid(state: AppState, view: Item, q: LibraryQuery, onScrol
     var busy by remember(view.id) { mutableStateOf(false) }
     var gen by remember(view.id) { mutableStateOf(0) }
     var focused by remember { mutableStateOf<Item?>(null) }
+    var focusedIndex by remember { mutableStateOf<Int?>(null) }
     val grid = rememberLazyGridState()
     var featured by remember(view.id) { mutableStateOf(0) }
     var latest by remember(view.id) { mutableStateOf<List<Item>>(emptyList()) }
     LaunchedEffect(view.id) { latest = state.visible(runCatching { server.latest(userId, view.id) }.getOrDefault(emptyList()))
         .distinctBy { it.seriesId ?: it.id }.take(14) }
-    LaunchedEffect(grid.firstVisibleItemIndex > 0) { onScrolled(grid.firstVisibleItemIndex > 0) }
 
     suspend fun more(g: Int) {
         if (busy || done) return
@@ -105,21 +111,32 @@ internal fun TvLibraryGrid(state: AppState, view: Item, q: LibraryQuery, onScrol
         busy = false
     }
     LaunchedEffect(view.id, q.key) { gen++; items.clear(); done = false; busy = false; more(gen); grid.scrollToItem(0) }
+    // The remote starts on the library's first title.
+    LaunchedEffect(view.id, items.isNotEmpty()) { if (items.isNotEmpty()) { kotlinx.coroutines.delay(80); runCatching { entry.requestFocus() } } }
 
-    Box(Modifier.fillMaxSize()) {
-        // Plain grey behind the grid, as Apple TV's library: the posters carry the colour.
+    // Home's pattern: once past the first line, the chosen title is told about in
+    // the band above, settling a moment after the remote stops.
+    var holds by remember { mutableStateOf(false) }
+    val inGrid = holds && grid.firstVisibleItemIndex > 0
+    LaunchedEffect(focused, inGrid) { kotlinx.coroutines.delay(300); onStrip(if (inGrid) focused else null) }
+    app.lumiere.android.ui.SteeredGrid(grid, focusedIndex, landing = 0.02f)
+    val plain = q.sort == 0 && !q.unwatched && q.genre == null && q.letter == null
+    val leads = latest.filter { it.backdropTag != null }.take(3)
+    val lead = leads.getOrNull(featured % leads.size.coerceAtLeast(1))?.takeIf { plain }
+    val heads = (if (lead != null) 1 else 0) + (if (latest.isNotEmpty() && plain) 1 else 0)
+    Box(Modifier.fillMaxSize().onFocusChanged { holds = it.hasFocus }) {
         if (items.isEmpty() && done) Text("Nothing here with these choices.", style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.align(Alignment.Center))
+        androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides app.lumiere.android.ui.rememberSteeredPageScroll()) {
         LazyVerticalGrid(GridCells.Fixed(state.settings.libraryColumns), state = grid,
-            contentPadding = PaddingValues(start = 56.dp, end = 56.dp, top = 12.dp, bottom = 48.dp),
-            horizontalArrangement = Arrangement.spacedBy(32.dp), verticalArrangement = Arrangement.spacedBy(36.dp)) {
-            // Recently added, as one row across the top, while nothing narrows the grid.
+            contentPadding = PaddingValues(start = 56.dp, end = 56.dp, top = 12.dp, bottom = 48.dp + app.lumiere.android.ui.TvSpace.foot),
+            horizontalArrangement = Arrangement.spacedBy(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             // A featured title across the top of the library, as Apple opens each one.
-            val leads = latest.filter { it.backdropTag != null }.take(3)
-            leads.getOrNull(featured % leads.size.coerceAtLeast(1))?.takeIf { q.sort == 0 && !q.unwatched && q.genre == null && q.letter == null }?.let { lead ->
+            lead?.let { lead ->
                 item(key = "featured", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                    androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(200.dp)
+                    androidx.compose.foundation.layout.Box(Modifier.fillMaxWidth().height(160.dp)
                         .clip(androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                        .onFocusChanged { if (it.hasFocus) focusedIndex = 0 }
                         // Left and right turn through the three newest, as the Home banner turns.
                         .onPreviewKeyEvent { e ->
                             val k = e.nativeKeyEvent
@@ -130,12 +147,13 @@ internal fun TvLibraryGrid(state: AppState, view: Item, q: LibraryQuery, onScrol
                                 else -> false
                             }
                         }
+                        .focusRequester(entry)
                         .focusCard({ focused = lead }, { state.push(Screen.Detail(lead.id)) })) {
                         AsyncImage(imageFor(lead, server, CardShape.Wide, 1200), lead.name, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                         androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent))))
                         Column(Modifier.align(Alignment.BottomStart).padding(20.dp)) {
-                            Text("New in ${view.name}", style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.75f))
-                            Text(lead.seriesName ?: lead.name, style = MaterialTheme.typography.headlineSmall, color = Color.White)
+                            Text("New in ${view.name}", style = app.lumiere.android.ui.TvType.meta)
+                            Text(lead.seriesName ?: lead.name, style = app.lumiere.android.ui.TvType.strip)
                             if (leads.size > 1) Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                                 repeat(leads.size) { i -> androidx.compose.foundation.layout.Box(Modifier.size(6.dp).clip(androidx.compose.foundation.shape.CircleShape)
                                     .background(Color.White.copy(alpha = if (i == featured % leads.size) 1f else 0.35f))) }
@@ -144,11 +162,11 @@ internal fun TvLibraryGrid(state: AppState, view: Item, q: LibraryQuery, onScrol
                     }
                 }
             }
-            if (latest.isNotEmpty() && q.sort == 0 && !q.unwatched && q.genre == null && q.letter == null) {
+            if (latest.isNotEmpty() && plain) {
                 item(key = "latest", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
-                    Column {
-                        Text("Recently Added", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(bottom = 8.dp))
-                        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(32.dp),
+                    Column(Modifier.onFocusChanged { if (it.hasFocus) focusedIndex = heads - 1 }) {
+                        Text("Recently Added", style = app.lumiere.android.ui.TvType.row, modifier = Modifier.padding(bottom = 8.dp))
+                        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(24.dp),
                             contentPadding = PaddingValues(vertical = 8.dp)) {
                             items(latest.size) { j -> val it = latest[j]
                                 androidx.compose.foundation.layout.Box(Modifier.width(150.dp)) {
@@ -156,33 +174,48 @@ internal fun TvLibraryGrid(state: AppState, view: Item, q: LibraryQuery, onScrol
                                 }
                             }
                         }
-                        Text("All", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 10.dp))
+                        Text("All", style = app.lumiere.android.ui.TvType.row, modifier = Modifier.padding(top = 10.dp))
                     }
                 }
             }
             itemsIndexed(items, key = { _, it -> it.id }) { i, item ->
                 if (i >= items.size - 20) LaunchedEffect(items.size) { more(gen) }
-                ItemCard(item, server, CardShape.Poster, onFocus = { focused = it }, fill = true,
-                    badge = if (state.is3D(item)) "3D" else null) { state.push(Screen.Detail(item.id)) }
+                Box(Modifier.onFocusChanged { if (it.hasFocus) focusedIndex = heads + i }
+                    .then(if (i == 0 && lead == null) Modifier.focusRequester(entry) else Modifier)) {
+                    ItemCard(item, server, CardShape.Poster, onFocus = { focused = it }, fill = true,
+                        badge = if (state.is3D(item)) "3D" else null) { state.push(Screen.Detail(item.id)) }
+                }
             }
+        }
         }
     }
 }
 
-/** A short list of pills over the page — genres, or letters — chosen with OK, left with Back. */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+/**
+ * A choice over the page as tvOS draws its menus — the playback menu's look: a
+ * frosted list at the right, a tick beside the current option. OK chooses, Back leaves.
+ * [allLabel] heads the list as the "no choice" option, when there is one.
+ */
 @Composable
-internal fun PillChooser(title: String, options: List<String>, current: String?, onPick: (String?) -> Unit, onClose: () -> Unit) {
+internal fun TvChooser(title: String, options: List<String>, current: String?, allLabel: String? = "All",
+                       onPick: (String?) -> Unit, onClose: () -> Unit) {
     val first = remember { FocusRequester() }
     LaunchedEffect(Unit) { kotlinx.coroutines.delay(60); runCatching { first.requestFocus() } }
     androidx.activity.compose.BackHandler(onBack = onClose)
-    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)), contentAlignment = Alignment.TopCenter) {
-        Column(Modifier.holdsRemote().padding(top = 70.dp).widthIn(max = 900.dp).frosted().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                TvPill({ onPick(null); onClose() }, if (current == null) Modifier.focusRequester(first) else Modifier, selected = current == null) { Text("All") }
-                options.forEach { o ->
-                    TvPill({ onPick(o); onClose() }, if (o == current) Modifier.focusRequester(first) else Modifier, selected = o == current) { Text(o) }
+    val all = listOfNotNull(allLabel?.let { null to it }) + options.map { it to it }
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)), contentAlignment = Alignment.CenterEnd) {
+        Column(Modifier.holdsRemote().padding(end = 36.dp).width(340.dp).heightIn(max = 480.dp).frosted(22).padding(10.dp)) {
+            Text(title, style = app.lumiere.android.ui.TvType.meta, modifier = Modifier.padding(start = 14.dp, top = 6.dp, bottom = 8.dp))
+            androidx.compose.foundation.lazy.LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                items(all.size) { j ->
+                    val (value, label) = all[j]
+                    val now = value == current
+                    TvPill({ onPick(value); onClose() }, Modifier.fillMaxWidth().then(if (now) Modifier.focusRequester(first) else Modifier),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)) {
+                        Box(Modifier.size(22.dp)) { if (now) androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Default.Check, null, Modifier.size(20.dp)) }
+                        androidx.compose.foundation.layout.Spacer(Modifier.width(8.dp))
+                        Text(label, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                    }
                 }
             }
         }

@@ -199,7 +199,10 @@ struct DetailHeroHeader: View {
     /// answer than a slightly smaller one.
     @ViewBuilder
     private var logo: some View {
-        if let request = ImageRequest.logo(
+        // A logo spells the metadata title, so a library that goes by its
+        // folder names or romaji shows the name itself. See `LibraryTitleOrder`.
+        if LibraryTitleOrder.order(for: artEntry.item.libraryId) == .standard,
+           let request = ImageRequest.logo(
             for: artEntry, serverURL: serverURL,
             width: DetailMetrics.logoWidth, scale: scale
         ) {

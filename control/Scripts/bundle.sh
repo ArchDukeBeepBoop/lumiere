@@ -27,7 +27,7 @@ if [ ! -d "$SERVER_SRC" ]; then
 	exit 1
 fi
 # Built for this machine only. There is one deployment and it is this Mac.
-(cd "$SERVER_SRC" && go build -o "$ROOT/build/lumiered" ./cmd/lumiered)
+(cd "$SERVER_SRC" && go build -ldflags "-X main.commit=$(git rev-parse --short HEAD)$(git diff --quiet || echo +)" -o "$ROOT/build/lumiered" ./cmd/lumiered)
 
 echo "==> Rendering the icon"
 # Drawn from source at every size rather than downsampled from one. A 32px icon
@@ -35,7 +35,7 @@ echo "==> Rendering the icon"
 # which is the size that actually appears in System Settings and the Finder list.
 ICONS="$ROOT/build/icons"
 rm -rf "$ICONS" && mkdir -p "$ICONS"
-swiftc -O "$ROOT/Tools/RenderIcon.swift" "$ROOT/Sources/LumiereControl/IrisArt.swift" \
+swiftc -O "$ROOT/Tools/RenderIcon.swift" "$ROOT/Sources/LumiereControl/PrismArt.swift" \
 	-o "$ROOT/build/rendericon"
 "$ROOT/build/rendericon" "$ICONS"
 

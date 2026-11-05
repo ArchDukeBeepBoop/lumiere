@@ -21,6 +21,25 @@ type AndroidHandler struct {
 
 func (h AndroidHandler) dir() string { return filepath.Join(h.DataDir, "android") }
 
+// channels are the apps besides the TV's, each with its own copy in
+// <data>/android/<channel>, so a phone is never offered the TV's app. The TV
+// keeps the folder's top level, where it has always looked. Named here, not
+// taken from the path as given, so a request can only ever reach these.
+var channels = map[string]bool{"phone": true, "quest": true}
+
+// folder is where the asked-for app's copy waits, or "" for a channel that
+// does not exist.
+func (h AndroidHandler) folder(r *http.Request) string {
+	channel := r.PathValue("channel")
+	if channel == "" {
+		return h.dir()
+	}
+	if !channels[channel] {
+		return ""
+	}
+	return filepath.Join(h.dir(), channel)
+}
+
 // Diagnostics is POST /Lumiere/Diagnostics: the app's recent log, written to
 // this server's log under the device's name. Capped, and only ever written,
 // never served back.
@@ -39,10 +58,16 @@ func (h AndroidHandler) Diagnostics(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// Latest is GET /Lumiere/Android/Latest: {"VersionCode", "VersionName"} of
-// the copy waiting in <data>/android, or 404 when none is.
+// Latest is GET /Lumiere/Android/Latest (the TV's) or
+// /Lumiere/Android/{channel}/Latest (the phone's, the Quest's):
+// {"VersionCode", "VersionName", "Sha256"} of the copy waiting, or 404.
 func (h AndroidHandler) Latest(w http.ResponseWriter, r *http.Request) {
-	raw, err := os.ReadFile(filepath.Join(h.dir(), "version.json"))
+	dir := h.folder(r)
+	if dir == "" {
+		http.NotFound(w, r)
+		return
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "version.json"))
 	if err != nil {
 		http.NotFound(w, r)
 		return
@@ -55,8 +80,14 @@ func (h AndroidHandler) Latest(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, v)
 }
 
-// Package is GET /Lumiere/Android/lumiere.apk: the copy itself.
+// Package is GET /Lumiere/Android/lumiere.apk, or …/{channel}/lumiere.apk:
+// the copy itself.
 func (h AndroidHandler) Package(w http.ResponseWriter, r *http.Request) {
+	dir := h.folder(r)
+	if dir == "" {
+		http.NotFound(w, r)
+		return
+	}
 	w.Header().Set("Content-Type", "application/vnd.android.package-archive")
-	http.ServeFile(w, r, filepath.Join(h.dir(), "lumiere.apk"))
+	http.ServeFile(w, r, filepath.Join(dir, "lumiere.apk"))
 }

@@ -33,6 +33,8 @@ type Item struct {
 	Genres, Tags []string
 	ProviderIDs  map[string]string
 	Studios      []Named
+	Countries    []string
+	Romaji       string
 	Images       map[string]string
 	Backdrops    []string
 
@@ -81,6 +83,9 @@ func (s *Store) Items(q Query) ([]Item, int, error) {
 			return nil, 0, err
 		}
 		q.FolderIDs = folders
+	}
+	if err := s.artistLists(&q); err != nil {
+		return nil, 0, err
 	}
 	where, args := q.where()
 

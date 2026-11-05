@@ -24,6 +24,9 @@ struct MenuView: View {
             tiles.padding(.horizontal, Menu.gutter).padding(.top, 10)
             LibraryCard(stats: monitor.stats)
                 .padding(.horizontal, Menu.gutter).padding(.top, 8)
+            if server.libraryMissing {
+                MissingLibraryRows(server: server)
+            }
             MenuSection(text: "Sharing")
             sharing
             MenuSection(text: "Backups")
@@ -40,7 +43,7 @@ struct MenuView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Image(nsImage: IrisIcon.image(openness: serving ? 1 : 0, size: 34))
+            Image(nsImage: PrismIcon.image(lit: serving, size: 34))
                 .id(serving)
                 .transition(.opacity)
             VStack(alignment: .leading, spacing: 1) {
@@ -75,6 +78,8 @@ struct MenuView: View {
                 Text("Starting…")
             case .stopped:
                 Text("Stopped")
+            case .failed where server.libraryMissing:
+                Text("Library missing").foregroundStyle(.red)
             case .failed(let why):
                 Text(why).foregroundStyle(.red)
             }

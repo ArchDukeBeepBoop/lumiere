@@ -129,3 +129,19 @@ suspend fun Server.findSubtitle(itemId: String, language: String): String? {
 suspend fun Server.syncSubtitles(item: Item): Int = item.streams.filter { it.type == "Subtitle" && it.isExternal }.count { st ->
     runCatching { slowPost("Items/${item.id}/Subtitles/${st.index}/Sync") }.isSuccess
 }
+
+/**
+ * A collection's watch order as arranged on the Mac (My Watch Order), held
+ * by the server so every device plays it the same way; null when none was
+ * arranged, or the server is too old to hold one.
+ */
+suspend fun Server.watchOrder(collectionId: String): List<String>? = runCatching {
+    val a = JSONObject(get("Lumiere/WatchOrder/$collectionId")).optJSONArray("Items") ?: return@runCatching null
+    List(a.length()) { a.getString(it) }.ifEmpty { null }
+}.getOrNull()
+
+/** [items] in [order]: those it lists first, as listed; the rest after, oldest first. */
+fun inWatchOrder(items: List<Item>, order: List<String>?): List<Item> {
+    val rank = order.orEmpty().withIndex().associate { (i, id) -> id to i }
+    return items.sortedWith(compareBy<Item> { rank[it.id] ?: Int.MAX_VALUE }.thenBy { it.year ?: 9999 })
+}

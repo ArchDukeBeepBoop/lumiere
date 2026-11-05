@@ -2,6 +2,12 @@
 
 package app.lumiere.android.tv
 
+import app.lumiere.android.ui.pointable
+import app.lumiere.android.ui.hoverFocuses
+
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
@@ -78,6 +84,7 @@ import app.lumiere.android.api.extras
 import app.lumiere.android.api.personImage
 import app.lumiere.android.api.setFavorite
 import app.lumiere.android.api.similar
+import app.lumiere.android.api.watchOrder
 import app.lumiere.android.ui.CardShape
 import app.lumiere.android.ui.LButton
 import app.lumiere.android.ui.LChip
@@ -121,6 +128,8 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                 ?: seasons.firstOrNull { (it.unplayedCount ?: 0) > 0 } ?: seasons.firstOrNull()
             nextUp = runCatching { server.nextUp(userId).firstOrNull { it.seriesId == id } }.getOrNull()
         } else if (found.isFolder) children = runCatching { state.childrenOrSaved(id) }.getOrDefault(emptyList())
+            // A collection plays in the watch order arranged on the Mac, where there is one.
+            .let { c -> if (found.type == "BoxSet") app.lumiere.android.api.inWatchOrder(c, server.watchOrder(id)) else c }
         similar = state.visible(runCatching { server.similar(userId, id) }.getOrDefault(emptyList()))
         extras = server.extras(userId, id)
     }
@@ -131,7 +140,7 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
 
     // A title the Mac no longer has, or can't reach: said plainly, with a way on.
     if (item == null && missing) return MissingTitle(state)
-    val current = item ?: return Box(Modifier.fillMaxSize().background(Palette.canvas))
+    val current = item ?: return Box(Modifier.fillMaxSize().background(Palette.ground))
     val list = rememberLazyListState()
     var topFocused by remember { mutableStateOf(true) }
     val topFirst = remember { FocusRequester() }
@@ -139,25 +148,46 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
     var below by remember { mutableStateOf(0) }
     var section by remember { mutableStateOf(0) }
     var onlyUnwatched by remember { mutableStateOf(false) }
+    var refocusEpisodes by remember { mutableStateOf(false) }
+    var focusedEp by remember { mutableStateOf<Item?>(null) }
+    var epShown by remember { mutableStateOf<Item?>(null) }
+    LaunchedEffect(focusedEp) { kotlinx.coroutines.delay(300); epShown = focusedEp }
+    val episodesFocus = remember { FocusRequester() }
     LaunchedEffect(topFocused) { if (topFocused) list.animateScrollToItem(0) }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Palette.canvas)) {
-        AsyncImage(imageFor(current, server, CardShape.Wide, 1600), null, contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize())
-        Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Palette.canvas.copy(alpha = 0.95f), 0.6f to Color.Transparent)))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient((if (topFocused) 0.5f else 0.1f) to Color.Transparent, 0.95f to Palette.canvas)))
+    BoxWithConstraints(Modifier.fillMaxSize().background(Palette.ground)) {
+        // Google TV's page: the picture at the top right, fading into the grey on its left
+        // and lower edges; the words on plain ground, the rows rising over its foot.
+        // On the Quest's colour ground the picture is a framed card at the right, as on Home,
+        // and the ground takes on the title's colour (QuestBackdrop).
+        if (app.lumiere.android.Flavor.quest && !state.settings.questArtBackdrop) {
+            LaunchedEffect(current.id) { app.lumiere.android.ui.ArtColour.of(server, current)?.let { app.lumiere.android.ui.QuestGround.tint = app.lumiere.android.ui.QuestGround.glowOf(it) } }
+            app.lumiere.android.ui.HeroArt(current, server, Modifier.align(Alignment.TopEnd).padding(end = 56.dp, top = 48.dp).fillMaxWidth(0.46f))
+        } else Box(Modifier.align(Alignment.TopEnd).fillMaxWidth(0.9f).fillMaxHeight(0.92f)) {
+            AsyncImage(imageFor(current, server, CardShape.Wide, 1600), null, contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize())
+            Box(Modifier.fillMaxSize().background(Brush.horizontalGradient(0f to Palette.canvas, 0.25f to Palette.canvas.copy(alpha = 0.5f), 0.5f to Color.Transparent)))
+            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Palette.canvas)))
+        }
         val h = maxHeight
         // Up from the first row returns to the buttons, which the tall top has
         // scrolled out of the list's reach.
         // The page moves only when what is chosen is off screen: moving along
         // the episodes no longer nudges the whole page each time.
-        val still = remember { object : androidx.compose.foundation.gestures.BringIntoViewSpec {
-            override fun calculateScrollDistance(offset: Float, size: Float, containerSize: Float): Float = when {
-                offset >= 0f && offset + size <= containerSize -> 0f
-                offset < 0f -> offset
-                else -> offset + size - containerSize
-            }
-        } }
+        // The focus line (TvScroll): rows land at one height either way; the top holds still while chosen.
+        // The page steers its own scroll, as Home does: nothing moves it but this. The top
+        // shows whole while chosen; any other row settles just under the screen's top edge,
+        // and moving along a row never moves the page.
+        val still = app.lumiere.android.ui.rememberSteeredPageScroll()
+        // In the episodes, the top tells about the chosen one (Home's information area), and
+        // the row settles just under it.
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        LaunchedEffect(below, topFocused) {
+            if (topFocused) { list.animateScrollToItem(0); return@LaunchedEffect }
+            val line = with(density) { (h * if (below == 2) app.lumiere.android.ui.TvSpace.landing else 0.08f).toPx() }
+            val info = list.layoutInfo.visibleItemsInfo.firstOrNull { it.index == below } ?: return@LaunchedEffect
+            list.animateScrollBy(info.offset - line)
+        }
         @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
         androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides still) {
         LazyColumn(Modifier.onPreviewKeyEvent { e ->
@@ -166,48 +196,53 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                 scope2.launch { list.animateScrollToItem(0); kotlinx.coroutines.delay(80); runCatching { topFirst.requestFocus() } }
                 true
             } else false
-        }, state = list, contentPadding = PaddingValues(bottom = 60.dp)) {
+        }, state = list, contentPadding = PaddingValues(bottom = 60.dp + app.lumiere.android.ui.TvSpace.foot)) {
             item {
-                Top(state, current, nextUp, Modifier.height(h * 0.86f).onFocusChanged { topFocused = it.hasFocus }, topFirst,
-                    inOrder = if (current.type == "BoxSet") children.filter { it.isPlayable }.sortedBy { it.year ?: 9999 }.let { c -> c.firstOrNull { !it.played } ?: c.firstOrNull() } else null,
+                Top(state, current, nextUp, Modifier.height(h * app.lumiere.android.ui.TvSpace.banner).onFocusChanged { topFocused = it.hasFocus }, topFirst,
+                    inOrder = if (current.type == "BoxSet") children.filter { it.isPlayable }.let { c -> c.firstOrNull { !it.played } ?: c.firstOrNull() } else null,
                     onFavourite = { fav -> scope.launch { server.setFavorite(current.id, fav); item = current.copy(favorite = fav) } },
                     onPlayed = { p -> scope.launch { state.ledger.setPlayed(server, current.id, p); item = current.copy(played = p) } })
             }
             if (seasons.isNotEmpty()) {
                 item {
-                    LazyRow(Modifier.onFocusChanged { if (it.hasFocus) below = 1 }.focusRestorer(), contentPadding = PaddingValues(horizontal = 56.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Seasons and their filters in one frosted capsule, as the Library's segmented control.
+                    Box(Modifier.padding(start = 56.dp, end = 56.dp, top = 8.dp, bottom = 4.dp)) {
+                    LazyRow(Modifier.onFocusChanged { if (it.hasFocus) below = 1 }.focusRestorer()
+                        .clip(RoundedCornerShape(50)).background(Palette.surface.copy(alpha = 0.72f)).padding(5.dp),
+                        horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                         items(seasons, key = { it.id }) { s ->
                             // "Season 2 · 6 of 10": how far through each one is, at a glance.
                             val total = s.childCount; val left = s.unplayedCount
                             // How far through it, as a thin line under the name — Apple's way, no numbers.
                             val done = if (total != null && total > 0 && left != null) (total - left).toFloat() / total else null
-                            LChip(s.id == season?.id, { season = s }, {
+                            app.lumiere.android.ui.TvPill({ season = s }, selected = s.id == season?.id) {
                                 androidx.compose.foundation.layout.Column {
-                                    Text(s.name + if (done == 1f) "  ✓" else "")
+                                    androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) { Text(s.name); if (done == 1f) app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.check, Modifier.padding(start = 6.dp), 14.dp) }
                                     if (done != null && done > 0f && done < 1f) Box(Modifier.padding(top = 3.dp).width(56.dp).height(2.dp)
                                         .background(androidx.compose.material3.LocalContentColor.current.copy(alpha = 0.25f))) {
                                         Box(Modifier.fillMaxWidth(done).height(2.dp).background(androidx.compose.material3.LocalContentColor.current))
                                     }
                                 }
-                            })
+                            }
                         }
                         // Watched or not, one pill each: the episode row filtered, and the season marked.
                         if (seasons.size > 2) item(key = "order") {
-                            LChip(state.settings.seasonsNewestFirst(id), {
+                            app.lumiere.android.ui.TvPill({
                                 state.settings.setSeasonsNewestFirst(id, !state.settings.seasonsNewestFirst(id)); seasons = seasons.filter { (it.indexNumber ?: 0) != 0 }.reversed() + seasons.filter { (it.indexNumber ?: 0) == 0 }
-                            }, { Text("Newest First") })
+                            }, selected = state.settings.seasonsNewestFirst(id)) { Text("Newest First") }
                         }
-                        item(key = "unwatched") { LChip(onlyUnwatched, { onlyUnwatched = !onlyUnwatched }, { Text("Unwatched") }) }
+                        item(key = "unwatched") { app.lumiere.android.ui.TvPill({ onlyUnwatched = !onlyUnwatched }, selected = onlyUnwatched) { Text("Unwatched") } }
                         item(key = "markseason") {
-                            LChip(false, {
+                            app.lumiere.android.ui.TvPill({
                                 val all = episodes; val toPlayed = all.any { !it.played }
                                 scope.launch {
                                     all.forEach { e -> runCatching { state.ledger.setPlayed(server, e.id, toPlayed) } }
                                     episodes = all.map { it.copy(played = toPlayed, positionTicks = 0) }
                                     state.homeRefresh++
                                 }
-                            }, { Text(if (episodes.isNotEmpty() && episodes.all { it.played }) "Mark Season Unwatched" else "Mark Season Watched") })
+                            }) { Text(if (episodes.isNotEmpty() && episodes.all { it.played }) "Mark Season Unwatched" else "Mark Season Watched") }
                         }
+                    }
                     }
                 }
                 item {
@@ -226,7 +261,12 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                             }
                         }
                     }
-                    LazyRow(Modifier.onFocusChanged { if (it.hasFocus) below = 2 }
+                    // A new season loaded under the remote: back onto its first episode, rather
+                    // than losing the remote and falling to the top of the page.
+                    LaunchedEffect(episodes) {
+                        if (refocusEpisodes && episodes.isNotEmpty()) { kotlinx.coroutines.delay(80); runCatching { episodesFocus.requestFocus() }; refocusEpisodes = false }
+                    }
+                    LazyRow(Modifier.focusRequester(episodesFocus).onFocusChanged { if (it.hasFocus) below = 2 }
                         // Past either end of a season: the next or previous one, as tvOS turns them.
                         .onPreviewKeyEvent { ev ->
                             val k = ev.nativeKeyEvent
@@ -235,9 +275,9 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                             val onId = state.lastEpisode[id]
                             when {
                                 k.keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT && onId == episodes.last().id && at in 0 until seasons.lastIndex -> {
-                                    season = seasons[at + 1]; state.lastEpisode.remove(id); true }
+                                    season = seasons[at + 1]; state.lastEpisode.remove(id); refocusEpisodes = true; true }
                                 k.keyCode == android.view.KeyEvent.KEYCODE_DPAD_LEFT && onId == episodes.first().id && at > 0 -> {
-                                    season = seasons[at - 1]; state.lastEpisode.remove(id); true }
+                                    season = seasons[at - 1]; state.lastEpisode.remove(id); refocusEpisodes = true; true }
                                 else -> false
                             }
                         }
@@ -245,8 +285,8 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
                         @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
                         exit = { d -> if (d == androidx.compose.ui.focus.FocusDirection.Left || d == androidx.compose.ui.focus.FocusDirection.Right)
                             androidx.compose.ui.focus.FocusRequester.Cancel else androidx.compose.ui.focus.FocusRequester.Default }
-                    }, state = rowState, contentPadding = PaddingValues(horizontal = 56.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(22.dp)) {
-                        items(episodes.filter { !onlyUnwatched || !it.played }, key = { it.id }) { e -> Box(Modifier.onFocusChanged { if (it.hasFocus) state.lastEpisode[id] = e.id }) { Episode(e, state, next = e.id == nextUp?.id) } }
+                    }, state = rowState, contentPadding = PaddingValues(horizontal = 56.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+                        items(episodes.filter { !onlyUnwatched || !it.played }, key = { it.id }) { e -> Box(Modifier.onFocusChanged { if (it.hasFocus) { state.lastEpisode[id] = e.id; focusedEp = e } }) { Episode(e, state, next = e.id == nextUp?.id) } }
                     }
                 }
             }
@@ -279,6 +319,14 @@ fun TvDetailScreen(state: AppState, id: String, refreshKey: Int, startSeason: St
             }
         }
         }
+        // The chosen episode, told about at the top while the remote is in the episodes.
+        androidx.compose.animation.AnimatedVisibility(below == 2 && !topFocused && epShown != null,
+            enter = androidx.compose.animation.fadeIn(), exit = androidx.compose.animation.fadeOut()) {
+            epShown?.let { ep ->
+                val hidden = state.settings.hidesSpoilers && !ep.played && ep.positionTicks == 0L
+                app.lumiere.android.ui.InfoArea(if (hidden) ep.copy(overview = null) else ep, server, Modifier.fillMaxWidth().height(h * app.lumiere.android.ui.TvSpace.strip))
+            }
+        }
     }
 }
 
@@ -288,14 +336,14 @@ private fun Top(state: AppState, item: Item, nextUp: Item?, modifier: Modifier, 
     val server = state.server ?: return
     LaunchedEffect(item.id) { kotlinx.coroutines.delay(150); runCatching { first.requestFocus() } }
     Box(modifier.fillMaxWidth()) {
-        Column(Modifier.align(Alignment.BottomStart).padding(start = 56.dp, bottom = 24.dp).widthIn(max = 680.dp),
+        Column(Modifier.align(Alignment.BottomStart).padding(start = 56.dp, bottom = 24.dp).widthIn(max = 440.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item.seriesName?.let { Text(it, style = MaterialTheme.typography.titleMedium, color = Palette.accent) }
             if (item.logoTag != null && !item.isEpisode) {
                 AsyncImage(server.imageUrl(item.id, "Logo", item.logoTag, 760), item.name, contentScale = ContentScale.Fit,
-                    alignment = Alignment.BottomStart, modifier = Modifier.height(120.dp).widthIn(max = 440.dp))
+                    alignment = Alignment.BottomStart, modifier = Modifier.height(72.dp).widthIn(max = 300.dp))
             } else {
-                Text(item.name, maxLines = 2, overflow = TextOverflow.Ellipsis, style = TextStyle(fontSize = 44.sp,
+                Text(item.name, maxLines = 2, overflow = TextOverflow.Ellipsis, style = TextStyle(fontSize = 34.sp, lineHeight = 38.sp,
                     fontWeight = FontWeight.SemiBold, color = Color.White, shadow = Shadow(Color.Black.copy(alpha = 0.6f), blurRadius = 12f)))
             }
             app.lumiere.android.ui.FactPills(listOfNotNull(item.episodeLabel, item.year?.toString()).joinToString("  ·  ").ifEmpty { null },
@@ -311,8 +359,8 @@ private fun Top(state: AppState, item: Item, nextUp: Item?, modifier: Modifier, 
                     .then(if (cut) Modifier.clickable { open = true } else Modifier)
                     .background(if (on) Color.White.copy(alpha = 0.12f) else Color.Transparent, RoundedCornerShape(10.dp))
                     .padding(horizontal = 8.dp, vertical = 4.dp)) {
-                    Text(story, maxLines = 4, overflow = TextOverflow.Ellipsis, onTextLayout = { cut = it.hasVisualOverflow },
-                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 16.sp, lineHeight = 23.sp, color = Color.White.copy(alpha = 0.85f)))
+                    Text(story, maxLines = 2, overflow = TextOverflow.Ellipsis, onTextLayout = { cut = it.hasVisualOverflow },
+                        style = app.lumiere.android.ui.TvType.body)
                     if (cut) Text("MORE", style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color.White, modifier = Modifier.align(Alignment.BottomEnd)
                             .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(4.dp)).padding(horizontal = 5.dp))
@@ -324,7 +372,7 @@ private fun Top(state: AppState, item: Item, nextUp: Item?, modifier: Modifier, 
             if (inOrder != null) {
                 val first = inOrder
                 app.lumiere.android.ui.TvPill({ state.push(Screen.Player(first.id, null)) }, selected = true) {
-                    Text("▶  Play in Order · ${first.name}")
+                    app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.play); androidx.compose.foundation.layout.Spacer(Modifier.width(8.dp)); Text("Play in Order · ${first.name}")
                 }
             }
             // Play takes the show's own colour, lifted toward the accent so it reads as the button.
@@ -358,16 +406,27 @@ private fun Top(state: AppState, item: Item, nextUp: Item?, modifier: Modifier, 
                     // Nearly over: starting again is likelier than the last minutes.
                     val nearEnd = !item.isSeries && (target?.progress ?: 0f) > 0.9f
                     val resume = target != null && target.positionTicks > 0 && !nearEnd
-                    LButton(modifier = Modifier.focusRequester(first), tint = showTint, onClick = {
-                        target?.let { state.push(Screen.Player(it.id, if (nearEnd) 0.0 else null)) } ?: state.push(Screen.Detail(item.id))
-                    }) {
-                        Text(when {
-                            target == null -> "▶  Play"
-                            nearEnd -> "▶  Start Over"
-                            item.isSeries -> (if (resume) "▶  Resume " else "▶  Play ") + (target.episodeLabel ?: "")
-                            resume -> "▶  Resume · ${((target.runtimeTicks ?: 0) - target.positionTicks) / TICKS_PER_SECOND / 60} min left"
-                            else -> "▶  Play"
-                        })
+                    // The white capsule from Home's banner, as the Apple TV app's Play.
+                    val playIt = {
+                        target?.let { state.push(Screen.Player(it.id, if (nearEnd) 0.0 else it.positionTicks.takeIf { p -> p > 0 }?.let { p -> p / 10_000_000.0 })) } ?: state.push(Screen.Detail(item.id))
+                    }
+                    androidx.tv.material3.Surface(onClick = playIt, modifier = Modifier.focusRequester(first).pointable(onClick = playIt),
+                        shape = androidx.tv.material3.ClickableSurfaceDefaults.shape(RoundedCornerShape(50)),
+                        scale = androidx.tv.material3.ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+                        colors = androidx.tv.material3.ClickableSurfaceDefaults.colors(containerColor = Color.White.copy(alpha = 0.92f),
+                            contentColor = Color.Black, focusedContainerColor = Color.White, focusedContentColor = Color.Black)) {
+                        androidx.compose.foundation.layout.Row(Modifier.height(app.lumiere.android.ui.TvSpace.button).padding(horizontal = 20.dp),
+                            verticalAlignment = Alignment.CenterVertically) {
+                            app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.play, tint = Color.Black)
+                            androidx.compose.foundation.layout.Spacer(Modifier.width(8.dp))
+                            Text(when {
+                                target == null -> "Play"
+                                nearEnd -> "Start Over"
+                                item.isSeries -> (if (resume) "Resume " else "Play ") + (target.episodeLabel ?: "")
+                                resume -> "Resume · ${((target.runtimeTicks ?: 0) - target.positionTicks) / TICKS_PER_SECOND / 60} min left"
+                                else -> "Play"
+                            }, style = app.lumiere.android.ui.TvType.button)
+                        }
                     }
                 }
                 // A finished show: from the beginning again, the history left as it is.
@@ -416,10 +475,10 @@ private fun Episode(e: Item, state: AppState, next: Boolean = false) {
     // Apple TV's episode: a wide still, then its number, name, length and a
     // few lines of what happens, so a season reads without opening each one.
     var chosen by remember { mutableStateOf(false) }
-    Column(Modifier.width(320.dp).onFocusChanged { chosen = it.hasFocus }) {
+    Column(Modifier.width(240.dp).onFocusChanged { chosen = it.hasFocus }) {
         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).focusCard({}, {
             state.push(if (state.settings.episodesOpenPage) Screen.Detail(e.id) else Screen.Player(e.id, null)) }) { state.actionsFor = e }
-            // The one to watch next, outlined in gold so it is found at a glance.
+            // The one to watch next, outlined in the accent so it is found at a glance.
             .then(if (next) Modifier.border(2.dp, Palette.accent.copy(alpha = 0.8f), RoundedCornerShape(10.dp)) else Modifier)
             .background(Palette.surface)) {
             AsyncImage(imageFor(e, server, CardShape.Wide, 560), e.name, contentScale = ContentScale.Crop, modifier = Modifier.matchParentSize())
@@ -428,8 +487,8 @@ private fun Episode(e: Item, state: AppState, next: Boolean = false) {
                     Box(Modifier.fillMaxWidth(p).height(4.dp).background(Palette.accent))
                 }
             }
-            if (e.played) Text("✓", color = Palette.onAccent, modifier = Modifier.align(Alignment.TopEnd).padding(6.dp)
-                .background(Palette.accent, CircleShape).padding(horizontal = 6.dp))
+            if (e.played) app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.check, Modifier.align(Alignment.TopEnd).padding(6.dp).background(Palette.accent, CircleShape).padding(4.dp),
+                12.dp, tint = Palette.onAccent)
             // Selected: a play symbol on a dark disc over the still, as the Apple TV app shows.
             if (chosen) Box(Modifier.align(Alignment.Center).size(46.dp).background(Color.Black.copy(alpha = 0.55f), CircleShape),
                 contentAlignment = Alignment.Center) {
@@ -453,9 +512,9 @@ private fun Episode(e: Item, state: AppState, next: Boolean = false) {
 private fun Row(title: String, items: List<Item>, state: AppState, play: Boolean = false) {
     val server = state.server ?: return
     Column(Modifier.padding(top = 16.dp)) {
-        Text(title, style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary),
+        Text(title, style = app.lumiere.android.ui.TvType.row,
             modifier = Modifier.padding(start = 56.dp))
-        LazyRow(Modifier.focusRestorer(), contentPadding = PaddingValues(horizontal = 56.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        LazyRow(Modifier.focusRestorer(), contentPadding = PaddingValues(horizontal = 56.dp, vertical = 14.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             items(items, key = { it.id }) { it ->
                 Column(Modifier.width(if (play) 260.dp else 150.dp)) {
                     Box(Modifier.fillMaxWidth().aspectRatio(if (play) 16f / 9f else 2f / 3f)
@@ -476,9 +535,9 @@ private fun Row(title: String, items: List<Item>, state: AppState, play: Boolean
 private fun Cast(item: Item, state: AppState) {
     val server = state.server ?: return
     Column(Modifier.padding(top = 16.dp)) {
-        Text("Cast & Crew", style = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary),
+        Text("Cast & Crew", style = app.lumiere.android.ui.TvType.row,
             modifier = Modifier.padding(start = 56.dp))
-        LazyRow(Modifier.focusRestorer(), contentPadding = PaddingValues(start = 56.dp, end = 56.dp, top = 14.dp, bottom = 28.dp), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        LazyRow(Modifier.focusRestorer(), contentPadding = PaddingValues(start = 56.dp, end = 56.dp, top = 14.dp, bottom = 28.dp), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
             items(item.people.take(30), key = { it.id + (it.role ?: "") }) { p ->
                 // People as Apple shows them on a TV: portrait photos with the
                 // poster's own white ring, and the name kept inside the row.
@@ -509,7 +568,7 @@ private fun Cast(item: Item, state: AppState) {
 @Composable
 private fun Round(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        app.lumiere.android.ui.LIconButton(onClick = onClick, modifier = Modifier.size(52.dp)
+        app.lumiere.android.ui.LIconButton(onClick = onClick, modifier = Modifier.size(app.lumiere.android.ui.TvSpace.button)
             .background(Color.White.copy(alpha = 0.14f), CircleShape)) {
             androidx.compose.material3.Icon(icon, label, tint = app.lumiere.android.ui.pillTint(Color.White))
         }
@@ -564,7 +623,7 @@ private fun Information(item: Item) {
 private fun MissingTitle(state: AppState) {
     val back = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { back.requestFocus() } }
-    Column(Modifier.fillMaxSize().background(Palette.canvas).padding(56.dp), verticalArrangement = Arrangement.Center) {
+    Column(Modifier.fillMaxSize().background(Palette.ground).padding(56.dp), verticalArrangement = Arrangement.Center) {
         Text("This title isn't on the Mac any more", style = TextStyle(fontSize = 30.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary))
         Text("It may have been moved or removed, or the Mac may be asleep.", style = MaterialTheme.typography.bodyMedium,
             color = Palette.textSecondary, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp))

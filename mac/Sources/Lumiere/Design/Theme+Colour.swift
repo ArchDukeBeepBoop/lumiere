@@ -73,6 +73,6 @@ extension Color {
     /// video or artwork, which are dark whatever the system says. Follows the
     /// choice in Settings › Look. See `AccentTheme`.
     static let fixedAccent = Color(nsColor: NSColor(name: nil) { _ in
-        NSColor(hex: ArtworkAccent.hex ?? AccentTheme.map(0xC9A227), alpha: 1)
+        NSColor(hex: ArtworkAccent.hex ?? AccentTheme.map(0x9296FF), alpha: 1)
     })
 }

@@ -25,7 +25,7 @@ object Playback {
      * libass drawing anime subtitles as they were styled — fonts, colours,
      * positions — into [subtitles]. [burnIn] draws them into the picture itself.
      */
-    fun build(context: Context, server: Server, subtitles: androidx.media3.ui.SubtitleView, burnIn: Boolean): ExoPlayer {
+    fun build(context: Context, server: Server, subtitles: androidx.media3.ui.SubtitleView, burnIn: Boolean, styled: Boolean = true): ExoPlayer {
         // Files on the phone as well as the server: a download plays from disk.
         val data = androidx.media3.datasource.DefaultDataSource.Factory(context, OkHttpDataSource.Factory(server.http))
         // Extension renderers preferred where present, for audio codecs the
@@ -49,9 +49,13 @@ object Playback {
                 else setBufferDurationsMs(15_000, 50_000, 1_000, 2_000)
             }
             .build()
-        return ExoPlayer.Builder(context).setLoadControl(load).buildWithAssSupport(
+        // Without libass (the Quest's theater, whose window is out of sight) styled subtitles
+        // arrive as plain text cues, which the room's captions can show.
+        val builder = ExoPlayer.Builder(context).setLoadControl(load)
+        val player = if (styled) builder.buildWithAssSupport(
             context, type, subtitles, data, androidx.media3.extractor.DefaultExtractorsFactory(), renderers,
-        ).apply {
+        ) else builder.setRenderersFactory(renderers).setMediaSourceFactory(DefaultMediaSourceFactory(data)).build()
+        return player.apply {
             // Subtitles in the system's language when there is a choice; the
             // controller's subtitle button changes it.
             trackSelectionParameters = trackSelectionParameters.buildUpon()
@@ -68,6 +72,9 @@ object Playback {
         val b = player.trackSelectionParameters.buildUpon()
             .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, (!subtitlesOn && !anime) || remembered?.second == "off")
         textLanguage?.let { b.setPreferredTextLanguage(it) }
+        // A track that names no language (The X-Files' ASS tracks) is taken when nothing matches,
+        // as the Mac does; preferring a language used to leave such a file with no subtitles at all.
+        b.setSelectUndeterminedTextLanguage(true)
         if (anime) b.setPreferredAudioLanguage("ja").setPreferredTextLanguage("en")
         // The show's own languages chosen up front, so the first frame plays in them —
         // no switch a second in, which stalls a small box.

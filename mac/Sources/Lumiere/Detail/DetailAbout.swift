@@ -58,9 +58,39 @@ struct DetailAbout: View {
                         .fill(Theme.Palette.border)
                         .frame(height: 1)
                 }
-                aboutRow(row.label, row.value)
+                if row.studios.isEmpty {
+                    aboutRow(row.label, row.value)
+                } else {
+                    studioLinks(row.label, row.studios)
+                }
             }
         }
+    }
+
+    /// The Studio row, each name opening that studio's page — everything here
+    /// it made — as a studio found in Search does.
+    private func studioLinks(_ label: String, _ studios: [String]) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.xl) {
+            Text(label)
+                .font(Theme.Font.body)
+                .foregroundStyle(Theme.Palette.textMuted)
+                .frame(width: DetailMetrics.aboutLabelWidth, alignment: .leading)
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                ForEach(Array(studios.enumerated()), id: \.offset) { index, studio in
+                    NavigationLink(value: GenreRoute(name: studio, isStudio: true)) {
+                        Text(studio).foregroundStyle(Theme.Palette.accent)
+                    }
+                    .buttonStyle(.plain)
+                    .labelledHelp("Everything by \(studio)")
+                    if index < studios.count - 1 {
+                        Text(", ").foregroundStyle(Theme.Palette.textPrimary)
+                    }
+                }
+            }
+            .font(Theme.Font.body)
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, Theme.Space.md)
     }
 
     private func aboutRow(_ label: String, _ value: String) -> some View {

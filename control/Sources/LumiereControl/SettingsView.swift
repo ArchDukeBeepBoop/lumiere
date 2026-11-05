@@ -13,7 +13,7 @@ struct SettingsView: View {
 
     var body: some View {
         TabView {
-            GeneralPane(loginItem: loginItem)
+            GeneralPane(loginItem: loginItem, server: server)
                 .tabItem { Label("General", systemImage: "gearshape") }
             AboutPane(server: server)
                 .tabItem { Label("About", systemImage: "info.circle") }
@@ -27,7 +27,9 @@ struct SettingsView: View {
 
 private struct GeneralPane: View {
     @Bindable var loginItem: LoginItem
+    let server: ServerProcess
     @AppStorage(Notifier.enabledKey) private var notify = true
+    @AppStorage(BackupRestorer.mirrorKey) private var mirror = ""
 
     var body: some View {
         Form {
@@ -48,6 +50,32 @@ private struct GeneralPane: View {
                 Text("Only when it stops on its own — a television that cannot find "
                      + "the library is usually the first sign otherwise.")
             }
+
+            Section {
+                LabeledContent("Daily copies") {
+                    Button("Show in Finder") {
+                        NSWorkspace.shared.activateFileViewerSelecting([BackupRestorer.backupDir])
+                    }
+                }
+                LabeledContent("Second copy") {
+                    HStack {
+                        if !mirror.isEmpty {
+                            Text(URL(fileURLWithPath: mirror).lastPathComponent)
+                                .foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                            Button("Remove") { setMirror("") }
+                        }
+                        Button(mirror.isEmpty ? "Choose Folder…" : "Change…") { chooseMirror() }
+                    }
+                }
+            } header: {
+                Text("Backups")
+            } footer: {
+                Text("A copy each day, kept for a week, and one a week for two months. "
+                     + "A second folder on another disk — the media drive, say — survives "
+                     + "anything that empties this Mac's Library folder. Changing it restarts the server.")
+            }
+
+            PictureFolderSection(server: server)
 
             Section {
                 LabeledContent("Library") {
@@ -71,7 +99,26 @@ private struct GeneralPane: View {
         }
         .formStyle(.grouped)
         .scrollDisabled(true)
-        .frame(height: 360)
+        .frame(height: 640)
+    }
+
+    private func chooseMirror() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.prompt = "Use This Folder"
+        panel.message = "Choose a folder for a second copy of each daily backup."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        setMirror(url.path)
+    }
+
+    /// The folder is an argument to the server, so it takes a restart to apply.
+    private func setMirror(_ path: String) {
+        mirror = path
+        guard server.state == .running else { return }
+        server.note(path.isEmpty ? "second backup folder removed" : "second backup folder set")
+        Task { await server.restart() }
     }
 }
 
@@ -81,7 +128,7 @@ private struct AboutPane: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            Image(nsImage: IrisIcon.image(openness: 1, size: 96))
+            Image(nsImage: PrismIcon.image(lit: true, size: 96))
             Text("Lumiere Control").font(.title2.weight(.semibold))
             Text("Version \(Self.version)").foregroundStyle(.secondary)
             if let serverVersion {

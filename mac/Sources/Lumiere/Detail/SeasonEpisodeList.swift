@@ -73,6 +73,7 @@ struct SeasonEpisodeList: View {
         VStack(alignment: .leading, spacing: Theme.Space.sm) {
             HStack(alignment: .firstTextBaseline) {
                 if model.seasons.count > 1 {
+                    selectedSeasonCover
                     seasonPicker
                         .contextMenu {
                             if let onSeasonArtwork, let season = model.selectedSeasonId {
@@ -133,6 +134,26 @@ struct SeasonEpisodeList: View {
                     episodeCounts: model.seasonEpisodeCounts
                 )
             }
+        }
+    }
+
+    /// The chosen season's own cover beside its name, so a change of season
+    /// shows at the head of the strip as well as in the shelf below it. Only a
+    /// season's own picture: the show's poster here would say nothing.
+    @ViewBuilder
+    private var selectedSeasonCover: some View {
+        if let season = model.seasons.first(where: { $0.id == model.selectedSeasonId }),
+           season.item.primaryTag != nil {
+            RemoteImage(
+                request: .poster(for: season, serverURL: serverURL, width: 30, scale: scale),
+                pipeline: pipeline
+            )
+            .frame(width: 30, height: 30 / Theme.Art.posterAspect)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.badge, style: .continuous))
+            .alignmentGuide(.firstTextBaseline) { $0[.bottom] - 6 }
+            .id(season.id)
+            .transition(.opacity)
+            .accessibilityHidden(true)
         }
     }
 

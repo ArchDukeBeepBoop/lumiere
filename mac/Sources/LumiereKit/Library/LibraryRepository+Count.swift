@@ -19,6 +19,10 @@ public extension LibraryRepository {
         searchTerm: String? = nil,
         genre: String? = nil,
         studio: String? = nil,
+        /// An ISO country code. See `ItemRecord.countries`.
+        country: String? = nil,
+        /// An anime season's id, "2024-4". See `AnimeSeason`.
+        season: String? = nil,
         unwatchedOnly: Bool = false
     ) async throws -> Int {
         // Counted in SQL, including the unwatched case. This used to fetch up to
@@ -72,6 +76,14 @@ public extension LibraryRepository {
                 request = request.filter(
                     sql: Self.studioMatchSQL, arguments: [Self.studioPattern(studio)]
                 )
+            }
+            if let country {
+                request = request.filter(
+                    sql: Self.countryMatchSQL, arguments: [Self.studioPattern(country)]
+                )
+            }
+            if let season, let chosen = AnimeSeason(id: season) {
+                request = request.filter(sql: chosen.filterSQL, arguments: chosen.arguments)
             }
             if unwatchedOnly {
                 request = request.filter(

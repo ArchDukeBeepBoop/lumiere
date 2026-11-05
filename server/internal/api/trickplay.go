@@ -16,6 +16,10 @@ import (
 // media.MakeTrickplay and the schedule package that makes them.
 var TrickplayRoot string
 
+// CacheRoot is the folder pictures and previews are kept in; set at start
+// from the -cache choice. See cmd/lumiered/cachedir.go.
+var CacheRoot string
+
 // trickplayFor is the detail's Trickplay field for an item, or nil. Sheets
 // made from an earlier version of the file are dropped here, so the next
 // scheduled pass makes them again rather than a scrub showing the old cut.

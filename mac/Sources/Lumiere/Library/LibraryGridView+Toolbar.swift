@@ -111,6 +111,29 @@ extension LibraryGridView {
                 }
                 .onChange(of: studio) { Task { await reload() } }
             }
+            // Where it comes from — Japan, Korea, the US. Names in the viewer's
+            // language; the codes are what the server stores.
+            if !countries.isEmpty {
+                Picker("Country", selection: $country) {
+                    Text("All countries").tag(String?.none)
+                    ForEach(countries, id: \.self) { code in
+                        Text(LibraryRepository.countryName(code)).tag(String?.some(code))
+                    }
+                }
+                .onChange(of: country) { Task { await reload() } }
+            }
+            // When it aired — Fall 2024 — newest first, a section per year.
+            if !seasons.isEmpty {
+                Picker("Season", selection: $season) {
+                    Text("All seasons").tag(String?.none)
+                    ForEach(Dictionary(grouping: seasons, by: \.year).keys.sorted(by: >), id: \.self) { year in
+                        Section(String(year)) {
+                            ForEach(seasons.filter { $0.year == year }) { Text($0.title).tag(String?.some($0.id)) }
+                        }
+                    }
+                }
+                .onChange(of: season) { Task { await reload() } }
+            }
 
             Divider()
             tileSizeControl
@@ -143,6 +166,7 @@ extension LibraryGridView {
             }
             Button("Find Collections…") { isProposingCollections = true }
             Button("Discover Collections…") { isDiscoveringCollections = true }
+            Button("Smart Collections…") { isEditingSmartCollections = true }
             Button("Repair Episode Numbering…") { isScanningMergedSeries = true }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -172,6 +196,12 @@ extension LibraryGridView {
                 }
                 if let studio {
                     filterClause(studio) { self.studio = nil; Task { await reload() } }
+                }
+                if let country {
+                    filterClause(LibraryRepository.countryName(country)) { self.country = nil; Task { await reload() } }
+                }
+                if let chosen = season.flatMap(AnimeSeason.init(id:)) {
+                    filterClause(chosen.title) { self.season = nil; Task { await reload() } }
                 }
                 if unwatchedOnly {
                     filterClause("unwatched") {
@@ -210,13 +240,15 @@ extension LibraryGridView {
     /// others and it was not counted, so a typed term left the filter button
     /// showing no badge while the grid showed nothing.
     var activeFilters: Int {
-        [genre != nil, studio != nil, unwatchedOnly, !searchTerm.isEmpty]
+        [genre != nil, studio != nil, country != nil, season != nil, unwatchedOnly, !searchTerm.isEmpty]
             .filter { $0 }.count
     }
 
     func clearFilters() {
         genre = nil
         studio = nil
+        country = nil
+        season = nil
         unwatchedOnly = false
         shelfFilter = ""
         Task { await reload() }

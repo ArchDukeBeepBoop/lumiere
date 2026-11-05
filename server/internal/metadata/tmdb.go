@@ -3,6 +3,7 @@ package metadata
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -60,6 +61,10 @@ type Details struct {
 	// CollectionID is the film series a film belongs to ("belongs_to_collection"),
 	// which is what groups films into collections. Empty for shows.
 	CollectionID string
+	// Countries are ISO 3166-1 codes ("JP", "KR", "US"): where the title comes
+	// from, for the country filter. The show's or film's origin first, the
+	// production countries where TMDB gives no origin.
+	Countries []string
 }
 
 // SearchSeries and SearchMovie ask what a title might be.
@@ -152,6 +157,10 @@ func (t *TMDB) details(ctx context.Context, kind, id string) (Details, error) {
 		Collection *struct {
 			ID int `json:"id"`
 		} `json:"belongs_to_collection"`
+		OriginCountry       []string `json:"origin_country"`
+		ProductionCountries []struct {
+			Code string `json:"iso_3166_1"`
+		} `json:"production_countries"`
 	}
 	if err := t.get(ctx, "/3/"+kind+"/"+id, nil, &payload); err != nil {
 		return Details{}, err
@@ -183,29 +192,29 @@ func (t *TMDB) details(ctx context.Context, kind, id string) (Details, error) {
 	for _, company := range payload.Companies {
 		details.Studios = append(details.Studios, company.Name)
 	}
+	details.Countries = countriesOf(payload.OriginCountry, payload.ProductionCountries)
 	return details, nil
 }
 
 func (t *TMDB) get(ctx context.Context, path string, query url.Values, into any) error {
-	endpoint := url.URL{Scheme: "https", Host: tmdbHost, Path: path}
-	if query != nil {
-		endpoint.RawQuery = query.Encode()
-	}
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint.String(), nil)
+	request, err := t.request(ctx, path, query)
 	if err != nil {
 		return err
 	}
-	// The v4 read token, hence Bearer. The v3 key goes in a query parameter and
-	// is not interchangeable — the commonest mistake with this API.
-	request.Header.Set("Authorization", "Bearer "+t.Token)
-	request.Header.Set("Accept", "application/json")
 
 	response, err := t.HTTP.Do(request)
 	if err != nil {
-		return err
+		// net/http's error quotes the whole URL, api_key and all.
+		var failed *url.Error
+		if errors.As(err, &failed) {
+			return fmt.Errorf("tmdb %s: %w", path, failed.Err)
+		}
+		return fmt.Errorf("tmdb %s: request failed", path)
 	}
 	defer response.Body.Close()
+	if response.StatusCode == http.StatusUnauthorized {
+		return fmt.Errorf("tmdb %s: %w", path, ErrKeyRejected)
+	}
 	if response.StatusCode != http.StatusOK {
 		return fmt.Errorf("tmdb %s: %s", path, response.Status)
 	}

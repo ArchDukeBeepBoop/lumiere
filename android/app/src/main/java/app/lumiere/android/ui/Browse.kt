@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package app.lumiere.android.ui
 
 import androidx.compose.foundation.layout.widthIn
@@ -24,6 +26,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +64,9 @@ fun open(state: AppState, item: Item, context: android.content.Context) {
     }
 }
 
+/** True inside the TV's Library page, whose band and switcher already do a grid page's title and links. */
+val LocalInTvLibrary = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 /** A titled grid of cards, filled once by [load]; shimmering placeholders until then. */
 @Composable
 fun GridScreen(state: AppState, title: String, empty: String, header: @Composable () -> Unit = {},
@@ -69,16 +76,18 @@ fun GridScreen(state: AppState, title: String, empty: String, header: @Composabl
     val context = LocalContext.current
     var items by remember { mutableStateOf<List<Item>?>(null) }
     LaunchedEffect(title, state.roomOpen) { items = runCatching { state.visible(load()) }.getOrDefault(emptyList()) }
-    Column(Modifier.fillMaxSize().background(Palette.canvas)) {
+    Column(Modifier.fillMaxSize().background(Palette.ground)) {
         // On a TV, titled as the Apple TV app's pages are: large and bold, with how many.
-        if (form.isTv) androidx.compose.foundation.layout.Row(Modifier.padding(start = form.gutter.dp, top = 28.dp, bottom = 14.dp),
+        // Inside the TV's Library its band already names the page; elsewhere, the type scale's title and how many.
+        val inLibrary = LocalInTvLibrary.current
+        if (form.isTv && !inLibrary) androidx.compose.foundation.layout.Row(Modifier.padding(start = TvSpace.margin, top = 28.dp, bottom = 14.dp),
             verticalAlignment = androidx.compose.ui.Alignment.Bottom) {
-            Text(title, style = androidx.compose.ui.text.TextStyle(fontSize = 34.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
-                color = Palette.textPrimary))
-            items?.size?.takeIf { it > 0 }?.let { Text("   $it ${if (it == 1) "title" else "titles"}", style = MaterialTheme.typography.labelLarge,
-                color = Palette.textSecondary, modifier = Modifier.padding(bottom = 6.dp)) }
-        } else IosLargeTitle(title)
-        header()
+            Text(title, style = TvType.title)
+            items?.size?.takeIf { it > 0 }?.let { Text("   $it ${if (it == 1) "title" else "titles"}", style = TvType.meta,
+                modifier = Modifier.padding(bottom = 3.dp)) }
+        } else if (!form.isTv) IosLargeTitle(title)
+        // On a TV the header scrolls with the grid, as its first line, so it never holds half the screen.
+        if (!form.isTv) header()
         val list = items
         when {
             list == null -> SkeletonGrid()
@@ -93,15 +102,36 @@ fun GridScreen(state: AppState, title: String, empty: String, header: @Composabl
             }
             list.isEmpty() -> Text(empty, style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(horizontal = form.gutter.dp))
+            // On a TV, the Library's grid: six posters (four wide cards) across, gap 24, each new line
+            // settling at the top as Home's rows do, so the page never jumps.
+            form.isTv -> {
+                val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
+                var focusedIndex by remember { mutableStateOf<Int?>(null) }
+                SteeredGrid(grid, focusedIndex, landing = 0.02f)
+                androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides rememberSteeredPageScroll()) {
+                    LazyVerticalGrid(GridCells.Fixed(if (shape == CardShape.Wide) 4 else 6), state = grid,
+                        contentPadding = PaddingValues(start = TvSpace.margin, end = TvSpace.margin, top = 12.dp, bottom = 96.dp),
+                        horizontalArrangement = Arrangement.spacedBy(TvSpace.cardGap), verticalArrangement = Arrangement.spacedBy(TvSpace.cardGap)) {
+                        if (!inLibrary) item(key = "header", span = { androidx.compose.foundation.lazy.grid.GridItemSpan(maxLineSpan) }) {
+                            Column(Modifier.onFocusChanged { if (it.hasFocus) focusedIndex = 0 }) { header() }
+                        }
+                        val heads = if (inLibrary) 0 else 1
+                        itemsIndexed(list, key = { _, it -> it.id }) { i, item ->
+                            androidx.compose.foundation.layout.Box(Modifier.onFocusChanged { if (it.hasFocus) focusedIndex = heads + i }) {
+                                ItemCard(item, server, shape, fill = true) { open(state, item, context) }
+                            }
+                        }
+                    }
+                }
+            }
             else -> LazyVerticalGrid(
-                // Three posters across on a phone, as iOS's grids; sized by width on a TV.
-                columns = if (!form.isTv) GridCells.Fixed(if (shape == CardShape.Wide) (phoneColumns() - 1).coerceAtLeast(2) else phoneColumns())
-                    else GridCells.Adaptive(if (shape == CardShape.Wide) form.wideWidth.dp else form.posterWidth.dp),
+                // Three posters across on a phone, as iOS's grids.
+                columns = GridCells.Fixed(if (shape == CardShape.Wide) (phoneColumns() - 1).coerceAtLeast(2) else phoneColumns()),
                 contentPadding = PaddingValues(start = form.gutter.dp, end = form.gutter.dp, bottom = 96.dp),
-                horizontalArrangement = Arrangement.spacedBy(if (form.isTv) 14.dp else 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(18.dp),
             ) {
-                items(list, key = { it.id }) { item -> ItemCard(item, server, shape, fill = !form.isTv) { open(state, item, context) } }
+                items(list, key = { it.id }) { item -> ItemCard(item, server, shape, fill = true) { open(state, item, context) } }
             }
         }
     }
@@ -113,7 +143,8 @@ fun FavouritesScreen(state: AppState) {
     val server = state.server ?: return
     GridScreen(state, "Favourites", "Nothing starred yet. Choose ☆ Favourite on a title or album.",
         header = {
-            Row(Modifier.padding(horizontal = LocalFormFactor.current.gutter.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            // On a TV the header sits inside the grid's own margins.
+            Row(Modifier.padding(horizontal = if (LocalFormFactor.current.isTv) 0.dp else LocalFormFactor.current.gutter.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 LChip(false, { state.push(Screen.Collections) }, { Text("Collections") })
                 LChip(false, { state.push(Screen.Playlists) }, { Text("Playlists") })
             }

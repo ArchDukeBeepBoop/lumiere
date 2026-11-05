@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The room's panels (LumiereSpace). -->
+    <item name="lumiere_window" type="id" />
+    <item name="lumiere_screen" type="id" />
+    <item name="lumiere_captions" type="id" />
+    <item name="lumiere_places" type="id" />
+    <item name="lumiere_bar" type="id" />
+    <item name="lumiere_menu" type="id" />
+
+    <!-- A panel with nothing behind what it draws: the captions float clear under the screen. -->
+    <style name="LumiereClearPanel" parent="android:Theme">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+    </style>
+</resources>

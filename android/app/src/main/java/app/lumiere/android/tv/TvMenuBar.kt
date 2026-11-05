@@ -1,5 +1,6 @@
 package app.lumiere.android.tv
 
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.foundation.layout.height
@@ -46,7 +47,8 @@ import app.lumiere.android.Screen
 import app.lumiere.android.ui.Palette
 import app.lumiere.android.ui.TvClock
 
-data class BarTab(val label: String, val screen: () -> Screen?, val owns: (Screen) -> Boolean)
+data class BarTab(val label: String, val screen: () -> Screen?, val owns: (Screen) -> Boolean,
+                  val icon: androidx.compose.ui.graphics.vector.ImageVector? = null)
 
 /**
  * tvOS's menu bar: named tabs in a frosted capsule across the top of Home,
@@ -68,37 +70,40 @@ fun TvMenuBar(tabs: List<BarTab>, top: Screen, state: AppState) {
         if (state.tvMenuOpen) { kotlinx.coroutines.delay(60); runCatching { first.requestFocus() } }
     }
     if (state.tvMenuOpen) androidx.activity.compose.BackHandler { state.confirmExit = true }
-    fun leave() { state.tvMenuOpen = false; focus.moveFocus(FocusDirection.Down) }
-    Box(Modifier.fillMaxWidth()
-        .background(Brush.verticalGradient(listOf(Palette.canvas.copy(alpha = 0.85f), Palette.canvas.copy(alpha = 0f))))
+    fun leave() { state.tvMenuOpen = false; focus.moveFocus(FocusDirection.Right) }
+    // The Mac app's sidebar, as a TV menu: one frosted capsule down the left edge —
+    // the clock, the tabs, then what is playing, an update, and the private room.
+    // Up and Down move along it; Right or Back puts it away.
+    Box(Modifier.fillMaxHeight()
+        .background(Brush.horizontalGradient(listOf(Palette.canvas.copy(alpha = 0.85f), Palette.canvas.copy(alpha = 0f))))
         .onPreviewKeyEvent { e ->
             val down = e.nativeKeyEvent.action == KeyEvent.ACTION_DOWN
-            if (down && e.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { leave(); true } else false
+            if (down && e.nativeKeyEvent.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) { leave(); true } else false
         }
-        .padding(start = 48.dp, end = 48.dp, top = 18.dp, bottom = 36.dp)) {
-        // One row: the tabs centred in the room left of the clock and pills, so
-        // nothing on the right can ever sit over a tab.
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-        Row(Modifier.clip(RoundedCornerShape(50))
-            .background(androidx.compose.ui.graphics.lerp(Palette.surface, app.lumiere.android.ui.Ambient.colour ?: Palette.surface, 0.35f).copy(alpha = 0.72f)).padding(6.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        .padding(start = 24.dp, end = 48.dp, top = 24.dp, bottom = 24.dp), contentAlignment = Alignment.CenterStart) {
+        androidx.compose.foundation.layout.Column(Modifier.width(220.dp).clip(RoundedCornerShape(28.dp))
+            .background(androidx.compose.ui.graphics.lerp(Palette.surface, app.lumiere.android.ui.Ambient.colour ?: Palette.surface, 0.35f).copy(alpha = 0.82f))
+            .padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(Modifier.padding(start = 14.dp, top = 4.dp, bottom = 8.dp)) { TvClock(state) }
+            // Where Home's remote is, in a word: the row and how far down.
+            state.homePosition?.takeIf { top == Screen.Home }?.let {
+                androidx.compose.material3.Text(it, color = Palette.textMuted, style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(start = 14.dp, bottom = 6.dp))
+            }
             tabs.forEachIndexed { i, t ->
                 val here = t.owns(top) || (i == 0 && tabs.none { it.owns(top) })
-                Pill(t.label, t.owns(top), if (here) Modifier.focusRequester(first) else Modifier, state.tvMenuOpen) {
+                Pill(t.label, t.owns(top), Modifier.fillMaxWidth().then(if (here) Modifier.focusRequester(first) else Modifier), state.tvMenuOpen,
+                    icon = t.icon?.let { ic -> { Icon(ic, null, Modifier.size(20.dp)) } }) {
                     state.tvMenuOpen = false; t.screen()?.let(state::tab)
                 }
             }
-        }
-        }
-        Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            Box(Modifier.padding(vertical = 6.dp).fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.1f)))
             // Only while music actually plays: one press to its full screen.
             if (app.lumiere.android.music.Music.isPlaying)
-                Pill("♪ Now Playing", true, Modifier, state.tvMenuOpen) { state.tvMenuOpen = false; state.push(Screen.NowPlaying) }
+                Pill("Now Playing", true, Modifier.fillMaxWidth(), state.tvMenuOpen, icon = { Icon(app.lumiere.android.ui.Symbols.note, null, Modifier.size(20.dp)) }) { state.tvMenuOpen = false; state.push(Screen.NowPlaying) }
             // The update installs from here: fetched, then Android's own install prompt.
             state.updateReady?.let { name ->
-                Pill(if (installing) "Fetching $name…" else "Update to $name", true, Modifier, state.tvMenuOpen) {
+                Pill(if (installing) "Fetching $name…" else "Update to $name", true, Modifier.fillMaxWidth(), state.tvMenuOpen) {
                     val srv = state.server
                     if (!installing && srv != null && ctx != null) {
                         installing = true
@@ -106,16 +111,14 @@ fun TvMenuBar(tabs: List<BarTab>, top: Screen, state: AppState) {
                     }
                 }
             }
-            TvClock(state)
             if (state.privateLibraries.isNotEmpty() && activity != null) {
-                Pill(if (state.roomOpen) "Leave Private" else "Private", state.roomOpen, Modifier, state.tvMenuOpen,
+                Pill(if (state.roomOpen) "Leave Private" else "Private", state.roomOpen, Modifier.fillMaxWidth(), state.tvMenuOpen,
                     icon = { Icon(if (state.roomOpen) Icons.Default.LockOpen else Icons.Default.Lock, null, Modifier.size(18.dp)) }) {
                     state.tvMenuOpen = false
                     state.tab(Screen.Home)
                     app.lumiere.android.ui.toggleRoom(state, activity)
                 }
             }
-        }
         }
     }
 }

@@ -35,7 +35,7 @@
         android:layout_width="48dp"
         android:layout_height="48dp"
         android:background="@android:color/transparent"
-        android:tint="#C9A227"
+        android:tint="#9296FF"
         android:contentDescription="Play or pause" />
     <ImageButton
         android:id="@+id/np_next"
@@ -43,6 +43,6 @@
         android:layout_height="48dp"
         android:background="@android:color/transparent"
         android:src="@android:drawable/ic_media_next"
-        android:tint="#C9A227"
+        android:tint="#9296FF"
         android:contentDescription="Next" />
 </LinearLayout>

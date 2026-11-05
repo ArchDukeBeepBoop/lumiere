@@ -23,6 +23,11 @@ func Repair(db *sql.DB, log *slog.Logger) (int, error) {
 	if err := mergeDuplicateSeries(db, log); err != nil {
 		return 0, err
 	}
+	// After the merge, which no longer joins them, so nothing joins them back.
+	split, err := splitYearFolders(db, log)
+	if err != nil {
+		return 0, err
+	}
 	if err := reclassifyExtras(db, log); err != nil {
 		return 0, err
 	}
@@ -32,6 +37,7 @@ func Repair(db *sql.DB, log *slog.Logger) (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	folded += split
 	// After reclassifyExtras, which it partly reverses — see restoreSpecials.
 	if restored, err := restoreSpecials(db, log); err != nil {
 		return 0, err
@@ -120,10 +126,12 @@ func mergeDuplicateSeries(db *sql.DB, log *slog.Logger) error {
 		  -- The duplicate is the one with no artwork; the imported row has it.
 		  AND NOT EXISTS (SELECT 1 FROM image g WHERE g.item_id = dupe.id)
 		  AND EXISTS (SELECT 1 FROM image g WHERE g.item_id = keep.id)
-		  -- Same show: their episodes sit under one directory.
+		  -- Same show: their episodes sit under one directory — that folder
+		  -- itself, so "Rurouni Kenshin" does not claim "Rurouni Kenshin (2023)",
+		  -- whose path it merely begins.
 		  AND EXISTS (
 			SELECT 1 FROM item a JOIN item b
-			  ON substr(a.path, 1, length(keep.path)) = keep.path
+			  ON substr(a.path, 1, length(keep.path) + 1) = keep.path || '/'
 			WHERE a.series_id = dupe.id AND b.id = keep.id
 			  AND keep.path IS NOT NULL AND keep.path <> ''
 		  )`)

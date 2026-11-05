@@ -27,6 +27,9 @@ public enum HomeSection: Hashable, Sendable, Identifiable {
     case forgotten
     /// The next film in each film series under way. See `seriesNextUp`.
     case continueSeries
+    /// "Continue Monogatari": the next unwatched title of the franchise last
+    /// watched, as a banner. See `ContinueFranchise`.
+    case continueFranchise
     /// Related titles, keyed to the last thing watched.
     case becauseYouWatched
     /// Everything newly added, across every library. Drawn by the Hero layout;
@@ -35,6 +38,9 @@ public enum HomeSection: Hashable, Sendable, Identifiable {
     case topFilms
     case topSeries
     case topAnime
+    /// One row for each collection pinned with "Show on Home" — a smart
+    /// collection such as "Highly Rated, Not Yet Watched", a franchise.
+    case pinnedCollections
     /// The "Latest <library>" row for one library.
     case latest(libraryId: String)
 
@@ -68,11 +74,13 @@ public enum HomeSection: Hashable, Sendable, Identifiable {
         case .finishSeason: return "finishSeason"
         case .forgotten: return "forgotten"
         case .continueSeries: return "continueSeries"
+        case .continueFranchise: return "continueFranchise"
         case .becauseYouWatched: return "becauseYouWatched"
         case .recentlyAdded: return "recentlyAdded"
         case .topFilms: return "topFilms"
         case .topSeries: return "topSeries"
         case .topAnime: return "topAnime"
+        case .pinnedCollections: return "pinnedCollections"
         case .latest(let libraryId): return "latest:\(libraryId)"
         }
     }
@@ -94,11 +102,13 @@ public enum HomeSection: Hashable, Sendable, Identifiable {
         case "finishSeason": self = .finishSeason
         case "forgotten": self = .forgotten
         case "continueSeries": self = .continueSeries
+        case "continueFranchise": self = .continueFranchise
         case "becauseYouWatched": self = .becauseYouWatched
         case "recentlyAdded": self = .recentlyAdded
         case "topFilms": self = .topFilms
         case "topSeries": self = .topSeries
         case "topAnime": self = .topAnime
+        case "pinnedCollections": self = .pinnedCollections
         default: return nil
         }
     }
@@ -116,11 +126,13 @@ public enum HomeSection: Hashable, Sendable, Identifiable {
         case .finishSeason: return "Finish the Season"
         case .forgotten: return "Forgotten"
         case .continueSeries: return "Continue the Series"
+        case .continueFranchise: return "Continue the Franchise"
         case .becauseYouWatched: return "Because You Watched"
         case .recentlyAdded: return "Recently Added"
         case .topFilms: return "Top 10 Films"
         case .topSeries: return "Top 10 Series"
         case .topAnime: return "Top 10 Anime"
+        case .pinnedCollections: return "Your Collections"
         case .latest(let libraryId):
             return "Latest \(libraryName(libraryId) ?? "Library")"
         }

@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.sp
 
 /**
  * The private room's palette, as on the Mac: every colour passed through its
- * own luminance, a shade darker and faintly cool. The gold goes grey with the
+ * own luminance, a shade darker and faintly cool. The accent goes grey with the
  * rest, so a glance tells which space is open.
  */
 object RoomTheme {
@@ -40,7 +40,7 @@ object RoomTheme {
 
 /**
  * On a phone, with Settings' "Colours from my wallpaper" on (Android 12 and
- * later): the accent follows the phone's own colours instead of the Mac's gold.
+ * later): the accent follows the phone's own colours instead of the prism's periwinkle.
  * The private room keeps its own look.
  */
 object MaterialYou {
@@ -54,18 +54,25 @@ object MaterialYou {
 
 /** The Mac app's dark palette (Theme.Palette), carried over value for value. */
 object Palette {
-    // On a TV, Apple TV's greys: one even ground, cards a step lighter.
-    // On a phone, iOS's dark mode: true black, grouped greys above it.
-    val canvas get() = RoomTheme.map(if (TvLook.on) 0xFF1C1C1E else if (PhoneLook.on) 0xFF000000 else 0xFF0D0F12)
-    val chrome get() = RoomTheme.map(if (TvLook.on) 0xFF242426 else if (PhoneLook.on) 0xFF121214 else 0xFF14171C)
-    val surface get() = RoomTheme.map(if (TvLook.on) 0xFF2C2C2E else if (PhoneLook.on) 0xFF1C1C1E else 0xFF1A1F26)
-    val surfaceRaised get() = RoomTheme.map(if (TvLook.on) 0xFF3A3A3C else if (PhoneLook.on) 0xFF2C2C2E else 0xFF22262D)
-    val border get() = RoomTheme.map(if (PhoneLook.on) 0xFF38383A else 0xFF262B33)
-    val textPrimary get() = RoomTheme.map(if (PhoneLook.on) 0xFFFFFFFF else 0xFFF2F4F7)
-    val textSecondary get() = RoomTheme.map(if (PhoneLook.on) 0xFFA1A1A8 else 0xFFA8B0BC)
-    val textMuted get() = RoomTheme.map(if (PhoneLook.on) 0xFF6E6E74 else 0xFF6B7381)
-    val accent get() = MaterialYou.accent?.takeIf { !RoomTheme.isOn } ?: RoomTheme.map(if (Night.on) 0xFFA8823A else 0xFFC9A227)
-    val onAccent get() = RoomTheme.map(0xFF0D0F12)
+    // The prism icon's midnight, as on the Mac: navy greys rather than black.
+    // On a TV, one even ground, cards a step lighter. On a phone, the deepest
+    // navy (all but black, for an OLED) with grouped surfaces above it.
+    val canvas get() = RoomTheme.map(if (TvLook.on) 0xFF13162A else if (PhoneLook.on) 0xFF0B0D1C else 0xFF13162A)
+    val chrome get() = RoomTheme.map(if (TvLook.on) 0xFF191C33 else if (PhoneLook.on) 0xFF111428 else 0xFF191C33)
+    val surface get() = RoomTheme.map(if (TvLook.on) 0xFF21253F else if (PhoneLook.on) 0xFF191C33 else 0xFF21253F)
+    val surfaceRaised get() = RoomTheme.map(if (TvLook.on) 0xFF2D3150 else if (PhoneLook.on) 0xFF262A47 else 0xFF2D3150)
+    val border get() = RoomTheme.map(if (PhoneLook.on) 0xFF343957 else 0xFF2A2E4A)
+    val textPrimary get() = RoomTheme.map(if (PhoneLook.on) 0xFFFFFFFF else 0xFFF3F4FA)
+    val textSecondary get() = RoomTheme.map(if (PhoneLook.on) 0xFFA6A9C2 else 0xFFADB0C6)
+    val textMuted get() = RoomTheme.map(if (PhoneLook.on) 0xFF71758F else 0xFF7A7E9A)
+    /** The icon's edge light, #9296FF; a softer periwinkle after 10 pm. */
+    val accent get() = MaterialYou.accent?.takeIf { !RoomTheme.isOn } ?: RoomTheme.map(if (Night.on) 0xFF7A7FD6 else 0xFF9296FF)
+    val onAccent get() = RoomTheme.map(0xFF13162A)
+    /**
+     * A page's own ground: the canvas, but clear in the Quest's window, where every page
+     * sits on the one colour ground behind it (QuestBackdrop), as Horizon OS's panels do.
+     */
+    val ground get() = if (app.lumiere.android.Flavor.quest) androidx.compose.ui.graphics.Color.Transparent else canvas
 }
 
 /** Phone or TV: decides card sizes, gutters and how focus is drawn. */
@@ -83,7 +90,8 @@ val LocalFormFactor = staticCompositionLocalOf { FormFactor(isTv = false) }
  * a headset once passed for a TV.
  */
 @Suppress("UNUSED_PARAMETER")
-fun detectFormFactor(context: Context): FormFactor = FormFactor(isTv = app.lumiere.android.Flavor.tv)
+// The Quest's window takes the TV layout too: big targets, and a focus its controllers move.
+fun detectFormFactor(context: Context): FormFactor = FormFactor(isTv = app.lumiere.android.Flavor.tv || app.lumiere.android.Flavor.quest)
 
 @Composable
 fun LumiereTheme(content: @Composable () -> Unit) {
@@ -103,17 +111,17 @@ fun LumiereTheme(content: @Composable () -> Unit) {
     MaterialTheme(colorScheme = colors, typography = type, content = content)
 }
 
-/** After 10 pm the gold goes a softer amber, kinder to a dark room; set by the activity each hour. */
+/** After 10 pm the accent goes a softer periwinkle, kinder to a dark room; set by the activity each hour. */
 object Night {
     var on by androidx.compose.runtime.mutableStateOf(false)
 }
 
-/** iOS's dark greys on a phone; set by the activity. */
+/** The phone's deeper navy; set by the activity. */
 object PhoneLook {
     var on by androidx.compose.runtime.mutableStateOf(false)
 }
 
-/** Apple TV's grey ground on a TV; set by the activity. */
+/** The TV's even navy ground; set by the activity. */
 object TvLook {
     var on by androidx.compose.runtime.mutableStateOf(false)
 }

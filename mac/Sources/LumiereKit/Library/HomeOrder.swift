@@ -40,7 +40,7 @@ public enum HomeOrder {
             // are in the middle of before anything to browse. Finish the Season
             // and Forgotten stay beside the rows whose question they answer.
             .spotlight, .continueWatching, .finishSeason, .nextUp, .forgotten,
-            .continueSeries, .becauseYouWatched, .quickLinks, .libraries, .genres, .recentlyAdded,
+            .continueSeries, .continueFranchise, .becauseYouWatched, .pinnedCollections, .quickLinks, .libraries, .genres, .recentlyAdded,
             .topFilms, .topSeries, .topAnime,
         ] + libraryIds.map { .latest(libraryId: $0) }
     }

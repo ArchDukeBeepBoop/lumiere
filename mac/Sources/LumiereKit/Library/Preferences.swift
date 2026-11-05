@@ -48,6 +48,15 @@ public enum Preference {
     public static let followsLinkedChapters = Key("followsLinkedChapters", default: true)
     /// A card of what changed, the first launch after an update. See `WhatsNew`.
     public static let showsWhatsNew = Key("showsWhatsNew", default: true)
+    /// Top 10 rows ranked as the TV draws them: larger posters, each beside
+    /// its number. Off, they are plain poster rows. See `RankedCard`.
+    public static let ranksTopTen = Key("ranksTopTen", default: true)
+    /// Songs played through to the end count as played on the server, which
+    /// is what ranks Top 10 Artists. See `MusicPlayerModel.onTrackFinished`.
+    public static let countsMusicPlays = Key("countsMusicPlays", default: true)
+    /// mpv plays every file, even those AVFoundation could. Off, AVFoundation
+    /// takes what it can open and mpv the rest. See `PlaybackPlanner.Options`.
+    public static let prefersMPV = Key("prefersMPV", default: true)
     /// The player's accent follows the artwork of what's playing. See `ArtworkAccent`.
     public static let playerTintsFromArtwork = Key("playerTintsFromArtwork", default: false)
     /// On-screen messages name the key that caused them. See `ShortcutEcho`.

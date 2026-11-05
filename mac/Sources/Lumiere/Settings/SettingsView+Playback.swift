@@ -155,6 +155,10 @@ extension SettingsView {
 
         SettingsCard(title: "Engine", icon: "cpu") {
             LabeledContent("mpv", value: app.mpvVersion ?? "Not loaded")
+            Toggle("Play everything in mpv", isOn: $prefersMPV)
+                .toggleStyle(.switch)
+            caption("mpv plays every file, the way opening one from the Finder does. "
+                  + "Off, Apple's player takes the MP4s it can open and mpv the rest.")
             Text(app.mpvAvailable
                  ? "Handles the containers and codecs AVFoundation cannot open, which "
                  + "on a real library is most of them."
@@ -166,7 +170,9 @@ extension SettingsView {
         }
     }
 
+    @ViewBuilder
     var audioForm: some View {
+        MusicPlaysCard()
         SettingsCard(title: "Volume boost", icon: "speaker.wave.3") {
             Picker("Default boost", selection: $defaultVolumeBoost) {
                 Text("Off (100%)").tag(100.0)

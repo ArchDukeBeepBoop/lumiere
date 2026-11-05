@@ -23,7 +23,11 @@ for f in sample_h264.mkv sample_hevc_ac3.mkv; do
 done
 
 (cd "$HERE/server" && go build -o "$WORK/lumiered" ./cmd/lumiered)
-"$WORK/lumiered" -data "$WORK/data" -addr "127.0.0.1:$PORT" > "$WORK/log" 2>&1 &
+# Its own witness and backups as well as its own data: the real ones say this
+# Mac has a library, so a server sharing them refuses to start empty — and one
+# that started anyway would write its two-film library over the real record.
+"$WORK/lumiered" -data "$WORK/data" -witness "$WORK/witness.json" -backups "$WORK/backups" \
+	-addr "127.0.0.1:$PORT" > "$WORK/log" 2>&1 &
 PID=$!
 for _ in $(seq 1 50); do curl -sf "$BASE/System/Info/Public" >/dev/null && break; sleep 0.2; done
 

@@ -17,22 +17,29 @@ import (
 // more than twenty is a numbering scheme, not a missing download.
 func (s *Store) missingEpisodes() (HealthIssue, error) {
 	issue := HealthIssue{Kind: "MissingEpisodes", Samples: []HealthSample{}}
+	// The aired counts and the dismissed shows and seasons are read once, and
+	// the episodes unsorted, rather than looked up and sorted per row in SQL:
+	// this check alone took two seconds of a report run after every sync.
+	dismissedShows := s.dismissedKeys("MissingEpisodes")
+	dismissedSeasons := s.dismissedKeys("MissingEpisodesSeason")
+	airedBySeason := map[string]int{}
+	if aired, err := s.DB.Query(`SELECT item_id, CAST(value AS INTEGER) FROM item_value WHERE kind = 'tmdb:aired'`); err == nil {
+		for aired.Next() {
+			var id string
+			var n int
+			aired.Scan(&id, &n)
+			airedBySeason[id] = n
+		}
+		aired.Close()
+	}
 	rows, err := s.DB.Query(`
 		SELECT COALESCE(ep.season_id, ep.parent_id, ''), COALESCE(ep.series_id, ''),
 		       COALESCE(ep.series_name, ''),
-		       COALESCE(ep.parent_index_number, -1), ep.index_number, COALESCE(ep.path, ''),
-		       COALESCE((SELECT CAST(a.value AS INTEGER) FROM item_value a
-		                 WHERE a.item_id = COALESCE(ep.season_id, ep.parent_id)
-		                   AND a.kind = 'tmdb:aired'), 0)
+		       COALESCE(ep.parent_index_number, -1), ep.index_number, COALESCE(ep.path, '')
 		FROM item ep
 		WHERE ep.type = 'Episode' AND ep.extra_type IS NULL
 		  AND ep.index_number IS NOT NULL AND ep.index_number > 0
-		  AND COALESCE(ep.parent_index_number, 1) > 0
-		  AND NOT EXISTS (SELECT 1 FROM health_dismissed d
-		                  WHERE (d.kind = 'MissingEpisodes' AND d.key = ep.series_id)
-		                     OR (d.kind = 'MissingEpisodesSeason'
-		                         AND d.key = COALESCE(ep.season_id, ep.parent_id)))
-		ORDER BY 1, ep.index_number`)
+		  AND COALESCE(ep.parent_index_number, 1) > 0`)
 	if err != nil {
 		return issue, err
 	}
@@ -48,10 +55,14 @@ func (s *Store) missingEpisodes() (HealthIssue, error) {
 	var order []string
 	for rows.Next() {
 		var id, seriesID, series, path string
-		var number, episode, aired int
-		if err := rows.Scan(&id, &seriesID, &series, &number, &episode, &path, &aired); err != nil {
+		var number, episode int
+		if err := rows.Scan(&id, &seriesID, &series, &number, &episode, &path); err != nil {
 			return issue, err
 		}
+		if dismissedShows[seriesID] || dismissedSeasons[id] {
+			continue
+		}
+		aired := airedBySeason[id]
 		sn, ok := seasons[id]
 		if !ok {
 			sn = &season{series: series, seriesID: seriesID, number: number,
@@ -63,6 +74,11 @@ func (s *Store) missingEpisodes() (HealthIssue, error) {
 	}
 	if err := rows.Err(); err != nil {
 		return issue, err
+	}
+	// The order the SQL used to give: by season, episodes ascending.
+	sort.Strings(order)
+	for _, sn := range seasons {
+		sort.Ints(sn.have)
 	}
 
 	// Grouped by show: 132 lines of seasons were a list to scroll, and the

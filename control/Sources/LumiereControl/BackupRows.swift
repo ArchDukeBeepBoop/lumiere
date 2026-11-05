@@ -8,10 +8,11 @@ struct BackupRows: View {
     let server: ServerProcess
 
     @State private var isHovering = false
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Group {
-            if let newest = backups.backups.first {
+            if !backups.backups.isEmpty {
                 // A pop-up of dates behind a row that looks like every other
                 // row, with the chevron system menus use for "more inside".
                 SwiftUI.Menu {
@@ -27,9 +28,11 @@ struct BackupRows: View {
                         IconCircle(symbol: "clock.arrow.circlepath")
                         VStack(alignment: .leading, spacing: 1) {
                             Text("Restore Backup").font(Menu.body)
-                            Text("\(backups.backups.count) daily copies · newest "
-                                 + newest.date.formatted(.relative(presentation: .named)))
-                                .font(Menu.caption).foregroundStyle(.secondary)
+                            let health = backups.health
+                            Text(health.text)
+                                .font(Menu.caption)
+                                .foregroundStyle(health.warning ? AnyShapeStyle(.red) : AnyShapeStyle(.secondary))
+                                .lineLimit(2)
                         }
                         Spacer(minLength: 8)
                         Image(systemName: "chevron.right")
@@ -46,6 +49,10 @@ struct BackupRows: View {
                 .menuIndicator(.hidden)
                 .onHover { isHovering = $0 }
                 .padding(.horizontal, Menu.gutter - 6)
+                MenuRow(symbol: "rectangle.stack", title: "Browse Backups…",
+                        subtitle: "What each copy holds, side by side") {
+                    openWindow(id: BackupBrowser.windowID)
+                }
             } else {
                 MenuNote(text: "No backups yet — the server makes one each day.")
             }

@@ -178,7 +178,25 @@ extension ImageRequest {
     ) -> ImageRequest? {
         let item = entry.item
 
-        if showArtOnly {
+        // A video in a folder library — 3D, My Videos — shows its own thumbnail
+        // first. Nothing there has scraped artwork: the "show" or folder above
+        // it has only a borrowed frame, and drawing that backdrop made every
+        // card on Continue Watching the same picture. Its own frame is the one
+        // that says which video it is.
+        if primaryIsWide, let tag = item.primaryTag,
+           [.video, .episode, .movie].contains(item.itemType) {
+            return ImageRequest(
+                serverURL: serverURL, itemId: item.id, kind: .primary, tag: tag,
+                displayWidth: width, aspectRatio: Theme.Art.backdropAspect, screenScale: scale
+            )
+        }
+
+        // Only where there is a show to stand in. A loose video in a folder
+        // library — most of 3D and My Videos — belongs to no show, so "show
+        // artwork only" left it nothing: the card drew its frame until the
+        // libraries' setting arrived a moment later, then went blank, on
+        // Continue Watching and in folder view alike. It keeps its own picture.
+        if showArtOnly, item.seriesId != nil {
             // The poster is accepted here despite the note below about forcing
             // a 2:3 image into a 16:9 card. A soft crop of the show's poster is
             // the right picture for these libraries; a sharp frame from the
@@ -211,6 +229,14 @@ extension ImageRequest {
         // all, `GeneratedThumb` draws a card instead, which stays crisp at any size.
         var candidates: [(String, JellyfinImageURL.ImageKind, String?)] = []
         let parentBackdrop = (item.parentBackdropItemId ?? "", JellyfinImageURL.ImageKind.backdrop, item.parentBackdropTag)
+        // An episode with a still of its own shows it, ahead of the show's
+        // backdrop — what Settings › Continue Watching Artwork promises for a
+        // library left unticked, and what this ordering overrode: every
+        // Adult episode on Continue Watching drew its show's backdrop. A
+        // ticked library never gets here (`showArtOnly`), and "one picture a
+        // season" keeps the show's art first.
+        let ownStill = item.itemType == .episode && item.primaryTag != nil && !unifiesEpisodeArt
+        let preferSeriesThumb = preferSeriesThumb && !ownStill
         if preferSeriesThumb { candidates.append(parentBackdrop) }
         candidates += [
             (item.id, .backdrop, item.backdropTag),

@@ -38,7 +38,8 @@ type PublicSystemInfo struct {
 //	4  health findings can be ignored and restored
 //	5  the last Move to Trash can be undone
 //	6  misfiled episodes can be moved to their season, and moved back
-const APILevel = 6
+//	7  smart collections and anime franchises
+const APILevel = 7
 
 // Identity is what this server calls itself. Held rather than computed per
 // request because the Id must not change between two requests — see identity.go.

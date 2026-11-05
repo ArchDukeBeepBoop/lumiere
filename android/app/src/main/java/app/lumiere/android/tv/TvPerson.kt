@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package app.lumiere.android.tv
 
 import androidx.compose.foundation.background
@@ -10,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -59,31 +62,37 @@ fun TvPersonScreen(state: AppState, id: String, name: String) {
     val rows = listOf("Known For" to works.filter { it.communityRating != null }.sortedByDescending { it.communityRating }.take(10),
         "Movies" to works.filter { it.type == "Movie" }, "TV Shows" to works.filter { it.type == "Series" })
         .filter { it.second.isNotEmpty() }
-    LazyColumn(Modifier.fillMaxSize().background(Palette.canvas), contentPadding = PaddingValues(vertical = 36.dp)) {
+    // Home's scrolling: each row settles on one line under where the photo and name sit.
+    val list = androidx.compose.foundation.lazy.rememberLazyListState()
+    var focusedRow by remember { mutableStateOf<Int?>(null) }
+    app.lumiere.android.ui.SteeredList(list, focusedRow, landing = 0.3f)
+    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides app.lumiere.android.ui.rememberSteeredPageScroll()) {
+    LazyColumn(Modifier.fillMaxSize().background(Palette.ground), state = list, contentPadding = PaddingValues(top = 36.dp, bottom = 300.dp)) {
         item {
             Row(Modifier.padding(horizontal = 56.dp), horizontalArrangement = Arrangement.spacedBy(28.dp),
                 verticalAlignment = Alignment.CenterVertically) {
                 AsyncImage(server.imageUrl(id, "Primary", person?.primaryTag, 320), name, contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(160.dp).clip(CircleShape).background(Palette.surface))
+                    modifier = Modifier.size(120.dp).clip(CircleShape).background(Palette.surface))
                 Column(Modifier.widthIn(max = 760.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(name, fontSize = 36.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary)
+                    Text(name, style = app.lumiere.android.ui.TvType.title)
                     person?.overview?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = Palette.textSecondary,
-                        maxLines = 5, overflow = TextOverflow.Ellipsis) }
+                        maxLines = 2, overflow = TextOverflow.Ellipsis) }
                     if (works.isEmpty()) Text("Nothing with $name in the library yet.", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
-        rows.forEach { (title, items) ->
+        rows.forEachIndexed { r, (title, items) ->
             item(key = title) {
-                Column(Modifier.padding(top = 24.dp)) {
-                    Text(title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = Palette.textPrimary,
+                Column(Modifier.padding(top = 24.dp).onFocusChanged { if (it.hasFocus) focusedRow = r + 1 }) {
+                    Text(title, style = app.lumiere.android.ui.TvType.row,
                         modifier = Modifier.padding(start = 56.dp))
                     LazyRow(Modifier.focusRestorer(), contentPadding = PaddingValues(horizontal = 56.dp, vertical = 14.dp),
-                        horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                        horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                         items(items, key = { it.id }) { w -> ItemCard(w, server, CardShape.Poster) { state.push(Screen.Detail(w.id)) } }
                     }
                 }
             }
         }
     }
+}
 }

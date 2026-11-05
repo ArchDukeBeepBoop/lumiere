@@ -186,7 +186,7 @@ fun IosTopBar(shown: Float, title: String, modifier: Modifier = Modifier, underS
 data class IosRow(
     val title: String,
     val icon: ImageVector? = null,
-    val tile: Color = Color(0xFF3A3A3C),
+    val tile: Color = Color(0xFF2D3150),
     val value: String? = null,
     val destructive: Boolean = false,
     val onClick: () -> Unit,
@@ -298,7 +298,7 @@ fun IosSegmented(options: List<String>, selected: Int, onPick: (Int) -> Unit, mo
     Row(modifier.fillMaxWidth().height(34.dp).clip(RoundedCornerShape(9.dp)).background(Palette.surface).padding(2.dp)) {
         options.forEachIndexed { i, o ->
             Box(Modifier.weight(1f).fillMaxWidth().height(30.dp).clip(RoundedCornerShape(7.dp))
-                .background(if (i == selected) Color(0xFF636366) else Color.Transparent)
+                .background(if (i == selected) Color(0xFF3D4266) else Color.Transparent)
                 .clickable(remember { MutableInteractionSource() }, null) { onPick(i) }, contentAlignment = Alignment.Center) {
                 Text(o, style = IosType.footnote.copy(fontWeight = FontWeight.SemiBold), color = Palette.textPrimary, maxLines = 1)
             }

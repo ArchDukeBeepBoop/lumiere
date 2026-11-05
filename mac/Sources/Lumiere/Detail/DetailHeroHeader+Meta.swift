@@ -55,9 +55,13 @@ extension DetailHeroHeader {
     /// and "Kimi no Na Wa" are one title rather than two — otherwise every show
     /// whose provider punctuates differently would print its name twice.
     var distinctOriginalTitle: String? {
-        guard let original = hero.item.originalTitle,
+        // The library's title order decides what the second name is — the
+        // romaji under a folder name, say. See `LibraryTitleOrder`.
+        let order = LibraryTitleOrder.order(for: hero.item.libraryId)
+        let shown = order.primary(for: hero.item) ?? hero.item.name
+        guard let original = order.secondary(for: hero.item),
               !original.isEmpty,
-              SearchKey.normalize(original) != SearchKey.normalize(hero.item.name)
+              SearchKey.normalize(original) != SearchKey.normalize(shown)
         else { return nil }
         return original
     }

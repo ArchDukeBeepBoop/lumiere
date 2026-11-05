@@ -39,8 +39,8 @@ fun GenreScreen(state: AppState, genre: String) {
                 lead = state.visible(runCatching { server.libraryPage(userId, null, 0, 8, "CommunityRating", true, genre = genre, types = "Movie,Series") }
                     .getOrDefault(emptyList())).firstOrNull { it.backdropTag != null }
             }
-            lead?.let { l -> androidx.compose.foundation.layout.Box(Modifier.padding(horizontal = LocalFormFactor.current.gutter.dp)
-                .fillMaxWidth().height(250.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))) {
+            lead?.let { l -> androidx.compose.foundation.layout.Box(Modifier
+                .fillMaxWidth().height(200.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp))) {
                 coil.compose.AsyncImage(app.lumiere.android.ui.imageFor(l, server, app.lumiere.android.ui.CardShape.Wide, 1200), null,
                     contentScale = androidx.compose.ui.layout.ContentScale.Crop, modifier = Modifier.fillMaxSize())
                 androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.horizontalGradient(
@@ -55,7 +55,7 @@ fun GenreScreen(state: AppState, genre: String) {
                     else Text(l.name, color = androidx.compose.ui.graphics.Color.White, style = androidx.compose.material3.MaterialTheme.typography.headlineSmall)
                 }
             } }
-            Row(Modifier.padding(horizontal = LocalFormFactor.current.gutter.dp, vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 listOf("Newest", "Best rated", "A–Z").forEachIndexed { i, l -> LChip(sort == i, { sort = i }, { Text(l) }) }
                 LChip(unwatched, { unwatched = !unwatched }, { Text("Unwatched") })
                 LChip(favourites, { favourites = !favourites }, { Text("Favourites") })

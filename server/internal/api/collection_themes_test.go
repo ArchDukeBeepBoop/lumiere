@@ -30,7 +30,7 @@ func TestThemeCollectionsByRoomFollowTheLibraryAndSwitchOff(t *testing.T) {
 	title("p1", "fPriv", "time loop") // one private title: too few for a shelf
 	h := CollectionSuggestHandler{Store: s, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
 
-	made, _ := h.ThemeCollections(context.Background())
+	made, _ := h.ThemeCollections(context.Background(), 20)
 	rooms := s.LibraryRooms([]string{"vPriv"})
 	id := s.ThemeCollectionFor("time-loops", false, rooms)
 	if made != 1 || id == "" || s.ThemeCollectionFor("time-loops", true, rooms) != "" {
@@ -40,7 +40,7 @@ func TestThemeCollectionsByRoomFollowTheLibraryAndSwitchOff(t *testing.T) {
 	// A title leaves the library: the collection follows.
 	s.DB.Exec(`DELETE FROM item_value WHERE item_id = 'c'`)
 	title("d", "fMain", "time loop")
-	h.ThemeCollections(context.Background())
+	h.ThemeCollections(context.Background(), 20)
 	var n int
 	s.DB.QueryRow(`SELECT count(*) FROM link WHERE parent_id = ? AND child_id IN ('a','b','d')`, id).Scan(&n)
 	var stale int
@@ -57,7 +57,7 @@ func TestThemeCollectionsByRoomFollowTheLibraryAndSwitchOff(t *testing.T) {
 		}
 	}
 	s.SaveThemes(themes)
-	h.ThemeCollections(context.Background())
+	h.ThemeCollections(context.Background(), 20)
 	if s.ThemeCollectionFor("time-loops", false, rooms) != "" {
 		t.Fatal("still there after switching off")
 	}
@@ -76,7 +76,7 @@ func TestAThemeCollectionIdentifiedAsASeriesIsPutBackAndGetsItsOwnArt(t *testing
 		s.AddTags(id, []string{"time loop"})
 	}
 	h := CollectionSuggestHandler{Store: s, DataDir: dir, Log: slog.New(slog.NewTextHandler(io.Discard, nil))}
-	h.ThemeCollections(context.Background())
+	h.ThemeCollections(context.Background(), 20)
 	id := s.ThemeCollectionFor("time-loops", false, s.LibraryRooms(nil))
 	if s.ItemValue(id, "art:theme") == "" {
 		t.Fatal("no artwork designed")
@@ -84,7 +84,7 @@ func TestAThemeCollectionIdentifiedAsASeriesIsPutBackAndGetsItsOwnArt(t *testing
 	// Identified by mistake.
 	s.SetItemValue(id, "tmdb_collection", "210303")
 	s.DB.Exec(`UPDATE item SET name = 'Rebuild of Evangelion Collection' WHERE id = ?`, id)
-	h.ThemeCollections(context.Background())
+	h.ThemeCollections(context.Background(), 20)
 	var name string
 	s.DB.QueryRow(`SELECT name FROM item WHERE id = ?`, id).Scan(&name)
 	if name != "Time Loops" || s.ItemValue(id, "tmdb_collection") != "" || s.ItemValue(id, "art:theme") == "" {

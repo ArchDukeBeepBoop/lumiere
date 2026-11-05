@@ -12,6 +12,9 @@ type MusicTags struct {
 	Title, Artist, AlbumArtist, Album, Container string
 	Track, Disc, Year                            int
 	Ticks, Bitrate                               int64
+	// Genres, as the genre tag lists them: "Hip-Hop/Rap" is one genre, so
+	// only ";", "|" and a null split it — not the slash taggers put in names.
+	Genres []string
 }
 
 // ParseMusicTags reads ffprobe's -show_format JSON. Pure: the file name and
@@ -46,6 +49,11 @@ func ParseMusicTags(probe []byte, path string) MusicTags {
 		Disc:        leadingNumber(tag("disc", "discnumber")),
 		Year:        leadingNumber(tag("date", "year", "originaldate")),
 		Container:   strings.TrimPrefix(strings.ToLower(filepath.Ext(path)), "."),
+	}
+	for _, g := range strings.FieldsFunc(tag("genre"), func(r rune) bool { return r == ';' || r == '|' || r == 0 }) {
+		if g = strings.TrimSpace(g); g != "" && !containsFold(t.Genres, g) {
+			t.Genres = append(t.Genres, g)
+		}
 	}
 	if d, err := strconv.ParseFloat(p.Format.Duration, 64); err == nil {
 		t.Ticks = int64(d * 10_000_000)
@@ -104,6 +112,15 @@ func leadingNumber(s string) int {
 	}
 	n, _ := strconv.Atoi(s[:end])
 	return n
+}
+
+func containsFold(list []string, s string) bool {
+	for _, v := range list {
+		if strings.EqualFold(v, s) {
+			return true
+		}
+	}
+	return false
 }
 
 func firstOf(list []string) string {

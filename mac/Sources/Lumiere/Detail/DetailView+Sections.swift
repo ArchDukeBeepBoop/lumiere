@@ -241,6 +241,9 @@ extension DetailView {
                     if app?.client != nil {
                         Button("Edit Metadata…") { editingId = entry.id }
                         Button("Choose or Remove Artwork…") { collectionArtworkId = entry.id }
+                        if entry.isIdentifiable {
+                            Button("Identify…") { identifySeason = entry }
+                        }
                         Button("Refresh Metadata") {
                             Task {
                                 await app?.refreshMetadata(

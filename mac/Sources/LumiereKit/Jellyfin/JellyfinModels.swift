@@ -47,6 +47,10 @@ public struct JellyfinItem: Codable, Sendable, Identifiable, Hashable {
     public let tags: [String]?
     public let taglines: [String]?
     public let studios: [NamedIdentity]?
+    /// ISO 3166-1 codes from Lumiere Server ("JP"); Jellyfin sends names here.
+    public let productionLocations: [String]?
+    /// Lumiere Server's own: the title in romaji, from AniList.
+    public let romajiTitle: String?
     public let people: [Person]?
 
     /// 100-nanosecond ticks. Divide by 10_000_000 for seconds.
@@ -107,7 +111,7 @@ public struct JellyfinItem: Codable, Sendable, Identifiable, Hashable {
         case officialRating = "OfficialRating", communityRating = "CommunityRating"
         case criticRating = "CriticRating", genres = "Genres", taglines = "Taglines"
         case tags = "Tags"
-        case studios = "Studios", people = "People", runTimeTicks = "RunTimeTicks"
+        case studios = "Studios", productionLocations = "ProductionLocations", romajiTitle = "RomajiTitle", people = "People", runTimeTicks = "RunTimeTicks"
         case imageTags = "ImageTags", backdropImageTags = "BackdropImageTags"
         case parentBackdropImageTags = "ParentBackdropImageTags"
         case parentBackdropItemId = "ParentBackdropItemId"

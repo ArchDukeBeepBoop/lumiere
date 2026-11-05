@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package app.lumiere.android.tv
 
 import androidx.compose.foundation.background
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
@@ -69,6 +72,7 @@ fun TvFolderBrowser(state: AppState, view: Item) {
         else compareBy({ !it.isFolder }, { it.name.lowercase() }))
     val videos = sorted.orEmpty().filter { !it.isFolder && it.isPlayable }
     // A number key or a letter typed on the remote jumps to the first entry starting with it.
+    var focusedIndex by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<Int?>(null) }
     val grid = androidx.compose.foundation.lazy.grid.rememberLazyGridState()
     val jump = androidx.compose.runtime.rememberCoroutineScope()
     if (path.size > 1) androidx.activity.compose.BackHandler { path.removeAt(path.lastIndex) }
@@ -82,13 +86,13 @@ fun TvFolderBrowser(state: AppState, view: Item) {
     }) {
         Row(Modifier.padding(start = 56.dp, top = 6.dp, bottom = 6.dp), horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically) {
-            TvPill({ byDate = !byDate }, selected = true) { Text(if (byDate) "↕ Newest" else "↕ A–Z") }
+            TvPill({ byDate = !byDate }, selected = true) { app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.sort); Spacer(Modifier.size(6.dp)); Text(if (byDate) "Newest" else "A–Z") }
             if (videos.isNotEmpty()) TvPill({ app.lumiere.android.player.Playback.queue = videos; state.push(Screen.Player(videos.first().id, 0.0)) }) {
-                Text("▶  Play All (${videos.size})")
+                app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.play); Spacer(Modifier.size(8.dp)); Text("Play All (${videos.size})")
             }
             Spacer(Modifier.size(12.dp))
             path.forEachIndexed { i, (_, name) ->
-                if (i > 0) Text("›", color = Palette.textMuted)
+                if (i > 0) app.lumiere.android.ui.Mark(app.lumiere.android.ui.Symbols.chevronRight, size = 14.dp, tint = Palette.textMuted)
                 TvPill({ while (path.size > i + 1) path.removeAt(path.lastIndex) }, selected = i == path.lastIndex) {
                     Text(name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
@@ -98,10 +102,13 @@ fun TvFolderBrowser(state: AppState, view: Item) {
         when {
             list == null -> Unit
             list.isEmpty() -> Text("This folder is empty.", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(48.dp))
-            else -> LazyVerticalGrid(GridCells.Adaptive(240.dp), state = grid, contentPadding = PaddingValues(start = 56.dp, end = 56.dp, top = 10.dp, bottom = 48.dp),
-                horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(22.dp)) {
-                items(list, key = { it.id }) { e ->
-                    Column {
+            // Four across, steered as the Library's grid: each new line settles at the top.
+            else -> androidx.compose.runtime.CompositionLocalProvider(androidx.compose.foundation.gestures.LocalBringIntoViewSpec provides app.lumiere.android.ui.rememberSteeredPageScroll()) {
+                app.lumiere.android.ui.SteeredGrid(grid, focusedIndex, landing = 0.02f)
+                LazyVerticalGrid(GridCells.Fixed(4), state = grid, contentPadding = PaddingValues(start = 56.dp, end = 56.dp, top = 10.dp, bottom = 48.dp + app.lumiere.android.ui.TvSpace.foot),
+                horizontalArrangement = Arrangement.spacedBy(24.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                items(list.size, key = { list[it].id }) { idx -> val e = list[idx]
+                    Column(Modifier.onFocusChanged { if (it.hasFocus) focusedIndex = idx }) {
                         Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)
                             .focusCard({}, { if (e.isFolder) path += e.id to e.name else state.push(Screen.Player(e.id, null)) }) { state.actionsFor = e }
                             .background(Palette.surface), contentAlignment = Alignment.Center) {
@@ -124,6 +131,7 @@ fun TvFolderBrowser(state: AppState, view: Item) {
                         e.childCount?.takeIf { e.isFolder }?.let { Text("$it items", style = MaterialTheme.typography.labelMedium) }
                     }
                 }
+            }
             }
         }
     }

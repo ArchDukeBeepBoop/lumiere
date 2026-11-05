@@ -10,7 +10,7 @@ public enum ServerCompatibility {
 
     /// The server API level this build needs. Bump with `APILevel` in
     /// LumiereServer/internal/api/system.go.
-    public static let requiredLevel = 6
+    public static let requiredLevel = 7
 
     /// A sentence to show, or nil when the server is new enough — or is a
     /// Jellyfin server, which never has these routes and is not "old".

@@ -1,6 +1,9 @@
 package app.lumiere.android.player
 
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.unit.sp
+import app.lumiere.android.ui.Symbols
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.draw.alpha
 import app.lumiere.android.ui.LButton
 import app.lumiere.android.ui.LTextButton
@@ -95,18 +98,30 @@ fun PlayerOverlay(
     player: ExoPlayer, clock: Clock, item: Item?, server: Server, trickplay: Trickplay?, isTv: Boolean, inPip: Boolean,
     hasNext: Boolean, onBack: () -> Unit, onTracks: () -> Unit, onPip: () -> Unit, onNext: () -> Unit,
     onMenu: () -> Unit = {},
+    /** The TV bar's Subtitles and Audio buttons. */
+    onSubtitles: () -> Unit = onTracks,
+    onAudio: () -> Unit = onTracks,
     onEpisodes: (() -> Unit)? = null,
     /** Play/Pause held: the chapters, to jump between. */
     onChapters: (() -> Unit)? = null,
     error: String? = null,
     /** A sheet or panel is open on top: the controls keep their hands off the remote. */
     modal: Boolean = false,
+    /** Skip Intro or Up Next has the remote for now. */
+    offering: Boolean = false,
+    /** The TV's tabs show under the transport, which rises above them and stays. */
+    tabsOpen: Boolean = false,
+    /** The TV's transport shows or hides, so the subtitles can step above it. */
+    onChrome: (Boolean) -> Unit = {},
+    /** The TV's pause screen shows or goes. */
+    onResting: (Boolean) -> Unit = {},
     /** Where subtitles sit, and moving them: two fingers up or down on a phone. */
     lift: () -> Float = { 0.06f },
     onLift: (Float) -> Unit = {},
 ) {
     if (inPip) return
     val context = LocalContext.current
+    val density = androidx.compose.ui.platform.LocalDensity.current
     var visible by remember { mutableStateOf(true) }
     var touched by remember { mutableIntStateOf(0) }
     var position by remember { mutableFloatStateOf(0f) }
@@ -125,16 +140,40 @@ fun PlayerOverlay(
             delay(250)
         }
     }
-    LaunchedEffect(visible, touched, scrubbing, playing) {
-        if (visible && scrubbing == null && playing) { delay(4000); visible = false }
+    // The TV's transport (TV_PLAYER_PLAN §4–5): -1 is the bar, 0 and up a button.
+    var zone by remember { mutableIntStateOf(-1) }
+    var scrubFrom by remember { mutableFloatStateOf(0f) }
+    var wasPlaying by remember { mutableStateOf(true) }
+    var mark by remember { mutableStateOf<Pair<androidx.compose.ui.graphics.vector.ImageVector?, String>?>(null) }
+    var backHeld by remember { mutableStateOf(false) }
+    // Apple's pause screen: paused and left alone for 6 s, the picture dims and says what it is.
+    var resting by remember { mutableStateOf(false) }
+    LaunchedEffect(resting) { onResting(resting) }
+    LaunchedEffect(playing, touched, scrubbing, modal) {
+        resting = false
+        if (isTv && !playing && scrubbing == null && !modal) { delay(6000); resting = true; visible = false }
     }
-    LaunchedEffect(visible, modal) {
-        // Back from a sheet: the remote returns to the controls.
-        if (!modal) runCatching { if (visible && isTv) playFocus.requestFocus() else rootFocus.requestFocus() }
+    LaunchedEffect(mark) { if (mark != null) { delay(900); mark = null } }
+    LaunchedEffect(visible) { if (!visible) zone = -1 }
+    LaunchedEffect(visible || scrubbing != null) { onChrome(visible || scrubbing != null) }
+    LaunchedEffect(visible, touched, scrubbing, playing, zone, tabsOpen) {
+        if (visible && scrubbing == null && playing && zone < 0 && !tabsOpen) { delay(if (isTv) 5000 else 4000); visible = false }
+    }
+    LaunchedEffect(visible, modal, offering) {
+        if (offering) return@LaunchedEffect
+        // Back from a sheet: the remote returns to the controls. On a TV the remote
+        // always rests on the whole player; the bar and buttons are steered by hand.
+        if (!modal) runCatching { if (visible && !isTv) playFocus.requestFocus() else rootFocus.requestFocus() }
     }
     LaunchedEffect(flash) { if (flash != null) { delay(700); flash = null } }
     // Back closes the controls first, then leaves.
-    androidx.activity.compose.BackHandler(enabled = visible && playing && !modal) { visible = false }
+    // On a TV a stray Back never ends the film: with the controls hidden it shows them;
+    // a second Back, with them up, leaves. (Elsewhere Back closes the controls first.)
+    androidx.activity.compose.BackHandler(enabled = !isTv && !modal && visible && playing) { visible = false }
+    // Play or pause: the glyph flashes in the middle, as tvOS confirms it.
+    var glyph by remember { mutableStateOf<Boolean?>(null) }
+    var firstPlay by remember { mutableStateOf(true) }
+    LaunchedEffect(playing) { if (firstPlay) { firstPlay = false; return@LaunchedEffect }; glyph = playing; delay(600); glyph = null }
     // Holding left or right on a remote: the target moves, faster the longer
     // it is held, with the preview showing; the jump happens on letting go.
     var held by remember { mutableStateOf<Float?>(null) }
@@ -143,7 +182,97 @@ fun PlayerOverlay(
     var playFocused by remember { mutableStateOf(false) }
     fun seekBy(seconds: Int) {
         clock.seek(clock.now() + seconds)
-        flash = if (seconds > 0) "+${seconds}s" else "${seconds}s"
+        if (isTv) mark = (if (seconds > 0) Symbols.skipForward else Symbols.skipBack) to (if (seconds > 0) "+$seconds" else "−${-seconds}")
+        else flash = if (seconds > 0) "+${seconds}s" else "${seconds}s"
+    }
+    val buttons = buildList {
+        add(BarButton(Symbols.subtitles, "Subtitles", onSubtitles))
+        add(BarButton(Symbols.audio, "Audio", onAudio))
+        add(BarButton(Symbols.more, "More", onMenu))
+        if (hasNext) add(BarButton(Symbols.next, "Next Episode", onNext))
+        // The Quest's room adds its own (the wall mount) while a film is on its screen.
+        Theater.barButton?.takeIf { Theater.active }?.let { (label, act) -> add(BarButton(Symbols.picture, label, act)) }
+    }
+    fun toggle() { if (player.isPlaying) player.pause() else player.play() }
+    fun commitScrub() { scrubbing?.let { clock.seek(it.toDouble()) }; scrubbing = null; player.play() }
+    fun cancelScrub() { scrubbing = null; if (wasPlaying) player.play() }
+    fun scrubBy(right: Boolean, repeat: Int) {
+        if (scrubbing == null) { wasPlaying = player.isPlaying; player.pause(); scrubFrom = clock.now().toFloat() }
+        val step = TvRemote.step(repeat)
+        scrubbing = ((scrubbing ?: scrubFrom) + if (right) step else -step).coerceIn(0f, duration)
+        visible = true
+    }
+    /** The TV remote, state by state (TV_PLAYER_PLAN §5). */
+    fun tvKey(k: KeyEvent): Boolean {
+        val code = k.keyCode
+        // Any press wakes the pause screen to the transport, and does nothing else.
+        if (resting) {
+            if (k.action == KeyEvent.ACTION_UP || (code == KeyEvent.KEYCODE_BACK && k.action == KeyEvent.ACTION_DOWN)) {
+                if (k.action == KeyEvent.ACTION_UP) { resting = false; visible = true; touched++ }
+                return true
+            }
+            return true
+        }
+        if (code == KeyEvent.KEYCODE_BACK) {
+            if (k.action == KeyEvent.ACTION_DOWN) {
+                // Held: always leave.
+                if (k.repeatCount >= 2 && !backHeld) { backHeld = true; onBack() }
+                return true
+            }
+            if (k.action != KeyEvent.ACTION_UP) return true
+            if (backHeld) { backHeld = false; return true }
+            touched++
+            when (val act = TvRemote.back(TvRemote.At(visible, zone, scrubbing != null, buttons.size))) {
+                TvRemote.Act.Cancel -> cancelScrub()
+                is TvRemote.Act.Zone -> zone = act.zone
+                TvRemote.Act.Show -> visible = true
+                else -> onBack()
+            }
+            return true
+        }
+        if (k.action != KeyEvent.ACTION_DOWN) return false
+        touched++
+        // Play/Pause held: undo the pause the press began with, and show the chapters.
+        if (k.repeatCount == 3 && onChapters != null && code == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) { player.play(); onChapters(); return true }
+        TvRemote.down(code, k.repeatCount, TvRemote.At(visible, zone, scrubbing != null, buttons.size))?.let { act ->
+            when (act) {
+                TvRemote.Act.Show -> visible = true
+                TvRemote.Act.PauseAndShow -> { player.pause(); visible = true }
+                TvRemote.Act.Toggle -> toggle()
+                TvRemote.Act.ToggleAndShow -> { toggle(); visible = true }
+                is TvRemote.Act.Press -> buttons.getOrNull(act.button)?.action?.invoke()
+                TvRemote.Act.Commit -> commitScrub()
+                TvRemote.Act.Cancel -> cancelScrub()
+                is TvRemote.Act.Scrub -> scrubBy(act.forward, k.repeatCount)
+                is TvRemote.Act.Skip -> { seekBy(act.seconds); visible = true }
+                is TvRemote.Act.Zone -> zone = act.zone
+                TvRemote.Act.Leave -> onBack()
+                TvRemote.Act.Tabs -> onTracks()
+                TvRemote.Act.Menu -> onMenu()
+                TvRemote.Act.Nothing -> Unit
+            }
+            return true
+        }
+        return when (code) {
+            KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_CHANNEL_UP -> {
+                val at = clock.now()
+                item?.chapters?.firstOrNull { it.startSeconds > at + 1 }?.let { clock.seek(it.startSeconds); mark = Symbols.next to (it.name ?: "Next chapter"); visible = true }
+                true
+            }
+            KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_CHANNEL_DOWN -> {
+                val at = clock.now()
+                item?.chapters?.lastOrNull { it.startSeconds < at - 3 }?.let { clock.seek(it.startSeconds); mark = Symbols.previous to (it.name ?: "Previous chapter"); visible = true }
+                true
+            }
+            // Number keys: 1–9 jump to that tenth of the film, 0 to the start.
+            in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9 -> {
+                val n = code - KeyEvent.KEYCODE_0
+                if (duration > 0) { clock.seek(duration * n / 10.0); mark = null to (if (n == 0) "Start" else "${n * 10} %"); visible = true }
+                true
+            }
+            KeyEvent.KEYCODE_PROG_RED -> { onEpisodes?.invoke(); onEpisodes != null }
+            else -> false
+        }
     }
 
     Box(
@@ -152,6 +281,7 @@ fun PlayerOverlay(
             .focusable()
             .onPreviewKeyEvent { e ->
                 if (modal) return@onPreviewKeyEvent false
+                if (isTv) return@onPreviewKeyEvent tvKey(e.nativeKeyEvent)
                 val code = e.nativeKeyEvent.keyCode
                 val seeking = code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT
                 if (e.nativeKeyEvent.action == KeyEvent.ACTION_UP) {
@@ -214,7 +344,9 @@ fun PlayerOverlay(
                     else -> false
                 }
             }
-            .then(if (isTv) Modifier else Modifier.gestures(context, onTap = { visible = !visible }, onSeek = ::seekBy, lift, onLift)),
+            // A Quest has the TV's layout and a pointer: a tap on the picture shows the controls there too.
+            .then(if (isTv && !app.lumiere.android.Flavor.quest) Modifier
+                else Modifier.gestures(context, onTap = { visible = !visible }, onSeek = ::seekBy, lift, onLift)),
     ) {
         error?.let {
             Text(it, color = Color.White, style = androidx.compose.material3.MaterialTheme.typography.titleLarge,
@@ -237,98 +369,24 @@ fun PlayerOverlay(
                 modifier = Modifier.align(Alignment.Center).background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
                     .padding(horizontal = 18.dp, vertical = 8.dp))
         }
+        if (isTv) {
+            AnimatedVisibility(resting, enter = fadeIn(tween(app.lumiere.android.Motion.ms(600))), exit = fadeOut(tween(app.lumiere.android.Motion.ms(200)))) {
+                PauseScreen(item)
+            }
+            AnimatedVisibility(visible || scrubbing != null, enter = fadeIn(tween(app.lumiere.android.Motion.ms(200))) +
+                    androidx.compose.animation.slideInVertically(tween(app.lumiere.android.Motion.ms(200))) { (12 * density.density).toInt() },
+                exit = fadeOut(tween(app.lumiere.android.Motion.ms(300)))) {
+                TvTransport(item, server, trickplay, BarState(position, duration, position + (player.bufferedPosition - player.currentPosition).coerceAtLeast(0) / 1000f, playing, scrubbing,
+                    zone, mark, player.playbackParameters.speed), buttons, lift = if (tabsOpen) TabsHeight else 0.dp)
+            }
+            return@Box
+        }
         AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut()) {
             // A phone's and the Quest's controls are the iPhone player's: see PhoneChrome.
-            if (!isTv) {
-                PhoneChrome(item, server, trickplay, playing, position, duration, scrubbing, hasNext,
-                    onScrub = { scrubbing = it; touched++ }, onSeek = { clock.seek(it.toDouble()); scrubbing = null },
-                    onSkip = { seekBy(it); touched++ }, onToggle = { if (player.isPlaying) player.pause() else player.play(); touched++ },
-                    onBack = onBack, onTracks = onTracks, onMenu = onMenu, onPip = onPip, onNext = onNext, onEpisodes = onEpisodes)
-                return@AnimatedVisibility
-            }
-            Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
-                0f to Color.Black.copy(alpha = 0.55f), 0.25f to Color.Transparent,
-                0.65f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.75f)))) {
-                Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    LIconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = app.lumiere.android.ui.pillTint(Color.White)) }
-                    Column(Modifier.weight(1f)) {
-                        Text(item?.seriesName ?: item?.name ?: "", color = Color.White,
-                            style = androidx.compose.material3.MaterialTheme.typography.titleLarge, maxLines = 1)
-                        if (item?.seriesName != null) Text(listOfNotNull(item.episodeLabel, item.name).joinToString(" · "),
-                            color = Color.White.copy(alpha = 0.75f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                        // Paused: what this is, as the pause screen on the Mac shows.
-                        if (!playing) item?.overview?.let {
-                            Text(it, color = Color.White.copy(alpha = 0.85f), maxLines = 4, overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.padding(top = 6.dp).fillMaxWidth(0.6f))
-                        }
-                    }
-                    if (!playing) app.lumiere.android.ui.ClockText()
-                    LIconButton(onClick = onTracks) { Icon(Icons.Default.Subtitles, "Audio and subtitles", tint = app.lumiere.android.ui.pillTint(Color.White)) }
-                    LIconButton(onClick = onMenu) { Icon(Icons.Default.Tune, "Speed, picture and sound", tint = app.lumiere.android.ui.pillTint(Color.White)) }
-                    if (!isTv) LIconButton(onClick = onPip) { Icon(Icons.Default.PictureInPictureAlt, "Picture in picture", tint = app.lumiere.android.ui.pillTint(Color.White)) }
-                }
-                Row(Modifier.align(Alignment.Center), horizontalArrangement = Arrangement.spacedBy(36.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    LIconButton(onClick = { seekBy(-10); touched++ }, Modifier.size(56.dp).focusProperties { canFocus = !isTv }) {
-                        Icon(Icons.Default.Replay10, "Back ten seconds", tint = app.lumiere.android.ui.pillTint(Color.White), modifier = Modifier.size(36.dp))
-                    }
-                    LIconButton(onClick = { if (player.isPlaying) player.pause() else player.play(); touched++ },
-                        Modifier.size(76.dp).focusRequester(playFocus).onFocusChanged { playFocused = it.isFocused }) {
-                        Icon(if (playing) Icons.Default.Pause else Icons.Default.PlayArrow, if (playing) "Pause" else "Play",
-                            tint = app.lumiere.android.ui.pillTint(Color.White), modifier = Modifier.size(56.dp))
-                    }
-                    LIconButton(onClick = { seekBy(10); touched++ }, Modifier.size(56.dp).focusProperties { canFocus = !isTv }) {
-                        Icon(Icons.Default.Forward10, "Forward ten seconds", tint = app.lumiere.android.ui.pillTint(Color.White), modifier = Modifier.size(36.dp))
-                    }
-                }
-                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
-                    BoxWithConstraints(Modifier.fillMaxWidth()) {
-                        val shown = scrubbing ?: position
-                        val trick = trickplay
-                        if (scrubbing != null && trick != null && duration > 0) {
-                            ScrubPreview(server, item?.id ?: "", trick, shown, (shown / duration) * maxWidth.value)
-                        }
-                        Column(Modifier.align(Alignment.BottomStart)) {
-                            // tvOS: what is playing sits above the bar, left, in plain white.
-                            if (isTv) item?.let { cur ->
-                                Text(if (cur.isEpisode) cur.seriesName ?: cur.name else cur.name, color = Color.White,
-                                    style = androidx.compose.ui.text.TextStyle(fontSize = 24.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
-                                    modifier = Modifier.padding(start = 10.dp), maxLines = 1)
-                                if (cur.isEpisode) Text(listOfNotNull(cur.episodeLabel, cur.name).joinToString(" · "), color = Color.White.copy(alpha = 0.7f),
-                                    modifier = Modifier.padding(start = 10.dp), maxLines = 1)
-                            }
-                            Box {
-                                ChapterMarks(item, duration)
-                                Slider(
-                                    value = shown, valueRange = 0f..duration.coerceAtLeast(1f),
-                                    onValueChange = { scrubbing = it; touched++ },
-                                    onValueChangeFinished = { scrubbing?.let { clock.seek(it.toDouble()) }; scrubbing = null },
-                                    // Apple's bar is white on a dim track, not a colour.
-                                    colors = SliderDefaults.colors(thumbColor = if (isTv) Color.White else Palette.accent,
-                                        activeTrackColor = if (isTv) Color.White else Palette.accent,
-                                        inactiveTrackColor = Color.White.copy(alpha = 0.3f)),
-                                )
-                            }
-                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                                // Time gone on the left, time left on the right, as tvOS counts.
-                                if (isTv) {
-                                    Text(clock(shown.toDouble()), color = Color.White.copy(alpha = 0.85f), modifier = Modifier.padding(start = 10.dp))
-                                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                        chapterAt(item, shown)?.let { Text(it, color = Color.White.copy(alpha = 0.7f), maxLines = 1) }
-                                    }
-                                    Text("-" + clock((duration - shown).toDouble().coerceAtLeast(0.0)), color = Color.White.copy(alpha = 0.85f),
-                                        modifier = Modifier.padding(end = 10.dp))
-                                } else {
-                                Text("${clock(shown.toDouble())} / ${clock(duration.toDouble())}", color = Color.White,
-                                    modifier = Modifier.weight(1f))
-                                chapterAt(item, shown)?.let { Text(it, color = Color.White.copy(alpha = 0.8f), maxLines = 1) }
-                                }
-                                if (hasNext) LIconButton(onClick = onNext) { Icon(Icons.Default.SkipNext, "Next episode", tint = app.lumiere.android.ui.pillTint(Color.White)) }
-                            }
-                        }
-                    }
-                }
-            }
+            PhoneChrome(item, server, trickplay, playing, position, duration, scrubbing, hasNext,
+                onScrub = { scrubbing = it; touched++ }, onSeek = { clock.seek(it.toDouble()); scrubbing = null },
+                onSkip = { seekBy(it); touched++ }, onToggle = { if (player.isPlaying) player.pause() else player.play(); touched++ },
+                onBack = onBack, onTracks = onTracks, onMenu = onMenu, onPip = onPip, onNext = onNext, onEpisodes = onEpisodes)
         }
     }
 }
@@ -374,7 +432,7 @@ internal fun ScrubPreview(server: Server, id: String, t: Trickplay, seconds: Flo
 }
 
 @Composable
-private fun Tile(server: Server, id: String, t: Trickplay, index: Int, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp, alpha: Float) {
+internal fun Tile(server: Server, id: String, t: Trickplay, index: Int, w: androidx.compose.ui.unit.Dp, h: androidx.compose.ui.unit.Dp, alpha: Float) {
     val perSheet = t.tiles * t.tiles
     val sheet = index / perSheet
     val cell = index % perSheet

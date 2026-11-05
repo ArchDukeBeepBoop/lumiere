@@ -14,7 +14,7 @@ import (
 func registerContainers(authed *http.ServeMux, db *store.Store, items api.ItemsHandler, dataDir string, log *slog.Logger) {
 	containers := api.ContainerHandler{
 		Store: db, Items: items, Log: log,
-		ImageDir: filepath.Join(dataDir, "cache", "images"),
+		ImageDir: filepath.Join(api.CacheRoot, "images"),
 	}
 	go containers.PosterAll()
 	authed.HandleFunc("POST /Collections", containers.Create("BoxSet"))
@@ -32,6 +32,8 @@ func registerContainers(authed *http.ServeMux, db *store.Store, items api.ItemsH
 	authed.HandleFunc("POST /Lumiere/Collections/{id}/MergeInto/{target}", containers.Merge)
 	authed.HandleFunc("GET /Lumiere/Collections/NextUp", containers.SeriesNext)
 	authed.HandleFunc("GET /Lumiere/Collections/NextAfter/{id}", containers.NextAfter)
+	authed.HandleFunc("GET /Lumiere/WatchOrder/{id}", containers.WatchOrder)
+	authed.HandleFunc("PUT /Lumiere/WatchOrder/{id}", containers.SetWatchOrder)
 	authed.HandleFunc("POST /Lumiere/Collections/Fill", suggest.Fill)
 	authed.HandleFunc("GET /Lumiere/Collections/SeriesSearch", suggest.SeriesSearch)
 	authed.HandleFunc("POST /Lumiere/Collections/{id}/Series/{tmdb}", suggest.SetSeries)
@@ -42,5 +44,17 @@ func registerContainers(authed *http.ServeMux, db *store.Store, items api.ItemsH
 	authed.HandleFunc("GET /Lumiere/Collections/Themes", suggest.Themes)
 	authed.HandleFunc("POST /Lumiere/Collections/Themes", suggest.SetThemes)
 	authed.HandleFunc("POST /Lumiere/Collections/Themes/Run", suggest.RunThemes)
+	// Anime franchises from AniList. See api/collection_anilist.go.
+	authed.HandleFunc("GET /Lumiere/Collections/AniList", suggest.AniListStatus)
+	authed.HandleFunc("POST /Lumiere/Collections/AniList", suggest.SetAniListLibraries)
+	authed.HandleFunc("POST /Lumiere/Collections/AniList/Run", suggest.RunAniList)
+	authed.HandleFunc("POST /Lumiere/Collections/AniList/Names", suggest.SetFranchiseNames)
+	// Smart collections: rules kept current. See api/smart_collections.go.
+	authed.HandleFunc("GET /Lumiere/SmartCollections", suggest.SmartList)
+	authed.HandleFunc("POST /Lumiere/SmartCollections", suggest.SmartSave)
+	authed.HandleFunc("POST /Lumiere/SmartCollections/Preview", suggest.SmartPreview)
+	authed.HandleFunc("GET /Lumiere/SmartCollections/Ideas", suggest.SmartIdeas)
+	authed.HandleFunc("GET /Lumiere/SmartCollections/Choices", suggest.SmartChoices)
 	suggest.KeepFresh()
+	suggest.KeepSmartFresh()
 }

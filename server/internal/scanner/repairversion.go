@@ -14,7 +14,8 @@ import (
 // syncs, and so a fix could sit installed and unapplied for days.
 //
 //	1  seating episodes that had no season (seat.go)
-const RepairVersion = 4
+//	5  remakes filed apart from their originals (splityears.go)
+const RepairVersion = 5
 
 const metaRepairVersion = "repair_version"
 
@@ -22,6 +23,10 @@ const metaRepairVersion = "repair_version"
 // not yet run on this database, and records that they have. Changes are
 // announced to the app the way a scan's are, so it re-reads what moved.
 func RepairIfNew(db *store.Store, log *slog.Logger) {
+	// Containers named by their extension, checked once. See containers.go.
+	go RecheckContainers(db, log)
+	// Chapters the import carried and the database lost. See chapters.go.
+	go ReadMissingChapters(db, log)
 	done, _ := db.Meta(metaRepairVersion)
 	if n, err := strconv.Atoi(done); err == nil && n >= RepairVersion {
 		return

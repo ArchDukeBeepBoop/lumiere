@@ -21,11 +21,17 @@ struct CollectionHeader: View {
     var onDelete: (() -> Void)?
     /// Identify… — choose its film series. See `CollectionSeriesSheet`.
     var onIdentify: (() -> Void)?
+    /// Choose Artwork… — a provider's, or one of its own titles'.
+    var onChooseArtwork: (() -> Void)?
     /// Scan Collection — find its series, name, picture and fill it, by itself.
     var onScan: (() async -> Void)?
     /// Rename it, and edit its synopsis. See `EditMetadataSheet`.
     var onEdit: (() -> Void)?
+    /// Plays the whole collection in order. See `DetailModel.collectionPlayOrder`.
+    var onPlayFromStart: (() -> Void)?
     @State private var isScanning = false
+    /// Pinned to Home as its own row. See `PinnedCollectionRows`.
+    @State private var isOnHome = false
 
     @Environment(\.displayScale) private var scale
     @AppStorage("titleStyle") private var titleStyle: TitleStyle = .metadataTitle
@@ -145,9 +151,15 @@ struct CollectionHeader: View {
     /// is. Nothing was removed.
     private var actions: some View {
         HStack(spacing: Theme.Space.md) {
-            Button("Add Items…", action: onAddItems)
+            if let onPlayFromStart {
+                Button(action: onPlayFromStart) {
+                    Label("Play from the Beginning", systemImage: "play.fill")
+                }
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.Palette.accent)
+            }
+            Button("Add Items…", action: onAddItems)
+                .buttonStyle(.bordered)
 
             HStack(spacing: Theme.Space.xs) {
                 // Every title in it at once — a show down to its episodes. The
@@ -158,6 +170,14 @@ struct CollectionHeader: View {
                 ) {
                     Task { await model.setCollectionWatched(!allWatched) }
                 }
+                QuietIconButton(
+                    systemName: isOnHome ? "pin.fill" : "pin",
+                    help: isOnHome ? "Remove from Home" : "Show on Home — this collection as its own row"
+                ) {
+                    PinnedCollectionRows.toggle(entry.id, name: entry.item.name)
+                    isOnHome = PinnedCollectionRows.isPinned(entry.id)
+                }
+                .onAppear { isOnHome = PinnedCollectionRows.isPinned(entry.id) }
 
                 // The same wizard the scan ends on, reachable for a collection that
                 // already exists — the ones built before it, and the ones built by
@@ -189,6 +209,11 @@ struct CollectionHeader: View {
 
                 if let onEdit {
                     QuietIconButton(systemName: "pencil", help: "Edit… — rename this collection", action: onEdit)
+                }
+                if let onChooseArtwork {
+                    QuietIconButton(systemName: "photo.on.rectangle",
+                                    help: "Choose Artwork… — a poster or backdrop, from a provider or one of its titles",
+                                    action: onChooseArtwork)
                 }
                 if let onIdentify {
                     QuietIconButton(

@@ -41,14 +41,15 @@ func (h ContainerHandler) SeriesNext(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// NextAfter is GET /Lumiere/Collections/NextAfter/{id}: the next film in the
-// film's collection, for "Next in Alien Collection: Aliens" on its page.
+// NextAfter is GET /Lumiere/Collections/NextAfter/{id}: the next title in the
+// title's collection, for "Next in Monogatari" on its page, with the
+// collection's id so an app can follow an order arranged on it instead.
 // 204 when there is none.
 func (h ContainerHandler) NextAfter(w http.ResponseWriter, r *http.Request) {
-	next, name := h.Store.NextInCollection(store.NormalizeID(r.PathValue("id")))
+	next, name, collection := h.Store.NextInCollection(store.NormalizeID(r.PathValue("id")))
 	if next == "" {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]string{"Id": next, "Collection": name})
+	writeJSON(w, http.StatusOK, map[string]string{"Id": next, "Collection": name, "CollectionId": collection})
 }

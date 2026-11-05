@@ -35,6 +35,11 @@ extension ServerBrowserView {
                           + "needs the server awake."
                 ))
             }
+        } else if showsScopePicker, scope == .genres {
+            // Genres as artwork cards, each pictured by one of its albums.
+            MusicGenreGrid(repository: repository, libraryId: libraryId, serverURL: serverURL,
+                           pipeline: pipeline,
+                           onOpen: { path.append((id: $0.name, name: $0.name, kind: .musicGenre)) })
         } else if entries.isEmpty {
             EmptyStateView(reason: .empty(
                 icon: "music.note.list",
@@ -55,7 +60,7 @@ extension ServerBrowserView {
                 onPlayAudio: { tracks, index in onPlayAudio?(tracks, index) },
                 onOpen: { entry in path.append((id: entry.item.id, name: entry.item.name, kind: entry.item.itemType)) },
                 onReachedEnd: { entry in await loadMoreIfNeeded(currentItem: entry) },
-                header: artistHeader,
+                header: artistHeader ?? topArtistsHeader,
                 menu: { entry in musicMenu(for: entry) }
             )
         } else {
@@ -123,6 +128,16 @@ extension ServerBrowserView {
     /// optional `some View` is not a thing Swift will express. One erasure at the
     /// boundary is cheaper than a generic parameter threaded through the grid for
     /// the one caller that uses it.
+    /// Top 10 Artists over the library's own wall of albums or artists.
+    private var topArtistsHeader: AnyView? {
+        guard showsScopePicker, scope == .albums || scope == .artists else { return nil }
+        return AnyView(
+            TopArtistsRow(repository: repository, libraryId: libraryId, serverURL: serverURL,
+                          pipeline: pipeline,
+                          onOpen: { path.append((id: $0.id, name: $0.name, kind: .musicArtist)) })
+        )
+    }
+
     private var artistHeader: AnyView? {
         guard let artist = currentArtist else { return nil }
         return AnyView(
