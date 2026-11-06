@@ -13,7 +13,9 @@ func TestTheStartupRepairRunsOncePerVersion(t *testing.T) {
 	s.Store.DB.Exec(`INSERT INTO item (id, type, name, series_id, parent_id, index_number, is_folder) VALUES ('e1', 'Episode', '1', 'show', 'show', 1, 0)`)
 	quiet := slog.New(slog.NewTextHandler(io.Discard, nil))
 	RepairIfNew(s.Store, quiet)
-	deadline := time.Now().Add(10 * time.Second)
+	// Generous: the pass runs in the background, and during a ship the Mac
+	// build and the other suites share the machine with it.
+	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
 		if v, _ := s.Store.Meta(metaRepairVersion); v != "" {
 			break

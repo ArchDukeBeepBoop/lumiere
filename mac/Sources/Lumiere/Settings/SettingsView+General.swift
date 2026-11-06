@@ -57,7 +57,9 @@ extension SettingsView {
         }
         .resettable(SettingsDefaults.home)
 
-        HomeOrderCard(libraries: app.libraries) { app.reapplyLibraryOrder() }
+        // The room's own rows: in the private room its libraries, outside
+        // everything else. Each room keeps its own order (`RoomPreferences`).
+        HomeOrderCard(libraries: app.visibleLibraries) { app.reapplyLibraryOrder() }
     }
 
     /// The keys that let titles be named and fixed. Library, not Look: they

@@ -59,6 +59,13 @@ func registerHomeOrderTests(_ t: TestRunner) async {
             t.expectEqual(resolved.count, 16 + libraries.count)
         }
 
+        t.test("a row dragged several places lands where it was dropped") {
+            let order = HomeOrder.defaultOrder(libraryIds: libraries)
+            let moved = HomeOrder.moved(.topAnime, by: -(order.firstIndex(of: .topAnime)!), in: order)
+            t.expectEqual(moved.first, .topAnime)
+            t.expectEqual(moved.count, order.count)
+        }
+
         t.test("a new library lands with the other Latest rows, not at the end") {
             // The order someone actually made: Continue Watching first, Top 10
             // Films last. A library added afterwards must not jump the queue and

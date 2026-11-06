@@ -1,14 +1,13 @@
 import SwiftUI
 import LumiereKit
 
-/// Reordering the home screen.
+/// Reordering the home screen, for the room it is opened in: the private
+/// room's rows inside it, everything else outside, each room with its own
+/// order.
 ///
-/// Up and down buttons rather than drag-and-drop, and that is a deliberate choice
-/// rather than the easy one. A settings pane is already a scrolling column; a list
-/// inside it that also takes drags fights the scroll on a trackpad, and the target
-/// for "one place up" is then a gesture rather than a button. Two buttons per row
-/// are unambiguous, keyboard-reachable, and can say when they do nothing by being
-/// disabled at the ends.
+/// Dragged: each row carries a grip, and dropping it on another row puts it
+/// there. Up and down buttons came first, for being keyboard-reachable and
+/// unambiguous, and were slow work for a list of twenty rows.
 struct HomeOrderCard: View {
     let libraries: [LibraryRecord]
     /// Called after every change, so the lists that are *not* rebuilt from this
@@ -18,6 +17,8 @@ struct HomeOrderCard: View {
 
     @AppStorage(HomeOrder.storageKey) private var storedOrder = ""
     @AppStorage(HomeOrder.hiddenKey) private var storedHidden = ""
+    /// The row a drag is over, drawn highlighted.
+    @State private var dropTarget: String?
 
     private var hidden: Set<String> { HomeOrder.hidden(from: storedHidden) }
 
@@ -102,28 +103,31 @@ struct HomeOrderCard: View {
 
             Spacer(minLength: Theme.Space.md)
 
-            move(section, by: -1, icon: "chevron.up", enabled: index > 0)
-            move(section, by: 1, icon: "chevron.down", enabled: index < order.count - 1)
-        }
-    }
-
-    private func move(
-        _ section: HomeSection, by offset: Int, icon: String, enabled: Bool
-    ) -> some View {
-        Button {
-            storedOrder = HomeOrder.encode(
-                HomeOrder.moved(section, by: offset, in: order)
-            )
-            onChange()
-        } label: {
-            Image(systemName: icon)
+            Image(systemName: "line.3.horizontal")
                 .font(Theme.Glyph.sm(.semibold))
+                .foregroundStyle(Theme.Palette.textMuted)
                 .frame(width: 22, height: 20)
-                .contentShape(Rectangle())
+                .labelledHelp("Drag to move")
         }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .foregroundStyle(enabled ? Theme.Palette.accent : Theme.Palette.textMuted)
-        .labelledHelp(offset < 0 ? "Move up" : "Move down")
+        .padding(.vertical, Theme.Space.xxs)
+        .background(dropTarget == section.id ? Theme.Palette.accentMuted : .clear,
+                    in: RoundedRectangle(cornerRadius: Theme.Radius.control, style: .continuous))
+        .contentShape(Rectangle())
+        .draggable(section.id) {
+            Text(section.title(libraryName: name(for:)))
+                .font(Theme.Font.body)
+                .padding(Theme.Space.sm)
+                .background(Theme.Palette.surfaceRaised, in: RoundedRectangle(cornerRadius: Theme.Radius.control))
+        }
+        .dropDestination(for: String.self) { ids, _ in
+            guard let id = ids.first, let from = order.firstIndex(where: { $0.id == id }),
+                  let to = order.firstIndex(of: section), from != to else { return false }
+            storedOrder = HomeOrder.encode(HomeOrder.moved(order[from], by: to - from, in: order))
+            onChange()
+            return true
+        } isTargeted: { over in
+            dropTarget = over ? section.id : (dropTarget == section.id ? nil : dropTarget)
+        }
+        .animation(Theme.Motion.hover, value: dropTarget)
     }
 }
